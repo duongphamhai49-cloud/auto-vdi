@@ -1,0 +1,118 @@
+// ==UserScript==
+// @name         Auto Fill Câu Hỏi LotusLMS
+// @namespace    http://tampermonkey.net/
+// @version      10.2
+// @description  Bảo vệ Hình Ảnh Minh Họa tuyệt đối - Giữ Động cơ 10.0
+// @author       Bạn
+// @match        https://*.lotuslms.com/*
+// @match        https://daymai.vn/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const MAPPING = {
+        'TRAC_NGHIEM': { debai: 0, goiy: 5, loigiai: 6 },
+        'DUNG_SAI': { debai: 0, goiy: 1, loigiai: 2 },
+        'DIEN_DAPAN': { debai: 0, goiy: 1, loigiai: 2 }
+    };
+
+    function processFormatting(text) {
+        let safeStr = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        safeStr = safeStr.replace(/(Điền số.*?thích hợp vào chỗ trống.*?:)/gi, '<i>$1</i>');
+        safeStr = safeStr.replace(/(Xét tính đúng sai của các khẳng định sau:?)/gi, '<i>$1</i>');
+        safeStr = safeStr.replace(/(Khẳng định\s+[A-D1-4]\s+(?:đúng|sai)[^\.\n]*\.?)/gi, '<b>$1</b>');
+
+        safeStr = safeStr.replace(/\*\*(<b>.*?<\/b>)\*\*/gi, '$1');
+        safeStr = safeStr.replace(/\*(<i>.*?<\/i>)\*/gi, '$1');
+
+        return safeStr;
+    }
+
+    function insertIntoQuill(editorElement, textContent) {
+        if (!editorElement || !textContent) return;
+
+        editorElement.focus();
+
+        // 1. TÍNH NĂNG MỚI: DỌN DẸP AN TOÀN TUYỆT ĐỐI
+        // Chỉ xóa các dòng văn bản, TUYỆT ĐỐI KHÔNG XÓA ĐOẠN CÓ ẢNH
+        let children = Array.from(editorElement.children);
+        children.forEach(child => {
+            if (child.querySelectorAll('img').length === 0) {
+                child.remove(); // Dòng không có thẻ img -> An tâm Xóa sạch
+            } else {
+                // Dòng có thẻ img -> Giữ lại nguyên vẹn tại chỗ!
+                // Chỉ rà soát xóa chữ rác bám quanh ảnh (nếu có)
+                Array.from(child.childNodes).forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        node.textContent = '';
+                    }
+                });
+            }
+        });
+
+        // 2. DI CHUYỂN CHUỘT LÊN ĐẦU Ô (Phía trên cùng của tấm ảnh đang được giữ lại)
+        let selection = window.getSelection();
+        let range = document.createRange();
+        range.setStart(editorElement, 0);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // 3. TẠO CỤC TEXT MỚI (Nguyên gốc 10.0 không hề đụng chạm)
+        let lines = textContent.replace(/\r/g, '').split('\n');
+        let fullHtml = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            if (line.trim() === '') {
+                fullHtml += '<p><br></p>';
+            } else {
+                let formatted = processFormatting(line);
+                formatted = formatted.replace(/ {2}/g, '&nbsp;&nbsp;');
+                fullHtml += `<p>${formatted}</p>`;
+            }
+        }
+
+        // 4. BƠM TEXT VÀO ĐẦU Ô
+        document.execCommand('insertHTML', false, fullHtml);
+
+        editorElement.style.backgroundColor = '#f0fdf4';
+        setTimeout(() => editorElement.style.backgroundColor = '', 2000);
+    }
+
+    window.addEventListener('load', () => {
+        let btn = document.createElement('button');
+        btn.innerHTML = "⚡ AUTO FILL";
+        btn.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999999; padding:12px 24px; background:linear-gradient(135deg, #10b981, #059669); color:white; font-weight:bold; font-size:16px; border:none; border-radius:50px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.3);";
+        document.body.appendChild(btn);
+
+        btn.onclick = async () => {
+            try {
+                let text = await navigator.clipboard.readText();
+                let payload = JSON.parse(text);
+
+                if (!payload || !payload.typeCode) return alert("⚠️ Dữ liệu copy không hợp lệ!");
+
+                const editors = document.querySelectorAll('.ql-editor');
+                if (editors.length === 0) return alert('❌ Không tìm thấy ô soạn thảo nào!');
+
+                const map = MAPPING[payload.typeCode] || MAPPING['TRAC_NGHIEM'];
+
+                // Điền 3 Ô chính
+                if (payload.debai && editors[map.debai]) insertIntoQuill(editors[map.debai], payload.debai);
+                if (payload.goiy && editors[map.goiy]) insertIntoQuill(editors[map.goiy], payload.goiy);
+                if (payload.loigiai && editors[map.loigiai]) insertIntoQuill(editors[map.loigiai], payload.loigiai);
+
+                btn.innerHTML = "✅ DONE";
+                setTimeout(() => btn.innerHTML = "⚡ AUTO FILL", 2000);
+
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Có lỗi khi điền: " + err);
+            }
+        };
+    });
+})();
