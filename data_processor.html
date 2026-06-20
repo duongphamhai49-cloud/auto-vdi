@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Processor</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --border-color: #334155;
+
+            --btn-debai: linear-gradient(135deg, #2563eb, #3b82f6);
+            --btn-lc: linear-gradient(135deg, #7c3aed, #8b5cf6);
+            --btn-goiy: linear-gradient(135deg, #d97706, #f59e0b);
+            --btn-loigiai: linear-gradient(135deg, #059669, #10b981);
+            --btn-meta: linear-gradient(135deg, #475569, #64748b);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            letter-spacing: 2px;
+        }
+
+        .file-upload-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        
+        .file-upload-input {
+            display: none;
+        }
+        
+        .file-upload-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 1rem;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+        
+        .file-upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .section-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: none; /* Initially collapsed */
+        }
+
+        button {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.95) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-copy-header {
+            background: #ffff66;
+            color: #000;
+            border: 1px solid #000;
+            padding: 0.2rem 0.35rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            border-radius: 0.25rem;
+            margin-left: 0.15rem;
+            box-shadow: 1px 1px 0px #000;
+            transition: all 0.1s;
+            position: relative;
+        }
+        .btn-copy-header:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px #000;
+        }
+
+        .answer-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 1rem;
+            border: 2px solid var(--accent);
+            border-radius: 0.5rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            color: var(--text-primary);
+        }
+
+        .action-buttons-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-colored-copy {
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .btn-colored-copy.copied {
+            opacity: 0.4;
+        }
+
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+            font-size: 1rem;
+            overflow: hidden;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .parsed-fields-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 1rem;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .field-group label {
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+            opacity: 0.9;
+        }
+
+        #scrollTopBtn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        #scrollTopBtn.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #scrollTopBtn:hover {
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>DATA PROCESSOR</h1>
+    </div>
+
+    <div class="file-upload-wrapper">
+        <label for="historyFile" class="file-upload-btn" title="Tải lên file History (.txt)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        </label>
+        <input type="file" id="historyFile" class="file-upload-input" accept=".txt">
+    </div>
+
+    <div id="card_container">
+        <!-- Cards will be injected here -->
+    </div>
+
+    <button id="scrollTopBtn" onclick="scrollToTop()" title="Lên đầu trang">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </button>
+
+    <script>
+        window.allParsedData = {};
+
+        // Confirm before refresh/close if data exists
+        window.addEventListener('beforeunload', function(e) {
+            if (Object.keys(window.allParsedData).length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        document.getElementById('historyFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Normalize line endings: completely remove \r to avoid double newlines from \r\r\n
+                const text = e.target.result.replace(/\r/g, '');
+                processHistoryContent(text);
+            };
+            reader.readAsText(file);
+        });
+
+        function processHistoryContent(text) {
+            const container = document.getElementById('card_container');
+            container.innerHTML = ''; 
+            window.allParsedData = {};
+
+            const blocks = text.split(/={30,}\n?|-{50,}\n?/);
+            
+            const resultMatch = text.match(/KẾT QUẢ:\s*(\d+)\/(\d+)/);
+            const successCount = resultMatch ? parseInt(resultMatch[1]) : 0;
+            const totalCount = resultMatch ? parseInt(resultMatch[2]) : 0;
+            const failCount = totalCount - successCount;
+
+            const timeMatch = text.match(/PHIẾU TỰ ĐỘNG - (.*)/);
+            let startTime = timeMatch ? timeMatch[1].trim() : 'Không rõ';
+
+            const durationMatch = text.match(/Tổng thời gian: (.*)/);
+            let duration = durationMatch ? durationMatch[1].trim() : 'Không rõ';
+
+            const endTimeMatch = text.match(/Hoàn thành lúc: (.*)/);
+            let endTime = endTimeMatch ? endTimeMatch[1].trim() : 'Không rõ';
+
+            function formatDateTime(dtStr) {
+                if (dtStr === 'Không rõ') return dtStr;
+                const parts = dtStr.split(' ');
+                if (parts.length === 2) {
+                    return parts[1] + ' ' + parts[0];
+                }
+                return dtStr;
+            }
+
+            function formatDuration(durStr) {
+                if (durStr === 'Không rõ') return durStr;
+                let h = 0, m = 0, s = 0;
+                const hMatch = durStr.match(/(\d+)\s*giờ/);
+                const mMatch = durStr.match(/(\d+)\s*phút/);
+                const sMatch = durStr.match(/(\d+)\s*giây/);
+                
+                if (hMatch) h = parseInt(hMatch[1]);
+                if (mMatch) m = parseInt(mMatch[1]);
+                if (sMatch) s = parseInt(sMatch[1]);
+                
+                const pad = (num) => num.toString().padStart(2, '0');
+                return `${pad(h)}:${pad(m)}:${pad(s)}`;
+            }
+
+            startTime = formatDateTime(startTime);
+            endTime = formatDateTime(endTime);
+            duration = formatDuration(duration);
+
+            let html = '';
+
+            if (resultMatch) {
+                html += `
+                <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center; margin-bottom: 2rem;">
+                    
+                    <!-- BOX 1: Success - Total - Fail -->
+                    <div style="display: flex; gap: 2rem; background: var(--card-bg); border: 1px solid #fff; border-radius: 0.5rem; padding: 0.8rem 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); align-items: center;">
+                        <div style="text-align: center;">
+                            <div style="color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">Thành công</div>
+                            <div style="color: var(--success); font-size: 1.6rem; font-weight: bold;">${successCount}</div>
+                        </div>
+                        <div style="text-align: center; border-left: 1px solid #fff; border-right: 1px solid #fff; padding: 0 2rem;">
+                            <div style="color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">Tổng số</div>
+                            <div style="color: var(--text-primary); font-size: 1.6rem; font-weight: bold;">${totalCount}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">Thất bại</div>
+                            <div style="color: var(--error); font-size: 1.6rem; font-weight: bold;">${failCount}</div>
+                        </div>
+                    </div>
+
+                    <!-- BOX 2: Times -->
+                    <div style="display: flex; gap: 1.5rem; align-items: center;">
+                        <div style="display: flex; gap: 1.5rem; border: 1px solid #fff; border-radius: 0.4rem; padding: 0.5rem 1rem; align-items: center; background: var(--card-bg);">
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary); font-size: 0.55rem; text-transform: uppercase;">BẮT ĐẦU</div>
+                                <div style="color: #fff; font-size: 0.8rem; font-weight: bold; margin-top: 0.15rem;">${startTime}</div>
+                            </div>
+                            <div style="width: 1px; height: 100%; background-color: rgba(255,255,255,0.3);"></div>
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary); font-size: 0.55rem; text-transform: uppercase;">HOÀN THÀNH</div>
+                                <div style="color: #fff; font-size: 0.8rem; font-weight: bold; margin-top: 0.15rem;">${endTime}</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; background: var(--card-bg); border: 1px solid #fff; border-radius: 0.4rem; padding: 0.5rem 1rem;">
+                            <div style="color: var(--text-secondary); font-size: 0.55rem; text-transform: uppercase;">TỔNG</div>
+                            <div style="color: #ffff66; font-size: 0.85rem; font-weight: bold; margin-top: 0.15rem;">${duration}</div>
+                        </div>
+                    </div>
+
+                </div>`;
+            }
+
+            let validIndex = 0;
+            
+            blocks.forEach((block) => {
+                const lines = block.split('\n');
+                let stt = '';
+                let id = '';
+                let status = '';
+                let contentArr = [];
+                let isContent = false;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.startsWith('- STT:')) {
+                        stt = line.replace('- STT:', '').trim();
+                        isContent = false;
+                    } else if (line.startsWith('- ID:')) {
+                        id = line.replace('- ID:', '').trim();
+                        isContent = false;
+                    } else if (line.startsWith('- Trạng thái:')) {
+                        status = line.replace('- Trạng thái:', '').trim();
+                        isContent = false;
+                    } else if (line.startsWith('- Nội dung:')) {
+                        isContent = true;
+                        const rest = line.replace('- Nội dung:', '').trim();
+                        if (rest) contentArr.push(rest);
+                    } else if (isContent) {
+                        contentArr.push(lines[i]); // Keep original formatting
+                    }
+                }
+                
+                if (!stt && !id) return; 
+
+                const rawNotebookContent = contentArr.join('\n').trim();
+                const parsed = parseNotebookOutputLocal(rawNotebookContent, validIndex);
+
+                const isSuccess = status.toLowerCase().includes('thành công');
+                const statusIcon = isSuccess 
+                    ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` 
+                    : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                
+                let sttDisplay = stt ? stt.padStart(2, '0') : '?';
+
+                html += `
+                <div class="card">
+                    <div class="section-header" onclick="toggleCardBody(${validIndex})">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: bold; color: var(--accent); font-size: 1.1rem;">${sttDisplay}</span>
+                            <span style="color: var(--text-secondary); margin: 0 0.25rem;">|</span>
+                            <span style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem;">${id || '?'}</span>
+                            ${id ? `<button class="btn-copy-header" onclick="event.stopPropagation(); navigator.clipboard.writeText('${id}'); this.style.opacity='0.4'; this.style.transform='scale(0.95)'; setTimeout(()=>{this.style.opacity='1'; this.style.transform='none';}, 200);" title="Copy ID">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>` : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; padding-right: 0.5rem;">
+                            ${statusIcon}
+                        </div>
+                    </div>
+                    
+                    <div class="section-body" id="card_body_${validIndex}">
+                        <textarea rows="4" readonly style="margin-bottom: 0.5rem; resize: vertical; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.6);">${rawNotebookContent}</textarea>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="action-buttons-grid">
+                                ${parsed.btnHtml}
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                ${parsed.ansHtml}
+                            </div>
+                            <div class="parsed-fields-details">
+                                ${parsed.textHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+                
+                validIndex++;
+            });
+            
+            if (validIndex === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--warning);">Không tìm thấy dữ liệu hợp lệ trong file này.</div>';
+                return;
+            }
+
+            container.innerHTML = html;
+            
+            // Resize textareas
+            setTimeout(() => {
+                document.querySelectorAll('.section-body .field-group textarea').forEach(autoResize);
+            }, 100);
+        }
+
+        function toggleCardBody(index) {
+            const body = document.getElementById(`card_body_${index}`);
+            
+            if (body.style.display === 'none' || body.style.display === '') {
+                body.style.display = 'flex';
+                setTimeout(() => {
+                    body.querySelectorAll('.field-group textarea').forEach(autoResize);
+                    const actionsDiv = body.querySelector('.action-buttons-grid');
+                    if (actionsDiv) {
+                        actionsDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        body.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 50);
+            } else {
+                body.style.display = 'none';
+            }
+        }
+
+        function toggleSingle(btn, containerId, textId) {
+            const el = document.getElementById(containerId);
+            const svg = btn.querySelector('svg');
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                if (svg) svg.style.transform = 'rotate(180deg)';
+                const textarea = document.getElementById(textId);
+                if (textarea) autoResize(textarea);
+            } else {
+                el.style.display = 'none';
+                if (svg) svg.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            let newHeight = textarea.scrollHeight + 5;
+            if (newHeight > 250) {
+                textarea.style.height = '250px';
+                textarea.style.overflowY = 'auto';
+            } else {
+                textarea.style.height = newHeight + 'px';
+                textarea.style.overflowY = 'hidden';
+            }
+        }
+
+        function resetCardButtons(btn, index) {
+            btn.style.opacity = '0.4';
+            btn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                btn.style.transform = 'none';
+                btn.style.opacity = '1';
+            }, 200);
+
+            const cardBody = document.getElementById(`card_body_${index}`);
+            if (cardBody) {
+                const buttons = cardBody.querySelectorAll('.btn-colored-copy');
+                buttons.forEach(b => {
+                    b.style.opacity = '1';
+                });
+            }
+            // Add a little spin animation to the reload icon
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.style.transition = 'transform 0.5s ease';
+                svg.style.transform = 'rotate(360deg)';
+                setTimeout(() => {
+                    svg.style.transition = 'none';
+                    svg.style.transform = 'rotate(0deg)';
+                }, 500);
+            }
+        }
+
+        function copyValue(btn, textId) {
+            const val = document.getElementById(textId).value;
+            navigator.clipboard.writeText(val).then(() => {
+                btn.style.opacity = '0.4';
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = 'none';
+                }, 200);
+            });
+        }
+
+        function copyAllToJSON(btn, index) {
+            const data = window.allParsedData[index];
+            if (!data) {
+                alert("Chưa có dữ liệu để copy!");
+                return;
+            }
+
+            navigator.clipboard.writeText(JSON.stringify(data)).then(() => {
+                btn.style.opacity = '0.4';
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = 'none';
+                    btn.style.opacity = '1';
+                }, 200);
+            }).catch(e => {
+                console.error("Lỗi copy:", e);
+                alert("Trình duyệt không hỗ trợ copy tự động ở trang này.");
+            });
+        }
+
+        function parseNotebookOutputLocal(rawText, index) {
+            if (!rawText || !rawText.trim()) {
+                return {
+                    textHtml: '<div style="color: var(--warning); padding: 1rem; border: 1px dashed var(--warning);">Không có nội dung bóc tách.</div>',
+                    btnHtml: '',
+                    ansHtml: ''
+                };
+            }
+
+            // Make regexes forgiving of multiple newlines
+            const qMatch = rawText.match(/### 1\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
+            const ansMatch = rawText.match(/_Đáp án:\s*(.*?)_/i);
+            const hintMatch = rawText.match(/### 2\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
+            const solMatch = rawText.match(/### 3\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
+            const diffMatch = rawText.match(/\*\s*\*\*Độ khó:\*\*\s*(.*)/i);
+
+            let questionText = qMatch ? qMatch[1].trim() : '';
+            let options = [];
+            let deBai = questionText;
+
+            const isShortAnswer = questionText.includes('____');
+            const isTrueFalse = questionText.toLowerCase().includes("xét tính đúng sai");
+
+            if (questionText && !isShortAnswer) {
+                const lines = questionText.split('\n').filter(l => l.trim() !== '');
+                if (lines.length >= 5) {
+                    options = lines.slice(-4).map(l => l.trim());
+                    deBai = lines.slice(0, -4).join('\n').trim();
+                    options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, ''));
+                } else {
+                    deBai = questionText;
+                }
+            } else {
+                deBai = questionText;
+            }
+
+            const isMultipleChoice = options.length === 4 && !isTrueFalse && !isShortAnswer;
+
+            let questionTypeStr = "Không xác định";
+            let typeCode = "UNKNOWN";
+            let typeColor = "var(--text-secondary)";
+            if (isShortAnswer) { questionTypeStr = "Điền đáp án"; typeCode = "DIEN_DAPAN"; typeColor = "var(--warning)"; }
+            else if (isTrueFalse) { questionTypeStr = "Đúng / Sai"; typeCode = "DUNG_SAI"; typeColor = "var(--accent)"; }
+            else if (isMultipleChoice) { questionTypeStr = "Trắc nghiệm"; typeCode = "TRAC_NGHIEM"; typeColor = "var(--success)"; }
+
+            let answerTitleStr = '';
+            let answerContentStr = '';
+            let parsedAnswerData = null;
+
+            if (deBai.includes('____') && ansMatch && options.length === 0) {
+                let rawAns = ansMatch[1].replace(/\$/g, '').trim();
+                answerTitleStr = rawAns;
+                parsedAnswerData = rawAns;
+
+                let replacement = '__' + rawAns + '__';
+                if (/^-?\d+(\.\d+)?$/.test(rawAns)) {
+                    let variants = [rawAns];
+                    if (rawAns.startsWith('-')) variants.push('- ' + rawAns.substring(1));
+                    let numStr = rawAns.replace('-', '');
+                    if (numStr.length >= 4 && !numStr.includes('.')) {
+                        let withSpaces = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        variants.push(rawAns.startsWith('-') ? '-' + withSpaces : withSpaces);
+                        if (rawAns.startsWith('-')) variants.push('- ' + withSpaces);
+                    }
+                    replacement = '__' + [...new Set(variants)].join('/') + '__';
+                }
+                deBai = deBai.replace(/____/g, replacement);
+            }
+            else if (ansMatch) {
+                let rawAns = ansMatch[1].trim();
+
+                if (isTrueFalse) {
+                    let tfMatch = rawAns.toLowerCase().match(/(đúng|sai)/g);
+                    if (!tfMatch || tfMatch.length !== 4) {
+                        let dsMatch = rawAns.match(/(Đ|S)/ig);
+                        if (dsMatch && dsMatch.length === 4) {
+                            tfMatch = dsMatch.map(x => x.toUpperCase() === 'Đ' ? 'đúng' : 'sai');
+                        }
+                    }
+                    if (tfMatch && tfMatch.length === 4) {
+                        answerTitleStr = tfMatch.map(x => x === 'đúng' ? 'Đ' : 'S').join('  ');
+                        parsedAnswerData = tfMatch.map(x => x === 'đúng');
+                    } else {
+                        answerTitleStr = rawAns;
+                        parsedAnswerData = rawAns;
+                    }
+                } else if (isMultipleChoice) {
+                    let choiceNum = null;
+                    let m1 = rawAns.match(/số\s*([1-4])/i);
+                    let m2 = rawAns.match(/đáp án\s*([A-D])/i);
+
+                    if (m1) choiceNum = parseInt(m1[1]);
+                    else if (m2) {
+                        const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+                        choiceNum = map[m2[1].toUpperCase()];
+                    }
+
+                    if (!choiceNum) {
+                        const cleanAns = rawAns.replace(/[\$\.\s]/g, '').toLowerCase();
+                        for (let i = 0; i < options.length; i++) {
+                            const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
+                            if (cleanOpt && (cleanOpt.includes(cleanAns) || cleanAns.includes(cleanOpt))) {
+                                choiceNum = i + 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (choiceNum) {
+                        answerTitleStr = `Lựa chọn ${choiceNum}`;
+                        answerContentStr = options[choiceNum - 1];
+                        parsedAnswerData = choiceNum;
+                    } else {
+                        answerTitleStr = `Lựa chọn ?`;
+                        answerContentStr = rawAns;
+                        parsedAnswerData = rawAns;
+                    }
+                } else {
+                    answerTitleStr = rawAns;
+                    parsedAnswerData = rawAns;
+                }
+            }
+
+            window.allParsedData[index] = {
+                typeCode: typeCode,
+                difficulty: diffMatch ? diffMatch[1].trim() : '',
+                debai: deBai,
+                goiy: hintMatch ? hintMatch[1].trim() : '',
+                loigiai: solMatch ? solMatch[1].trim() : '',
+                options: options,
+                correct_answer: parsedAnswerData
+            };
+
+            let textHtml = '';
+            let btnHtml = '';
+
+            const addField = (label, value, colorVar, btnLabel, idSuffix) => {
+                if (!value) return;
+                const textId = `txt_${index}_${idSuffix}`;
+                const containerId = `container_${index}_${idSuffix}`;
+
+                textHtml += `
+                    <div class="field-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label>${label}</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-copy-header" onclick="toggleSingle(this, '${containerId}', '${textId}')" title="Mở rộng / Thu gọn">
+                                    <svg style="transition: transform 0.3s ease;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                                <button class="btn-colored-copy" style="background: var(${colorVar}); font-size: 0.8rem; padding: 0.3rem 0.8rem;" onclick="copyValue(this, '${textId}')" title="Copy ${label}">
+                                    ${btnLabel}
+                                </button>
+                            </div>
+                        </div>
+                        <div id="${containerId}" style="display: none; margin-top: 0.75rem;">
+                            <textarea id="${textId}" readonly oninput="autoResize(this)">${value}</textarea>
+                        </div>
+                    </div>
+                `;
+
+                btnHtml += `
+                    <button class="btn-colored-copy" style="background: var(${colorVar});" 
+                            onclick="copyValue(this, '${textId}')">${btnLabel}</button>
+                `;
+            };
+
+            addField('Đề bài', deBai, '--btn-debai', 'ĐỀ BÀI', 'debai');
+
+            if (options.length === 4) {
+                const labels = isTrueFalse ? ['Khẳng định 1', 'Khẳng định 2', 'Khẳng định 3', 'Khẳng định 4'] : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
+                const btnPrefix = isTrueFalse ? 'KĐ' : 'LC';
+                options.forEach((opt, idx) => {
+                    addField(labels[idx], opt, '--btn-lc', `${btnPrefix}${idx + 1}`, `opt${idx}`);
+                });
+            }
+
+            if (hintMatch) addField('Gợi ý', hintMatch[1].trim(), '--btn-goiy', 'GỢI Ý', 'goiy');
+            if (solMatch) addField('Lời giải chi tiết', solMatch[1].trim(), '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
+
+            let ansHtml = '';
+            ansHtml += `<div style="text-align: center; margin-bottom: 0.5rem;"><span style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid ${typeColor}; color: ${typeColor}; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Dạng câu hỏi: ${questionTypeStr}</span></div>`;
+
+            if (diffMatch) {
+                ansHtml += `<div style="text-align: center; font-weight: bold; color: var(--warning); font-size: 1.1rem; text-transform: uppercase;">Độ khó: ${diffMatch[1].trim()}</div>`;
+            }
+
+            if (answerTitleStr) {
+                ansHtml += `<div class="answer-title">${answerTitleStr}</div>`;
+            }
+
+            if (answerContentStr) {
+                ansHtml += `<div style="font-size: 0.95rem; color: var(--text-secondary); text-align: center; padding: 0.5rem; border: 1px dashed var(--border-color); border-radius: 0.25rem; background: rgba(0,0,0,0.2);">${answerContentStr}</div>`;
+            }
+
+            if (!textHtml) {
+                return {
+                    textHtml: '<div style="color: var(--warning); padding: 1rem; border: 1px dashed var(--warning);">Không nhận diện được định dạng NotebookLM.</div>',
+                    btnHtml: '',
+                    ansHtml: ansHtml
+                };
+            }
+
+            btnHtml += `
+                <button class="btn-colored-copy" onclick="copyAllToJSON(this, ${index})" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #f43f5e, #e11d48);" title="Copy toàn bộ JSON">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    COPY ALL
+                </button>
+                <button class="btn-colored-copy" onclick="resetCardButtons(this, ${index})" style="display: flex; justify-content: center; align-items: center; padding: 0.4rem 0.6rem; background: var(--text-secondary);" title="Làm mới trạng thái các nút">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                </button>
+            `;
+
+            return {
+                textHtml: textHtml,
+                btnHtml: btnHtml,
+                ansHtml: ansHtml
+            };
+        }
+
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('scrollTopBtn');
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Bỏ qua thư mục history
+history/
+
+# Bỏ qua các file rác của hệ điều hành và IDE
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/
+
+

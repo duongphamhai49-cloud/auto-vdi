@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Edit Tool - NotebookLM Companion</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --border-color: #334155;
+
+            --btn-debai: linear-gradient(135deg, #2563eb, #3b82f6);
+            --btn-lc: linear-gradient(135deg, #7c3aed, #8b5cf6);
+            --btn-goiy: linear-gradient(135deg, #d97706, #f59e0b);
+            --btn-loigiai: linear-gradient(135deg, #059669, #10b981);
+            --btn-meta: linear-gradient(135deg, #475569, #64748b);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .paste-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .paste-btn:hover,
+        .paste-btn:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .section-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        button {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.95) !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-copy-header {
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .answer-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 1rem;
+            border: 2px solid var(--accent);
+            border-radius: 0.5rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            color: var(--text-primary);
+        }
+
+        .action-buttons-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-colored-copy {
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .btn-colored-copy.copied {
+            opacity: 0.4;
+        }
+
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            line-height: 1.5;
+            font-size: 1rem;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .parsed-fields-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 1rem;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .field-group label {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-secondary);
+        }
+
+        #scrollTopBtn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        #scrollTopBtn.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #scrollTopBtn:hover {
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header" style="margin-bottom: 1rem;">
+        <h1 style="letter-spacing: 2px;">AUTO EDIT TOOL</h1>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;">
+        <button id="autoCaptureBtn" class="paste-btn" onclick="autoCaptureScreen(this)"
+            title="Chụp vùng cố định lưu vào Clipboard"
+            style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 0.6rem 1.2rem; border-radius: 12px; transition: all 0.2s ease;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+        </button>
+        <button id="globalSnipBtn" class="paste-btn" onclick="captureGlobalScreen()" title="Mở Snipping Tool (Kéo tay)"
+            style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); padding: 0.6rem 1.2rem; border-radius: 12px; transition: all 0.2s ease;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                <path d="M2 2l7.586 7.586"></path>
+                <circle cx="11" cy="11" r="2"></circle>
+            </svg>
+        </button>
+        <button id="stopProcessBtn" class="paste-btn" onclick="stopProcess(this)"
+            title="Dừng khẩn cấp quy trình đang chạy"
+            style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); padding: 0.6rem 1.2rem; border-radius: 12px; transition: all 0.2s ease; margin-left: 1rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="6" width="12" height="12" rx="2" ry="2" fill="white"></rect>
+            </svg>
+        </button>
+    </div>
+
+    <div class="card" id="id_list_card" style="margin-bottom: 2rem;">
+        <div class="section-header" style="border-top: none;">
+            <span style="font-weight: bold; display: flex; align-items: center; gap: 0.5rem; color: var(--warning)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Danh sách ID câu hỏi
+            </span>
+            <span id="id_count_badge"
+                style="background: var(--warning); color: black; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">0
+                ID</span>
+        </div>
+        <div class="section-body">
+            <textarea id="id_list_input" rows="4" placeholder="Dán danh sách ID vào đây (mỗi ID 1 dòng)..."
+                style="overflow-y: auto; resize: vertical; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease;"></textarea>
+
+            <div style="display: flex; gap: 1rem; align-items: stretch; padding-top: 0.5rem;">
+                
+                <!-- NÚT CHẠY TỰ ĐỘNG (To nhất) -->
+                <button id="batchRunBtn" onclick="startBatchProcess()"
+                    style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 0.75rem 1.5rem; border: none; border-radius: 0.25rem; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; flex: 1; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-size: 1.1rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                    </svg>
+                    CHẠY TỰ ĐỘNG
+                </button>
+
+                <!-- Nút TÌM VÀ CHỤP ID TIẾP THEO (chỉ Icon) -->
+                <button id="searchNextIdBtn" onclick="searchNextId()" title="Chạy từng bước: Tìm và chụp ID tiếp theo"
+                    style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 0 1.25rem; border: none; border-radius: 0.25rem; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+
+                <!-- Nút Test từ NBLM (chỉ Icon) -->
+                <button class="paste-btn" onclick="testRealSystem()" title="Chạy Test: Bắt lập tức kết quả từ NotebookLM"
+                    style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 0 1.25rem; border: none; border-radius: 0.25rem; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: all 0.2s;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <line x1="10" y1="9" x2="8" y2="9"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; justify-content: space-between;">
+                <span style="color: var(--text-secondary); font-size: 0.8rem;">📧 Tự động gửi Gmail khi xong/dừng</span>
+                <div id="search_status" style="color: var(--text-secondary); font-size: 0.9rem; text-align: right; font-weight: bold;">Chưa chạy...</div>
+            </div>
+
+            <!-- THANH TIẾN ĐỘ BATCH -->
+            <div id="batch_progress_wrapper" style="display: none; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="batch_progress_text" style="color: var(--accent); font-size: 0.85rem; font-weight: bold;">Đang chạy...</span>
+                    <span id="batch_progress_count" style="color: var(--text-secondary); font-size: 0.85rem;">0/0</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;">
+                    <div id="batch_progress_bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #3b82f6); border-radius: 4px; transition: width 0.5s ease;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="main_card">
+        <div class="section-header" style="border-top: none;">
+            <span style="font-weight: bold; display: flex; align-items: center; gap: 0.5rem; color: var(--success)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Tách nội dung
+            </span>
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="toggleInputBtn" class="btn-copy-header"
+                    style="background: var(--border-color); color: var(--text-primary); font-size: 0.8rem; padding: 0.3rem 0.6rem; display: none; align-items: center; gap: 0.25rem;"
+                    onclick="toggleInput()" title="Mở / Thu gọn vùng dán">
+                    <svg style="transition: transform 0.3s ease;" width="14" height="14" viewBox="0 0 24 24"
+                        fill="currentColor">
+                        <polygon points="12,6 4,14 20,14"></polygon>
+                    </svg>
+                </button>
+                <button class="btn-copy-header"
+                    style="background: var(--error); font-size: 0.8rem; padding: 0.3rem 0.6rem;"
+                    onclick="clearNotebook()" title="Xóa nội dung">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Xóa
+                </button>
+            </div>
+        </div>
+        <div class="section-body">
+            <textarea id="notebook_input" oninput="parseNotebookOutput()" rows="1"
+                style="overflow-y: auto; resize: none; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease;"></textarea>
+
+            <div id="parsed_wrapper" style="display: none; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                <!-- Tiêu đề đáp án -->
+                <div id="answer_box" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+
+                <!-- Action Buttons -->
+                <div id="action_buttons" class="action-buttons-grid"></div>
+
+                <!-- Hiển thị text -->
+                <div id="parsed_fields" class="parsed-fields-details" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cảnh báo khi tải lại trang (F5) nếu đang có ID hoặc đang chạy
+        window.addEventListener('beforeunload', function(e) {
+            const textarea = document.getElementById('id_list_input');
+            const hasIds = textarea && textarea.value.trim().length > 0;
+            if (hasIds || (typeof batchRunning !== 'undefined' && batchRunning)) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        function captureGlobalScreen() {
+            window.location.href = "ms-screenclip:";
+        }
+
+        function stopProcess(btn) {
+            batchRunning = false; // Dừng ngay lập tức ở frontend
+            const originalBg = btn.style.background;
+            btn.style.background = '#7f1d1d'; // Đỏ sậm khi bấm
+            document.getElementById('search_status').innerText = 'Đang huỷ quy trình...';
+
+            fetch('http://localhost:5050/stop', {
+                method: 'POST',
+                mode: 'cors'
+            }).then(response => response.json())
+                .then(data => {
+                    showToast("Đã gửi lệnh dừng khẩn cấp!", "error");
+                    setTimeout(() => btn.style.background = originalBg, 500);
+                    document.getElementById('search_status').innerText = 'Đã huỷ quy trình!';
+                    document.getElementById('search_status').style.color = 'var(--error)';
+                }).catch(err => {
+                    console.error("Lỗi khi gọi /stop:", err);
+                    setTimeout(() => btn.style.background = originalBg, 500);
+                });
+        }
+
+        // ==============================================
+        // CHẠY TỰ ĐỘNG (BATCH PROCESS)
+        // ==============================================
+        let batchRunning = false;
+
+        function batchLog(msg) {
+            // Không ghi log realtime lên UI nữa
+        }
+
+        async function startBatchProcess() {
+            if (batchRunning) {
+                alert('Đang có phiên chạy tự động! Hãy chờ hoặc bấm DỪNG KHẨN CẤP.');
+                return;
+            }
+
+            const textarea = document.getElementById('id_list_input');
+            let ids = textarea.value.split('\n').map(id => id.trim()).filter(id => id !== '');
+
+            if (ids.length === 0) {
+                alert('Chưa có ID nào trong danh sách!');
+                return;
+            }
+
+            const totalIds = ids.length;
+
+            if (!confirm(`Bắt đầu chạy tự động ${totalIds} ID?\n📧 Gmail sẽ tự động gửi thông báo khi xong/dừng.`)) {
+                return;
+            }
+
+            batchRunning = true;
+            let successCount = 0;
+            let processedCount = 0;
+            const btn = document.getElementById('batchRunBtn');
+            const searchBtn = document.getElementById('searchNextIdBtn');
+            const status = document.getElementById('search_status');
+            const progressWrapper = document.getElementById('batch_progress_wrapper');
+            const progressBar = document.getElementById('batch_progress_bar');
+            const progressText = document.getElementById('batch_progress_text');
+            const progressCount = document.getElementById('batch_progress_count');
+
+            // Khóa nút
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.innerText = '⚡ ĐANG CHẠY...';
+            searchBtn.disabled = true;
+            searchBtn.style.opacity = '0.5';
+
+            // Hiện thanh tiến độ
+            progressWrapper.style.display = 'flex';
+            progressBar.style.width = '0%';
+
+            // 1. Gọi server tạo file history
+            try {
+                await fetch('http://localhost:5050/batch_start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ total_ids: totalIds })
+                });
+                batchLog(`📁 Đã tạo file history cho ${totalIds} ID`);
+            } catch (e) {
+                batchLog(`❌ Lỗi tạo file history: ${e}`);
+            }
+
+            // 2. Vòng lặp xử lý từng ID
+            let wasStopped = false;
+            for (let stt = 1; stt <= totalIds; stt++) {
+                if (!batchRunning) {
+                    wasStopped = true;
+                    break;
+                }
+
+                processedCount = stt;
+                const currentId = ids[stt - 1];
+                const pct = Math.round((stt - 1) / totalIds * 100);
+                progressBar.style.width = pct + '%';
+                progressCount.innerText = `${stt - 1}/${totalIds}`;
+                progressText.innerText = `Dang xu ly: ${currentId}`;
+                status.style.color = 'var(--warning)';
+                status.innerText = `[${stt}/${totalIds}] Dang xu ly: ${currentId}...`;
+
+                // Ghi nhan thoi gian bat dau cau nay
+                const itemStartTime = new Date();
+                const itemStartStr = itemStartTime.toLocaleTimeString('vi-VN');
+
+                // Gui tin nhan Discord: Dang xu li cau X
+                try {
+                    await fetch('http://localhost:5050/batch_item_start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ stt: stt, id: currentId, total: totalIds })
+                    });
+                } catch (e) { /* Bo qua */ }
+
+                let idStatus = 'Thất bại';
+                let notebookContent = '';
+                let typeCode = 'N/A';
+                let errorDetail = '';
+
+                try {
+                    // Buoc 1: Goi /search_id
+                    const searchRes = await fetch('http://localhost:5050/search_id', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: currentId })
+                    });
+                    const searchData = await searchRes.json();
+
+                    if (searchData.status === 'success' && searchData.notebook_output) {
+                        notebookContent = searchData.notebook_output;
+
+                        // Buoc 2: Parse noi dung (dung lai logic co san)
+                        const notebookInput = document.getElementById('notebook_input');
+                        notebookInput.value = searchData.notebook_output;
+                        parseNotebookOutput();
+
+                        if (window.currentParsedData) {
+                            typeCode = window.currentParsedData.typeCode || 'N/A';
+
+                            // Buoc 3: Goi /paste_lms
+                            const pasteRes = await fetch('http://localhost:5050/paste_lms', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ parsed_data: window.currentParsedData })
+                            });
+                            const pasteData = await pasteRes.json();
+
+                            if (pasteData.status === 'success') {
+                                idStatus = 'Thành công';
+                                successCount++;
+                            } else {
+                                errorDetail = `Loi dan LMS: ${pasteData.message}`;
+                            }
+                        } else {
+                            errorDetail = 'Khong parse duoc noi dung NBLM';
+                        }
+                    } else {
+                        errorDetail = `Loi search_id: ${searchData.message || 'Khong co noi dung'}`;
+                    }
+                } catch (e) {
+                    errorDetail = `Loi ket noi: ${e}`;
+                }
+
+                // Ghi nhan thoi gian ket thuc
+                const itemEndTime = new Date();
+                const itemEndStr = itemEndTime.toLocaleTimeString('vi-VN');
+                const itemDurationSec = Math.round((itemEndTime - itemStartTime) / 1000);
+                const itemDurationMin = Math.floor(itemDurationSec / 60);
+                const itemDurationRemSec = itemDurationSec % 60;
+                const itemDurationStr = itemDurationMin > 0
+                    ? `${itemDurationMin} phut ${itemDurationRemSec} giay`
+                    : `${itemDurationRemSec} giay`;
+
+                // Ghi ket qua vao file history + gui Discord tong ket cau
+                try {
+                    await fetch('http://localhost:5050/batch_log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            stt: stt,
+                            id: currentId,
+                            status: idStatus,
+                            content: notebookContent,
+                            type_code: typeCode,
+                            error_detail: errorDetail,
+                            start_time: itemStartStr,
+                            end_time: itemEndStr,
+                            duration: itemDurationStr
+                        })
+                    });
+                } catch (e) { /* Bo qua loi ghi log */ }
+
+                // Cap nhat textarea (xoa ID da xu ly)
+                textarea.value = ids.slice(stt).join('\n');
+                document.getElementById('id_count_badge').innerText = (totalIds - stt) + ' ID';
+
+                // Cap nhat tien do
+                const finalPct = Math.round(stt / totalIds * 100);
+                progressBar.style.width = finalPct + '%';
+                progressCount.innerText = `${stt}/${totalIds}`;
+                
+                // Keo man hinh len xem tien do
+                document.getElementById('batch_progress_wrapper').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Cho 2s truoc khi xu ly ID tiep theo (tru ID cuoi)
+                if (stt < totalIds && batchRunning) {
+                    await new Promise(r => setTimeout(r, 2000));
+                }
+            }
+
+            // 3. Kết thúc batch: ghi footer + TỰ ĐỘNG gửi Gmail
+            const reason = wasStopped ? 'stopped' : 'completed';
+            try {
+                const endRes = await fetch('http://localhost:5050/batch_end', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        success_count: successCount,
+                        total_count: totalIds,
+                        reason: reason
+                    })
+                });
+                const endData = await endRes.json();
+                if (endData.email_sent) {
+                    batchLog(`📧 Đã tự động gửi email thông báo!`);
+                }
+            } catch (e) {
+                batchLog(`⚠️ Lỗi kết thúc batch: ${e}`);
+            }
+
+            // Cap nhat UI hoan tat
+            if (wasStopped) {
+                progressText.innerText = `Da dung! ${successCount}/${processedCount} thanh cong (tong ${totalIds})`;
+                progressText.style.color = 'var(--error)';
+                status.style.color = 'var(--error)';
+                status.innerText = `Da dung tu dong: ${successCount}/${processedCount} thanh cong`;
+            } else {
+                progressText.innerText = `Hoan tat! ${successCount}/${totalIds} thanh cong`;
+                progressText.style.color = successCount === totalIds ? 'var(--success)' : 'var(--warning)';
+                status.style.color = 'var(--success)';
+                status.innerText = `Hoan tat tu dong: ${successCount}/${totalIds} thanh cong!`;
+            }
+
+            // Mở khóa nút
+            batchRunning = false;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> CHẠY TỰ ĐỘNG`;
+            searchBtn.disabled = false;
+            searchBtn.style.opacity = '1';
+        }
+
+        async function searchNextId() {
+            const textarea = document.getElementById('id_list_input');
+            let ids = textarea.value.split('\n').map(id => id.trim()).filter(id => id !== '');
+
+            if (ids.length === 0) {
+                alert('Hết ID trong danh sách!');
+                document.getElementById('id_count_badge').innerText = '0 ID';
+                return;
+            }
+
+            const currentId = ids.shift(); // Lấy ID đầu tiên và xóa khỏi mảng
+
+            // Cập nhật lại textarea và badge
+            textarea.value = ids.join('\n');
+            document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+
+            const btn = document.getElementById('searchNextIdBtn');
+            const status = document.getElementById('search_status');
+
+            btn.style.opacity = '0.5';
+            btn.disabled = true;
+            status.style.color = 'var(--warning)';
+            status.innerText = `Đang xử lý ID: ${currentId}...`;
+
+            try {
+                const res = await fetch('http://localhost:5050/search_id', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id: currentId })
+                });
+
+                const data = await res.json();
+                if (data.status === 'success') {
+                    status.style.color = 'var(--success)';
+                    status.innerText = `Hoàn thành: ${currentId} (Đã nhận kết quả NBLM)`;
+
+                    if (data.notebook_output) {
+                        const textarea = document.getElementById('notebook_input');
+                        textarea.value = data.notebook_output;
+                        parseNotebookOutput(); // Tự động tách trường dữ liệu
+
+                        status.innerText = `Đang chuyển dữ liệu JSON lên LMS...`;
+
+                        if (window.currentParsedData) {
+                            try {
+                                const pasteRes = await fetch('http://localhost:5050/paste_lms', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ parsed_data: window.currentParsedData })
+                                });
+                                const pasteData = await pasteRes.json();
+                                if (pasteData.status === 'success') {
+                                    status.innerText = `Hoàn tất 100%: ${currentId} đã dán xong vào LMS!`;
+                                } else {
+                                    status.style.color = 'var(--error)';
+                                    status.innerText = `Lỗi dán LMS: ${pasteData.message}`;
+                                }
+                            } catch (e) {
+                                console.error("Lỗi gọi /paste_lms:", e);
+                                status.style.color = 'var(--error)';
+                                status.innerText = `Lỗi kết nối /paste_lms!`;
+                            }
+                        }
+                    }
+                } else {
+                    status.style.color = 'var(--error)';
+                    status.innerText = `Lỗi: ${data.message}`;
+                    // Nhét lại ID vào đầu danh sách nếu lỗi
+                    ids.unshift(currentId);
+                    textarea.value = ids.join('\n');
+                    document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                }
+            } catch (e) {
+                status.style.color = 'var(--error)';
+                status.innerText = 'Lỗi kết nối Server! Vui lòng bật capture_server.py';
+            }
+
+            btn.style.opacity = '1';
+            btn.disabled = false;
+        }
+
+        // Cập nhật số đếm ID tự động
+        document.getElementById('id_list_input').addEventListener('input', (e) => {
+            const ids = e.target.value.split('\n').map(id => id.trim()).filter(id => id !== '');
+            document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+        });
+
+        async function testRealSystem() {
+            const status = document.getElementById('search_status');
+            status.style.color = 'var(--warning)';
+            status.innerText = `Đang giả lập nhận kết quả từ NBLM...`;
+            try {
+                const res = await fetch('http://localhost:5050/test_search_id', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    status.style.color = 'var(--success)';
+                    status.innerText = `Hoàn thành Test: (Đã nhận kết quả NBLM)`;
+
+                    if (data.notebook_output) {
+                        const textarea = document.getElementById('notebook_input');
+                        textarea.value = data.notebook_output;
+                        parseNotebookOutput(); // Tự động tách trường dữ liệu
+
+                        status.innerText = `Đang chuyển dữ liệu JSON lên LMS...`;
+
+                        if (window.currentParsedData) {
+                            try {
+                                const pasteRes = await fetch('http://localhost:5050/paste_lms', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ parsed_data: window.currentParsedData })
+                                });
+                                const pasteData = await pasteRes.json();
+                                if (pasteData.status === 'success') {
+                                    status.innerText = `Hoàn tất 100% Test: Đã dán xong vào LMS!`;
+                                } else {
+                                    status.style.color = 'var(--error)';
+                                    status.innerText = `Lỗi dán LMS: ${pasteData.message}`;
+                                }
+                            } catch (e) {
+                                console.error("Lỗi gọi /paste_lms:", e);
+                                status.style.color = 'var(--error)';
+                                status.innerText = `Lỗi kết nối /paste_lms!`;
+                            }
+                        }
+                    }
+                } else {
+                    status.style.color = 'var(--error)';
+                    status.innerText = `Lỗi: ${data.message}`;
+                }
+            } catch (e) {
+                status.style.color = 'var(--error)';
+                status.innerText = 'Lỗi kết nối Server!';
+            }
+        }
+
+        async function autoCaptureScreen(btn) {
+            btn.style.opacity = '0.5';
+            try {
+                const res = await fetch('http://localhost:5050/capture');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    btn.style.transform = 'scale(0.95)';
+                    setTimeout(() => btn.style.transform = 'none', 200);
+                } else {
+                    alert('Lỗi chụp: ' + data.message);
+                }
+            } catch (e) {
+                alert('Chưa bật server! Vui lòng chạy file capture_server.py để sử dụng tính năng chụp cố định.');
+            }
+            btn.style.opacity = '1';
+        }
+
+        function toggleInput() {
+            const el = document.getElementById('notebook_input');
+            const svg = document.querySelector('#toggleInputBtn svg');
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                el.rows = 3;
+                if (svg) svg.style.transform = 'rotate(0deg)';
+                el.focus();
+            } else {
+                el.style.display = 'none';
+                if (svg) svg.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        function toggleSingle(btn, containerId, textId) {
+            const el = document.getElementById(containerId);
+            const svg = btn.querySelector('svg');
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                if (svg) svg.style.transform = 'rotate(180deg)';
+                const textarea = document.getElementById(textId);
+                if (textarea) autoResize(textarea);
+            } else {
+                el.style.display = 'none';
+                if (svg) svg.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function toggleParsedFields() {
+            const el = document.getElementById('parsed_fields');
+            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function clearNotebook() {
+            const textarea = document.getElementById('notebook_input');
+            textarea.value = '';
+            textarea.rows = 1;
+            textarea.style.display = 'block';
+            document.getElementById('toggleInputBtn').style.display = 'none';
+            parseNotebookOutput();
+            textarea.focus();
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight + 5) + 'px';
+        }
+
+        function copyValue(btn, textId) {
+            const val = document.getElementById(textId).value;
+            navigator.clipboard.writeText(val).then(() => {
+                btn.style.opacity = '0.4';
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = 'none';
+                }, 200);
+            });
+        }
+
+        function copyAllToJSON(btn) {
+            if (!window.currentParsedData) {
+                alert("Chưa có dữ liệu để copy!");
+                return;
+            }
+
+            navigator.clipboard.writeText(JSON.stringify(window.currentParsedData)).then(() => {
+                btn.style.opacity = '0.4';
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = 'none';
+                }, 200);
+            }).catch(e => {
+                console.error("Lỗi copy:", e);
+                alert("Trình duyệt không hỗ trợ copy tự động ở trang này (cần tải qua localhost).");
+            });
+        }
+
+        function parseNotebookOutput() {
+            window.currentParsedData = null; // Reset
+            const textarea = document.getElementById('notebook_input');
+            const rawText = textarea.value;
+            const wrapper = document.getElementById('parsed_wrapper');
+            const answerBox = document.getElementById('answer_box');
+            const btnBox = document.getElementById('action_buttons');
+            const fieldsContainer = document.getElementById('parsed_fields');
+
+            if (!rawText.trim()) {
+                wrapper.style.display = 'none';
+                document.getElementById('toggleInputBtn').style.display = 'none';
+                textarea.rows = 1;
+                return;
+            } else {
+                document.getElementById('toggleInputBtn').style.display = 'flex';
+            }
+
+            // Regex patterns
+            const qMatch = rawText.match(/### 1\..*?\n```(?:latex)?\n([\s\S]*?)\n```/i);
+            const ansMatch = rawText.match(/_Đáp án:\s*(.*?)_/i);
+            const hintMatch = rawText.match(/### 2\..*?\n```(?:latex)?\n([\s\S]*?)\n```/i);
+            const solMatch = rawText.match(/### 3\..*?\n```(?:latex)?\n([\s\S]*?)\n```/i);
+
+            const diffMatch = rawText.match(/\*\s*\*\*Độ khó:\*\*\s*(.*)/i);
+
+            let questionText = qMatch ? qMatch[1].trim() : '';
+            let options = [];
+            let deBai = questionText;
+
+            // Question Types rules
+            const isShortAnswer = questionText.includes('____');
+            const isTrueFalse = questionText.toLowerCase().includes("xét tính đúng sai");
+
+            // Extract De bai and Options
+            if (questionText && !isShortAnswer) {
+                const lines = questionText.split('\n').filter(l => l.trim() !== '');
+                if (lines.length >= 5) {
+                    options = lines.slice(-4).map(l => l.trim());
+                    deBai = lines.slice(0, -4).join('\n').trim();
+                    options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, ''));
+                } else {
+                    deBai = questionText;
+                }
+            } else {
+                deBai = questionText;
+            }
+
+            const isMultipleChoice = options.length === 4 && !isTrueFalse && !isShortAnswer;
+
+            let questionTypeStr = "Không xác định";
+            let typeCode = "UNKNOWN";
+            let typeColor = "var(--text-secondary)";
+            if (isShortAnswer) { questionTypeStr = "Điền đáp án"; typeCode = "DIEN_DAPAN"; typeColor = "var(--warning)"; }
+            else if (isTrueFalse) { questionTypeStr = "Đúng / Sai"; typeCode = "DUNG_SAI"; typeColor = "var(--accent)"; }
+            else if (isMultipleChoice) { questionTypeStr = "Trắc nghiệm"; typeCode = "TRAC_NGHIEM"; typeColor = "var(--success)"; }
+
+            let answerTitleStr = '';
+            let answerContentStr = '';
+            let parsedAnswerData = null;
+
+            // Format short answer (fill-in-the-blank)
+            if (deBai.includes('____') && ansMatch && options.length === 0) {
+                let rawAns = ansMatch[1].replace(/\$/g, '').trim();
+                answerTitleStr = rawAns; // For Short Answer
+                parsedAnswerData = rawAns;
+
+                let replacement = '__' + rawAns + '__';
+
+                // Allow digits, decimals, and negative sign
+                if (/^-?\d+(\.\d+)?$/.test(rawAns)) {
+                    let variants = [rawAns];
+
+                    if (rawAns.startsWith('-')) {
+                        variants.push('- ' + rawAns.substring(1));
+                    }
+
+                    let numStr = rawAns.replace('-', '');
+                    if (numStr.length >= 4 && !numStr.includes('.')) {
+                        let withSpaces = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                        variants.push(rawAns.startsWith('-') ? '-' + withSpaces : withSpaces);
+                        if (rawAns.startsWith('-')) {
+                            variants.push('- ' + withSpaces);
+                        }
+                    }
+
+                    replacement = '__' + [...new Set(variants)].join('/') + '__';
+                }
+
+                deBai = deBai.replace(/____/g, replacement);
+            }
+            else if (ansMatch) {
+                // Parse True/False or Multiple Choice Answer
+                let rawAns = ansMatch[1].trim();
+
+                if (isTrueFalse) {
+                    let tfMatch = rawAns.toLowerCase().match(/(đúng|sai)/g);
+                    if (!tfMatch || tfMatch.length !== 4) {
+                        let dsMatch = rawAns.match(/(Đ|S)/ig);
+                        if (dsMatch && dsMatch.length === 4) {
+                            tfMatch = dsMatch.map(x => x.toUpperCase() === 'Đ' ? 'đúng' : 'sai');
+                        }
+                    }
+
+                    if (tfMatch && tfMatch.length === 4) {
+                        answerTitleStr = tfMatch.map(x => x === 'đúng' ? 'Đ' : 'S').join('  ');
+                        parsedAnswerData = tfMatch.map(x => x === 'đúng');
+                    } else {
+                        answerTitleStr = rawAns;
+                        parsedAnswerData = rawAns;
+                    }
+                } else if (isMultipleChoice) {
+                    let choiceNum = null;
+                    let m1 = rawAns.match(/số\s*([1-4])/i);
+                    let m2 = rawAns.match(/đáp án\s*([A-D])/i);
+
+                    if (m1) choiceNum = parseInt(m1[1]);
+                    else if (m2) {
+                        const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+                        choiceNum = map[m2[1].toUpperCase()];
+                    }
+
+                    if (!choiceNum) {
+                        const cleanAns = rawAns.replace(/[\$\.\s]/g, '').toLowerCase();
+                        for (let i = 0; i < options.length; i++) {
+                            const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
+                            if (cleanOpt && (cleanOpt.includes(cleanAns) || cleanAns.includes(cleanOpt))) {
+                                choiceNum = i + 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (choiceNum) {
+                        answerTitleStr = `Lựa chọn ${choiceNum}`;
+                        answerContentStr = options[choiceNum - 1];
+                        parsedAnswerData = choiceNum;
+                    } else {
+                        answerTitleStr = `Lựa chọn ?`;
+                        answerContentStr = rawAns;
+                        parsedAnswerData = rawAns;
+                    }
+                } else {
+                    answerTitleStr = rawAns;
+                    parsedAnswerData = rawAns;
+                }
+            }
+
+            window.currentParsedData = {
+                typeCode: typeCode,
+                difficulty: diffMatch ? diffMatch[1].trim() : '',
+                debai: deBai,
+                goiy: hintMatch ? hintMatch[1].trim() : '',
+                loigiai: solMatch ? solMatch[1].trim() : '',
+                options: options,
+                correct_answer: parsedAnswerData
+            };
+
+            let textHtml = '';
+            let btnHtml = '';
+
+            const addField = (label, value, colorVar, btnLabel, idSuffix) => {
+                if (!value) return;
+                const textId = `txt_${idSuffix}`;
+                const containerId = `container_${idSuffix}`;
+
+                textHtml += `
+                    <div class="field-group" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label style="color: white; opacity: 0.9; font-size: 1rem;">${label}</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-copy-header" style="background: transparent; color: var(--text-primary); padding: 0.3rem;" onclick="toggleSingle(this, '${containerId}', '${textId}')" title="Mở rộng / Thu gọn">
+                                    <svg style="transition: transform 0.3s ease;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                                <button class="btn-colored-copy" style="background: var(${colorVar}); font-size: 0.8rem; padding: 0.3rem 0.8rem;" onclick="copyValue(this, '${textId}')" title="Copy ${label}">
+                                    ${btnLabel}
+                                </button>
+                            </div>
+                        </div>
+                        <div id="${containerId}" style="display: none; margin-top: 0.75rem;">
+                            <textarea id="${textId}" style="height: auto; overflow: hidden; resize: none; background: rgba(0,0,0,0.4);" spellcheck="false" oninput="autoResize(this)">${value}</textarea>
+                        </div>
+                    </div>
+                `;
+
+                btnHtml += `
+                    <button class="btn-colored-copy" style="background: var(${colorVar});" 
+                            onclick="copyValue(this, '${textId}')">${btnLabel}</button>
+                `;
+            };
+
+            addField('Đề bài', deBai, '--btn-debai', 'ĐỀ BÀI', 'debai');
+
+            if (options.length === 4) {
+                const labels = isTrueFalse ? ['Khẳng định 1', 'Khẳng định 2', 'Khẳng định 3', 'Khẳng định 4'] : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
+                const btnPrefix = isTrueFalse ? 'KĐ' : 'LC';
+                options.forEach((opt, idx) => {
+                    addField(labels[idx], opt, '--btn-lc', `${btnPrefix}${idx + 1}`, `opt${idx}`);
+                });
+            }
+
+            if (hintMatch) addField('Gợi ý', hintMatch[1].trim(), '--btn-goiy', 'GỢI Ý', 'goiy');
+            if (solMatch) addField('Lời giải chi tiết', solMatch[1].trim(), '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
+
+            let ansHtml = '';
+            ansHtml += `<div style="text-align: center; margin-bottom: 0.5rem;"><span style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid ${typeColor}; color: ${typeColor}; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Dạng câu hỏi: ${questionTypeStr}</span></div>`;
+
+            if (diffMatch) {
+                ansHtml += `<div style="text-align: center; font-weight: bold; color: var(--warning); font-size: 1.1rem; text-transform: uppercase;">Độ khó: ${diffMatch[1].trim()}</div>`;
+            }
+
+            if (answerTitleStr) {
+                ansHtml += `<div class="answer-title">${answerTitleStr}</div>`;
+            }
+
+            if (answerContentStr) {
+                ansHtml += `<div style="font-size: 0.95rem; color: var(--text-secondary); text-align: center; padding: 0.5rem; border: 1px dashed var(--border-color); border-radius: 0.25rem; background: rgba(0,0,0,0.2);">${answerContentStr}</div>`;
+            }
+
+            if (!textHtml) {
+                answerBox.innerHTML = '';
+                btnBox.innerHTML = '';
+                fieldsContainer.innerHTML = '<div style="color: var(--warning); padding: 1rem; border: 1px dashed var(--warning);">Không nhận diện được định dạng NotebookLM.</div>';
+                fieldsContainer.style.display = 'block';
+            } else {
+                btnHtml += `
+                    <button class="btn-colored-copy" onclick="copyAllToJSON(this)" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #f43f5e, #e11d48);" title="Copy toàn bộ dữ liệu JSON để tự động điền">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        COPY ALL
+                    </button>
+                    <button class="btn-colored-copy" onclick="toggleParsedFields()" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #475569, #64748b);" title="Hiện / Ẩn toàn bộ chi tiết">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        Xem chi tiết
+                    </button>
+                `;
+
+                answerBox.innerHTML = ansHtml;
+                btnBox.innerHTML = btnHtml;
+                fieldsContainer.innerHTML = textHtml;
+                fieldsContainer.style.display = 'none';
+            }
+
+            wrapper.style.display = 'flex';
+
+            setTimeout(() => {
+                fieldsContainer.querySelectorAll('textarea').forEach(t => autoResize(t));
+                document.getElementById('parsed_wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        }
+
+        // Bắt sự kiện dán phím tắt (Ctrl+V) ở bất cứ đâu trên trang
+        document.addEventListener('paste', async (e) => {
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedText = clipboardData.getData('text/plain');
+
+            if (pastedText && pastedText.trim()) {
+                const textarea = document.getElementById('notebook_input');
+                textarea.value = pastedText;
+
+                textarea.style.display = 'none';
+                document.getElementById('toggleInputBtn').style.display = 'flex';
+                const svg = document.querySelector('#toggleInputBtn svg');
+                if (svg) svg.style.transform = 'rotate(180deg)';
+
+                parseNotebookOutput();
+            }
+        });
+
+        // Nút Scroll To Top
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('scrollTopBtn');
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+    </script>
+
+    <button id="scrollTopBtn" onclick="scrollToTop()" title="Lên đầu trang">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+    </button>
+</body>
+
+</html>
