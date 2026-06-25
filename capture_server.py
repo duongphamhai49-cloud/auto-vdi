@@ -1420,7 +1420,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             pyautogui.click(1270, 176)
                             log(f"Đã click Cancel (tọa độ dự phòng).", "ACTION")
 
-                                        def do_double_cancel():
+                    def do_double_cancel():
                         log(f"Đang thực hiện Cancel bằng phím ESC...", "ACTION")
                         # Lấy focus tại điểm (1268, 587)
                         pyautogui.click(1268, 587)
