@@ -331,17 +331,21 @@ def fallback_cancel_routine():
     log(f"Thuc hien huy bang phim ESC...", "ACTION")
     # Lấy focus tại điểm (1268, 587)
     pyautogui.click(1268, 587)
-    time.sleep(0.5)
-    # Bấm nút esc
+    time.sleep(0.25)
+    # Bấm nút esc lần 1
     pyautogui.press('esc')
-    time.sleep(1)
+    time.sleep(0.5)
     
     # Tiếp tục lấy focus tại điểm (1268, 587)
     pyautogui.click(1268, 587)
-    time.sleep(0.5)
-    # Bấm nút esc
+    time.sleep(0.25)
+    # Bấm nút esc lần 2
     pyautogui.press('esc')
-    time.sleep(1)
+    time.sleep(0.5)
+    
+    # Bấm esc lần 3
+    pyautogui.press('esc')
+    time.sleep(0.5)
     
     log(f"Da hoan tat quy trinh huy bang ESC, san sang cho ID tiep theo!", "OK")
 
@@ -1424,17 +1428,21 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         log(f"Đang thực hiện Cancel bằng phím ESC...", "ACTION")
                         # Lấy focus tại điểm (1268, 587)
                         pyautogui.click(1268, 587)
-                        time.sleep(0.5)
-                        # Bấm nút esc
+                        time.sleep(0.25)
+                        # Bấm nút esc lần 1
                         pyautogui.press('esc')
-                        time.sleep(1)
+                        time.sleep(0.5)
                         
                         # Tiếp tục lấy focus tại điểm (1268, 587)
                         pyautogui.click(1268, 587)
-                        time.sleep(0.5)
-                        # Bấm nút esc
+                        time.sleep(0.25)
+                        # Bấm nút esc lần 2
                         pyautogui.press('esc')
-                        time.sleep(1)
+                        time.sleep(0.5)
+                        
+                        # Bấm esc lần 3
+                        pyautogui.press('esc')
+                        time.sleep(0.5)
                         log(f"Đã hoàn tất thao tác Cancel bằng ESC.", "OK")
 
                     def old_do_double_cancel():
