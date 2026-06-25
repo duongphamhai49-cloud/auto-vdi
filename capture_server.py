@@ -317,6 +317,35 @@ NBLM_COPY_REGION = (18, 605, 1165, 82) # Từ (18, 605) đến (1183, 687)
 CURRENT_TAB = 'LMS'
 
 def fallback_cancel_routine():
+    global CURRENT_TAB
+    log(f"CHAY QUY TRINH HUY KHAN CAP (FALLBACK CANCEL) TU TAB: {CURRENT_TAB}", "ACTION")
+    
+    if CURRENT_TAB == 'NBLM':
+        log(f"F5 trang NBLM va quay ve LMS...", "ACTION")
+        pyautogui.press('f5')
+        time.sleep(2)
+        pyautogui.hotkey('ctrl', 'shift', 'tab')
+        time.sleep(1)
+        CURRENT_TAB = 'LMS'
+    
+    log(f"Thuc hien huy bang phim ESC...", "ACTION")
+    # Lấy focus tại điểm (1268, 587)
+    pyautogui.click(1268, 587)
+    time.sleep(0.5)
+    # Bấm nút esc
+    pyautogui.press('esc')
+    time.sleep(1)
+    
+    # Tiếp tục lấy focus tại điểm (1268, 587)
+    pyautogui.click(1268, 587)
+    time.sleep(0.5)
+    # Bấm nút esc
+    pyautogui.press('esc')
+    time.sleep(1)
+    
+    log(f"Da hoan tat quy trinh huy bang ESC, san sang cho ID tiep theo!", "OK")
+
+def old_fallback_cancel_routine():
     """Quy trình hủy khẩn cấp khi gặp lỗi (Timeout hoặc không tìm thấy đối tượng).
     Thực hiện Update trước, sau đó mới Cancel 2 lần."""
     global CURRENT_TAB
@@ -1378,7 +1407,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             time.sleep(0.2)
                         return None
 
-                    def do_cancel_success():
+                    def old_do_cancel_success():
                         log(f"Đang click Cancel thành công...", "OK")
                         try:
                             cancel_pos = pyautogui.locateCenterOnScreen('cancel.png', region=(1083, 137, 229, 76), confidence=0.8)
@@ -1391,7 +1420,24 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             pyautogui.click(1270, 176)
                             log(f"Đã click Cancel (tọa độ dự phòng).", "ACTION")
 
-                    def do_double_cancel():
+                                        def do_double_cancel():
+                        log(f"Đang thực hiện Cancel bằng phím ESC...", "ACTION")
+                        # Lấy focus tại điểm (1268, 587)
+                        pyautogui.click(1268, 587)
+                        time.sleep(0.5)
+                        # Bấm nút esc
+                        pyautogui.press('esc')
+                        time.sleep(1)
+                        
+                        # Tiếp tục lấy focus tại điểm (1268, 587)
+                        pyautogui.click(1268, 587)
+                        time.sleep(0.5)
+                        # Bấm nút esc
+                        pyautogui.press('esc')
+                        time.sleep(1)
+                        log(f"Đã hoàn tất thao tác Cancel bằng ESC.", "OK")
+
+                    def old_do_double_cancel():
                         log(f"Đang thực hiện Double Cancel (Click cả 2 vị trí để đảm bảo thoát)...", "ACTION")
                         try:
                             cancel_icon = pyautogui.locateCenterOnScreen('cancel.png', region=(817, 123, 248, 114), confidence=0.8)
