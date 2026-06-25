@@ -923,7 +923,7 @@
                 if (lines.length >= 5) {
                     options = lines.slice(-4).map(l => l.trim());
                     deBai = lines.slice(0, -4).join('\n').trim();
-                    options = options.map(opt => opt.replace(/^(?:[a-zA-Z0-9]+(?=\s*[\.\)]))/, '').replace(/^[\-\*\+]\s*/, ''));
+                    options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, ''));
                 } else {
                     deBai = questionText;
                 }
