@@ -1451,7 +1451,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             log(f"Đã tắt thông báo lỗi bằng tọa độ dự phòng.", "ERROR")
                         
                         time.sleep(1.5)
-                        do_cancel_success()
+                        old_do_cancel_success()
 
                     # Lần 1
                     click_update_btn()
