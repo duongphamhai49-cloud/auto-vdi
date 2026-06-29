@@ -1,0 +1,704 @@
+// ==UserScript==
+// @name         Auto Fill V2 — Câu Hỏi LotusLMS (Full)
+// @namespace    http://tampermonkey.net/
+// @version      2.2
+// @description  Điền ĐẦY ĐỦ: Đề bài + Phương án/Khẳng định + Gợi ý + Lời giải. Bảo vệ ảnh.
+// @author       Bạn
+// @match        https://*.lotuslms.com/*
+// @match        https://daymai.vn/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ==========================================
+    // CẤU HÌNH
+    // ==========================================
+
+    // Fallback index mapping (giống v1) — dùng khi container-based thất bại
+    const INDEX_MAPPING = {
+        'TRAC_NGHIEM': { debai: 0, goiy: 5, loigiai: 6 },
+        'DUNG_SAI':    { debai: 0, goiy: 1, loigiai: 2 },
+        'DIEN_DAPAN':  { debai: 0, goiy: 1, loigiai: 2 }
+    };
+
+    // ==========================================
+    // TIỆN ÍCH CHUNG
+    // ==========================================
+
+    function sleep(ms) {
+        return new Promise(r => setTimeout(r, ms));
+    }
+
+    function log(msg) {
+        console.log(`[AutoFill V2] ${msg}`);
+    }
+
+    function warn(msg) {
+        console.warn(`[AutoFill V2] ⚠️ ${msg}`);
+    }
+
+    /** Xử lý formatting text (giữ nguyên logic v1) */
+    function processFormatting(text) {
+        let safeStr = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        safeStr = safeStr.replace(/(Điền số.*?thích hợp vào chỗ trống.*?:)/gi, '<i>$1</i>');
+        safeStr = safeStr.replace(/(Xét tính đúng sai của các khẳng định sau:?)/gi, '<i>$1</i>');
+        safeStr = safeStr.replace(/(Khẳng định\s+[A-D1-4]\s+(?:đúng|sai)[^\.\n]*\.?)/gi, '<b>$1</b>');
+
+        safeStr = safeStr.replace(/\*\*(<b>.*?<\/b>)\*\*/gi, '$1');
+        safeStr = safeStr.replace(/\*(<i>.*?<\/i>)\*/gi, '$1');
+
+        return safeStr;
+    }
+
+    /**
+      * Chèn text có formatting vào Quill editor.
+      * TUYỆT ĐỐI KHÔNG XÓA ẢNH — giữ nguyên logic v1.
+      */
+    async function insertIntoQuill(editorElement, textContent) {
+        if (!editorElement || !textContent) return false;
+
+        editorElement.focus();
+
+        // 1. DỌN DẸP AN TOÀN — CHỈ xóa dòng KHÔNG CÓ ẢNH
+        let children = Array.from(editorElement.children);
+        children.forEach(child => {
+            if (child.querySelectorAll('img').length === 0) {
+                child.remove(); // Dòng không có thẻ img -> An tâm Xóa sạch
+            } else {
+                // Dòng có thẻ img -> Giữ lại nguyên vẹn tại chỗ!
+                // Chỉ rà soát xóa chữ rác bám quanh ảnh (nếu có)
+                Array.from(child.childNodes).forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        node.textContent = '';
+                    }
+                });
+            }
+        });
+
+        // Đợi 80ms để trình duyệt cập nhật lại DOM sau khi xóa các node con,
+        // giúp Selection và Range không bị lỗi vị trí.
+        await sleep(80);
+
+        // Lấy lại focus sau khi DOM thay đổi
+        editorElement.focus();
+
+        // 2. Di chuyển cursor lên đầu ô (phía trên ảnh)
+        let selection = window.getSelection();
+        let range = document.createRange();
+        range.setStart(editorElement, 0);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Đợi 40ms để selection được ghi nhận ổn định
+        await sleep(40);
+
+        // 3. Tạo HTML từ text
+        let lines = textContent.replace(/\r/g, '').split('\n');
+        let fullHtml = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            if (line.trim() === '') {
+                fullHtml += '<p><br></p>';
+            } else {
+                let formatted = processFormatting(line);
+                formatted = formatted.replace(/ {2}/g, '&nbsp;&nbsp;');
+                fullHtml += `<p>${formatted}</p>`;
+            }
+        }
+
+        // 4. Bơm HTML vào đầu ô
+        document.execCommand('insertHTML', false, fullHtml);
+
+        // 5. Hiệu ứng xác nhận
+        editorElement.style.backgroundColor = '#f0fdf4';
+        setTimeout(() => editorElement.style.backgroundColor = '', 2000);
+
+        return true;
+    }
+
+    // ==========================================
+    // TÌM QUILL EDITOR
+    // ==========================================
+
+    /**
+     * Tìm .ql-editor cho một trường cụ thể.
+     * Ưu tiên container-based, fallback index-based (v1).
+     */
+    function findEditorFor(field, typeCode) {
+        let editor = null;
+
+        // === STRATEGY 1: Container-based ===
+        if (field === 'debai') {
+            if (typeCode === 'TRAC_NGHIEM') {
+                const container = document.querySelector('.col-md-12 .wrapper-quill');
+                if (container) editor = container.querySelector('.ql-editor');
+            }
+            if (!editor) {
+                const allWrappers = document.querySelectorAll('.wrapper-quill');
+                for (const w of allWrappers) {
+                    if (!w.closest('.hints') && !w.closest('.solutions') && !w.closest('.col-md-9')) {
+                        editor = w.querySelector('.ql-editor');
+                        if (editor) break;
+                    }
+                }
+            }
+        } else if (field === 'goiy') {
+            const hintsEl = document.querySelector('.hints');
+            if (hintsEl) editor = hintsEl.querySelector('.ql-editor');
+        } else if (field === 'loigiai') {
+            const solEl = document.querySelector('.solutions');
+            if (solEl) editor = solEl.querySelector('.ql-editor');
+        }
+
+        if (editor) {
+            log(`✅ ${field} → container-based`);
+            return editor;
+        }
+
+        // === STRATEGY 2: Fallback index-based (v1) ===
+        const map = INDEX_MAPPING[typeCode] || INDEX_MAPPING['DUNG_SAI'];
+        const allEditors = document.querySelectorAll('.ql-editor');
+        const idx = map[field];
+
+        if (idx !== undefined && allEditors[idx]) {
+            log(`🔄 ${field} → fallback index ${idx} (tổng ${allEditors.length} editors)`);
+            return allEditors[idx];
+        }
+
+        warn(`❌ Không tìm thấy ${field}`);
+        return null;
+    }
+
+    // ==========================================
+    // ĐIỀN 3 TRƯỜNG CHÍNH (BẤT ĐỒNG BỘ — TRÁNH TRANH CHẤP SELECTION)
+    // ==========================================
+
+    async function fillMainFields(payload) {
+        const typeCode = payload.typeCode;
+
+        if (payload.debai) {
+            try {
+                const editor = findEditorFor('debai', typeCode);
+                if (editor) { 
+                    await insertIntoQuill(editor, payload.debai); 
+                    log('✅ Đề bài'); 
+                    await sleep(150); 
+                }
+            } catch (e) { warn('Lỗi Đề bài: ' + e.message); }
+        }
+
+        if (payload.goiy) {
+            try {
+                const editor = findEditorFor('goiy', typeCode);
+                if (editor) { 
+                    await insertIntoQuill(editor, payload.goiy); 
+                    log('✅ Gợi ý'); 
+                    await sleep(150); 
+                }
+            } catch (e) { warn('Lỗi Gợi ý: ' + e.message); }
+        }
+
+        if (payload.loigiai) {
+            try {
+                const editor = findEditorFor('loigiai', typeCode);
+                if (editor) { 
+                    await insertIntoQuill(editor, payload.loigiai); 
+                    log('✅ Lời giải'); 
+                    await sleep(150); 
+                }
+            } catch (e) { warn('Lỗi Lời giải: ' + e.message); }
+        }
+    }
+
+    // ==========================================
+    // ĐIỀN PHƯƠNG ÁN TRẮC NGHIỆM (BẤT ĐỒNG BỘ — TRÁNH TRANH CHẤP SELECTION)
+    // ==========================================
+
+    async function fillMultipleChoiceOptions(options) {
+        if (!options || options.length === 0) return null;
+
+        // Xác định container hoạt động (ưu tiên modal edit đang mở)
+        let container = document;
+        const allModals = document.querySelectorAll('.ant-modal-body');
+        if (allModals.length > 0) {
+            container = allModals[allModals.length - 1];
+            log('TN: Giới hạn tìm kiếm phương án trong modal hoạt động.');
+        }
+
+        // Strategy 1: container .col-md-9
+        const optionContainers = container.querySelectorAll('.col-md-9.flex-item.p-r-15');
+        let filledCount = 0;
+
+        if (optionContainers.length >= 4) {
+            for (let i = 0; i < Math.min(4, options.length); i++) {
+                try {
+                    const editor = optionContainers[i].querySelector('.ql-editor');
+                    if (editor && options[i]) {
+                        await insertIntoQuill(editor, options[i]);
+                        filledCount++;
+                        await sleep(150);
+                    }
+                } catch (e) { warn(`Phương án ${i + 1}: ${e.message}`); }
+            }
+        }
+
+        // Strategy 2: fallback index 1-4
+        if (filledCount === 0) {
+            log('Fallback: .ql-editor index 1-4');
+            const allEditors = container.querySelectorAll('.ql-editor');
+            for (let i = 0; i < Math.min(4, options.length); i++) {
+                try {
+                    if (allEditors[1 + i] && options[i]) {
+                        await insertIntoQuill(allEditors[1 + i], options[i]);
+                        filledCount++;
+                        await sleep(150);
+                    }
+                } catch (e) { warn(`Fallback PA${i + 1}: ${e.message}`); }
+            }
+        }
+
+        log(`✅ Phương án: ${filledCount}/4`);
+        return container;
+    }
+
+    /** Tích checkbox/radio đáp án đúng cho trắc nghiệm và bỏ tích các ô còn lại */
+    async function tickMultipleChoiceAnswer(correctAnswer, container) {
+        if (!correctAnswer || !container) return;
+
+        const ansIdx = parseInt(correctAnswer) - 1; // 1-based → 0-based
+        if (isNaN(ansIdx) || ansIdx < 0 || ansIdx > 3) return;
+
+        log(`Bắt đầu tích đáp án trắc nghiệm: phương án ${ansIdx + 1}`);
+
+        let inputs = [];
+
+        // Strategy 1: Tìm trong card chứa phương án (quét theo DOM mới của user)
+        const answersCardBody = container.querySelector('.ant-card-bordered.ant-card-small > .ant-card-body, .ant-card-small > .ant-card-body');
+        if (answersCardBody) {
+            log('Tìm thấy card nhỏ chứa phương án, tìm checkbox/radio bên trong...');
+            inputs = Array.from(answersCardBody.querySelectorAll('input.ant-checkbox-input, input.ant-radio-input'));
+        }
+
+        // Strategy 2: Fallback — Tìm checkbox/radio tương ứng với 4 phương án bằng col-md-9 parent
+        if (inputs.length < 4) {
+            log('Strategy 2: Tìm checkbox/radio theo hàng phương án .col-md-9...');
+            inputs = [];
+            const optionContainers = container.querySelectorAll('.col-md-9.flex-item.p-r-15');
+            optionContainers.forEach(opt => {
+                const row = opt.closest('.row, .d-flex, [class*="flex"], .mc-option-row') || opt.parentElement;
+                if (row) {
+                    const input = row.querySelector('input.ant-checkbox-input, input.ant-radio-input');
+                    if (input) inputs.push(input);
+                }
+            });
+        }
+
+        // Strategy 3: Fallback — Tìm tất cả checkbox/radio trong container
+        if (inputs.length < 4) {
+            log('Strategy 3: Fallback tìm tất cả checkbox/radio trong container...');
+            const allInputs = Array.from(container.querySelectorAll('input.ant-checkbox-input, input.ant-radio-input'));
+            inputs = allInputs.filter(input => {
+                return !input.closest('.ant-table-selection');
+            });
+            if (inputs.length > 4) {
+                inputs = inputs.slice(-4);
+            }
+        }
+
+        if (inputs.length >= 4) {
+            log(`Tìm thấy ${inputs.length} ô chọn đáp án trắc nghiệm`);
+
+            // Đảm bảo trạng thái tích chính xác tuyệt đối (chỉ tích ô đúng, bỏ tích tất cả ô khác)
+            for (let i = 0; i < 4; i++) {
+                try {
+                    const shouldBeChecked = (i === ansIdx);
+                    const input = inputs[i];
+
+                    if (input.checked !== shouldBeChecked) {
+                        const label = input.closest('label');
+                        if (label) {
+                            label.click();
+                        } else {
+                            input.click();
+                        }
+                        await sleep(80); // Chờ UI cập nhật
+                        log(`- Ô phương án ${i + 1}: ${shouldBeChecked ? 'ĐÃ TÍCH' : 'BỎ TÍCH'}`);
+                    }
+                } catch (e) {
+                    warn(`Lỗi thao tác ô chọn ${i + 1}: ${e.message}`);
+                }
+            }
+        } else {
+            warn(`Không đủ ô chọn trắc nghiệm (tìm thấy ${inputs.length}/4)`);
+        }
+    }
+
+    // ==========================================
+    // ĐIỀN KHẲNG ĐỊNH ĐÚNG/SAI (REACTGRID)
+    // ==========================================
+
+    /**
+     * Mô phỏng double-click đầy đủ (pointer + mouse events) cho ReactGrid.
+     */
+    function simulateDoubleClick(element) {
+        const rect = element.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+
+        const baseInit = {
+            bubbles: true, cancelable: true,
+            clientX: x, clientY: y,
+            screenX: x, screenY: y,
+            button: 0, buttons: 1,
+            view: window
+        };
+
+        // Click lần 1
+        element.dispatchEvent(new PointerEvent('pointerdown', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mousedown', { ...baseInit, detail: 1 }));
+        element.dispatchEvent(new PointerEvent('pointerup', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mouseup', { ...baseInit, detail: 1 }));
+        element.dispatchEvent(new MouseEvent('click', { ...baseInit, detail: 1 }));
+
+        // Click lần 2 (double)
+        element.dispatchEvent(new PointerEvent('pointerdown', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mousedown', { ...baseInit, detail: 2 }));
+        element.dispatchEvent(new PointerEvent('pointerup', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mouseup', { ...baseInit, detail: 2 }));
+        element.dispatchEvent(new MouseEvent('dblclick', { ...baseInit, detail: 2 }));
+    }
+
+    async function fillTrueFalseAssertions(options) {
+        if (!options || options.length === 0) return;
+
+        log(`Bắt đầu điền ${options.length} khẳng định...`);
+
+        // Giới hạn phạm vi tìm kiếm (ưu tiên bảng trong modal đang mở hoặc grid-editor)
+        let container = document;
+        const allModals = document.querySelectorAll('.ant-modal-body');
+        if (allModals.length > 0) {
+            container = allModals[allModals.length - 1];
+            log('Tìm thấy modal ant-modal-body, giới hạn tìm kiếm trong modal này.');
+        } else {
+            const gridEditors = document.querySelectorAll('.grid-editor');
+            if (gridEditors.length > 0) {
+                container = gridEditors[gridEditors.length - 1];
+                log('Tìm thấy grid-editor, giới hạn tìm kiếm trong grid-editor này.');
+            }
+        }
+
+        // Tìm cells: data-cell-colidx="0" trong container được giới hạn
+        const allCells = container.querySelectorAll('div.rg-pane-center-middle div[data-cell-colidx="0"], div.reactgrid div[data-cell-colidx="0"]');
+        let dataCells = Array.from(allCells);
+
+        // Bỏ header row nếu có (hơn 4 cells)
+        if (dataCells.length > 4) {
+            const firstText = (dataCells[0].textContent || '').trim().toLowerCase();
+            if (firstText.includes('khẳng định') || firstText === '' || firstText.includes('nội dung')) {
+                dataCells = dataCells.slice(1);
+            }
+        }
+
+        log(`Cells tìm thấy: ${dataCells.length}`);
+
+        let filledCount = 0;
+        for (let i = 0; i < Math.min(4, dataCells.length, options.length); i++) {
+            if (!options[i]) continue;
+
+            try {
+                const cell = dataCells[i];
+                log(`KĐ${i + 1}: double-click...`);
+
+                // Mô phỏng double-click đầy đủ
+                simulateDoubleClick(cell);
+                await sleep(300);
+
+                // Tìm input edit
+                let editInput = container.querySelector('div.rg-celleditor.rg-text-celleditor input');
+                if (!editInput) editInput = container.querySelector('div.rg-celleditor input');
+                if (!editInput) editInput = document.querySelector('div.rg-celleditor.rg-text-celleditor input');
+                if (!editInput) editInput = document.querySelector('div.rg-celleditor input');
+
+                if (editInput) {
+                    editInput.focus();
+                    editInput.select();
+
+                    // Set value
+                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                        window.HTMLInputElement.prototype, 'value'
+                    ).set;
+                    nativeInputValueSetter.call(editInput, options[i]);
+                    editInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    editInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    await sleep(100);
+
+                    // Enter để xác nhận
+                    editInput.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true
+                    }));
+                    await sleep(200);
+
+                    filledCount++;
+                    log(`✅ KĐ${i + 1} done`);
+                } else {
+                    warn(`KĐ${i + 1}: không tìm thấy input sau double-click`);
+                    document.body.click();
+                    await sleep(200);
+                }
+            } catch (e) {
+                warn(`KĐ${i + 1}: ${e.message}`);
+                document.body.click();
+                await sleep(200);
+            }
+        }
+
+        // Click ra ngoài
+        const outsideEl = container.querySelector('.wrapper-quill') || document.body;
+        outsideEl.click();
+
+        log(`✅ Khẳng định: ${filledCount}/${Math.min(4, options.length)}`);
+        return container;
+    }
+
+    /** Tích radio Đúng/Sai cho từng khẳng định trong modal đang hoạt động */
+    async function tickTrueFalseAnswers(correctAnswers, container) {
+        if (!Array.isArray(correctAnswers) || correctAnswers.length !== 4 || !container) return;
+
+        log('Bắt đầu tích đáp án Đúng/Sai...');
+
+        const trueInputs = container.querySelectorAll(
+            'div.rg-pane-center-middle div[data-cell-colidx="1"] input, div.reactgrid div[data-cell-colidx="1"] input'
+        );
+        const falseInputs = container.querySelectorAll(
+            'div.rg-pane-center-middle div[data-cell-colidx="2"] input, div.reactgrid div[data-cell-colidx="2"] input'
+        );
+
+        if (trueInputs.length >= 4 && falseInputs.length >= 4) {
+            log(`Tìm thấy ${trueInputs.length} radio Đúng, ${falseInputs.length} radio Sai trong container`);
+
+            let trueRadios = Array.from(trueInputs);
+            let falseRadios = Array.from(falseInputs);
+
+            if (trueRadios.length > 4) trueRadios = trueRadios.slice(-4);
+            if (falseRadios.length > 4) falseRadios = falseRadios.slice(-4);
+
+            for (let i = 0; i < 4; i++) {
+                try {
+                    const isCorrect = correctAnswers[i];
+                    const targetRadio = isCorrect ? trueRadios[i] : falseRadios[i];
+
+                    if (targetRadio && !targetRadio.checked) {
+                        const label = targetRadio.closest('label');
+                        if (label) label.click();
+                        else targetRadio.click();
+                        await sleep(80);
+                        log(`✅ Tích KĐ${i + 1}: ${isCorrect ? 'Đúng' : 'Sai'}`);
+                    }
+                } catch (e) {
+                    warn(`Lỗi tích KĐ${i + 1}: ${e.message}`);
+                }
+            }
+            return;
+        }
+
+        // Fallback
+        const radioGroups = {};
+        const allRadios = container.querySelectorAll('div.rg-pane-center-middle input[type="radio"], div.reactgrid input[type="radio"]');
+
+        allRadios.forEach(radio => {
+            const name = radio.name;
+            if (name) {
+                if (!radioGroups[name]) radioGroups[name] = [];
+                radioGroups[name].push(radio);
+            }
+        });
+
+        const groupNames = Object.keys(radioGroups).filter(name => radioGroups[name].length === 2);
+        const relevantGroups = groupNames.slice(-4);
+
+        for (let i = 0; i < Math.min(4, relevantGroups.length); i++) {
+            try {
+                const pair = radioGroups[relevantGroups[i]];
+                const targetIdx = correctAnswers[i] ? 0 : 1;
+                if (pair && pair[targetIdx] && !pair[targetIdx].checked) {
+                    const label = pair[targetIdx].closest('label');
+                    if (label) label.click();
+                    else pair[targetIdx].click();
+                    await sleep(80);
+                    log(`✅ Fallback tích KĐ${i + 1}: ${correctAnswers[i] ? 'Đúng' : 'Sai'}`);
+                }
+            } catch (e) {
+                warn(`Lỗi fallback tích KĐ${i + 1}: ${e.message}`);
+            }
+        }
+    }
+
+    /** Tìm, khoanh vùng (highlight) và click nút cập nhật trong modal đang hoạt động */
+    async function highlightAndClickUpdateButton(container, shouldClick) {
+        if (!container) return;
+
+        log('Đang tìm nút Cập nhật...');
+
+        let updateBtn = container.querySelector('div.text-center.m-t-20 button.btn-primary.btn');
+
+        if (!updateBtn) {
+            const buttons = container.querySelectorAll('button');
+            for (const btn of buttons) {
+                const text = btn.textContent.trim().toLowerCase();
+                if (text.includes('cập nhật') || text.includes('update') || text.includes('save') || text.includes('lưu')) {
+                    updateBtn = btn;
+                    break;
+                }
+            }
+        }
+
+        if (updateBtn) {
+            log('✅ Tìm thấy nút Cập nhật! Tiến hành khoanh vùng (highlight)...');
+            
+            const originalBorder = updateBtn.style.border;
+            const originalBoxShadow = updateBtn.style.boxShadow;
+            const originalTransition = updateBtn.style.transition;
+
+            updateBtn.style.transition = 'all 0.3s ease';
+            updateBtn.style.border = '4px solid #ef4444';
+            updateBtn.style.boxShadow = '0 0 25px #ef4444';
+
+            updateBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            if (shouldClick) {
+                await sleep(500);
+                log('🖱️ Tự động click nút Cập nhật...');
+                updateBtn.click();
+            }
+
+            setTimeout(() => {
+                updateBtn.style.border = originalBorder;
+                updateBtn.style.boxShadow = originalBoxShadow;
+                updateBtn.style.transition = originalTransition;
+                log('Đã gỡ khoanh vùng nút Cập nhật.');
+            }, 3000);
+        } else {
+            warn('❌ Không tìm thấy nút Cập nhật trong container');
+        }
+    }
+
+    // ==========================================
+    // LOGIC CHÍNH
+    // ==========================================
+
+    async function autoFillAll(payload, isFinalRun) {
+        const typeCode = payload.typeCode;
+        const hasOptions = payload.options && payload.options.length === 4;
+
+        log(`=== BẮT ĐẦU === Dạng: ${typeCode} | Options: ${hasOptions ? '4' : '0'} | Editors: ${document.querySelectorAll('.ql-editor').length}`);
+
+        let container = document;
+        const allModals = document.querySelectorAll('.ant-modal-body');
+        if (allModals.length > 0) {
+            container = allModals[allModals.length - 1];
+        }
+
+        // Bước 1: Điền 3 trường chính
+        await fillMainFields(payload);
+
+        // Bước 2: Điền theo dạng câu
+        if (typeCode === 'TRAC_NGHIEM' && hasOptions) {
+            await fillMultipleChoiceOptions(payload.options);
+            if (payload.correct_answer) {
+                await tickMultipleChoiceAnswer(payload.correct_answer, container);
+            }
+
+        } else if (typeCode === 'DUNG_SAI' && hasOptions) {
+            await fillTrueFalseAssertions(payload.options);
+            if (payload.correct_answer) {
+                await tickTrueFalseAnswers(payload.correct_answer, container);
+            }
+
+        } else if (!hasOptions && (typeCode === 'TRAC_NGHIEM' || typeCode === 'DUNG_SAI')) {
+            warn(`Dạng ${typeCode} nhưng không có options → chỉ điền 3 trường chính`);
+        }
+
+        // Bước 3: Khoanh vùng & click nút Cập nhật ở chu kỳ cuối
+        if (isFinalRun) {
+            await highlightAndClickUpdateButton(container, true);
+        }
+
+        log(`=== HOÀN TẤT ===`);
+    }
+
+    // ==========================================
+    // TẠO NÚT BẤM
+    // ==========================================
+
+    window.addEventListener('load', () => {
+        let btn = document.createElement('button');
+        btn.innerHTML = "⚡ AUTO FILL V2";
+        btn.style.cssText = `
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 9999999; padding: 12px 24px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white; font-weight: bold; font-size: 16px;
+            border: none; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(139,92,246,0.5);
+            transition: all 0.2s ease;
+        `;
+        document.body.appendChild(btn);
+
+        btn.addEventListener('mouseenter', () => {
+            btn.style.transform = 'translateX(-50%) translateY(-2px) scale(1.02)';
+            btn.style.boxShadow = '0 6px 20px rgba(139,92,246,0.6)';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.transform = 'translateX(-50%)';
+            btn.style.boxShadow = '0 4px 15px rgba(139,92,246,0.5)';
+        });
+
+        btn.onclick = async () => {
+            try {
+                let text = await navigator.clipboard.readText();
+                let payload = JSON.parse(text);
+
+                if (!payload || !payload.typeCode) {
+                    return alert("⚠️ Dữ liệu copy không hợp lệ! Hãy bấm COPY NEW từ Auto Edit Tool.");
+                }
+
+                btn.innerHTML = "⏳ ĐANG ĐIỀN...";
+                btn.style.background = "linear-gradient(135deg, #f59e0b, #d97706)";
+                btn.disabled = true;
+
+                // Lần 1: Kích hoạt + Dọn dẹp DOM các ô (chưa click Cập nhật)
+                log('--- CHU KỲ 1: Khởi tạo & Dọn dẹp DOM ---');
+                await autoFillAll(payload, false);
+
+                // Chờ 400ms để trình duyệt cập nhật reflow DOM và con trỏ chuột ổn định
+                await sleep(400);
+
+                // Lần 2: Điền đầy đủ văn bản, tích đáp án và tự động click Cập nhật
+                log('--- CHU KỲ 2: Điền chính thức & Click Cập nhật ---');
+                await autoFillAll(payload, true);
+
+                btn.innerHTML = "⚡ AUTO FILL V2";
+                btn.style.background = "linear-gradient(135deg, #8b5cf6, #6d28d9)";
+                btn.disabled = false;
+
+            } catch (err) {
+                console.error('[AutoFill V2] Error:', err);
+                btn.innerHTML = "❌ LỖI";
+                btn.style.background = "linear-gradient(135deg, #ef4444, #b91c1c)";
+                alert("⚠️ Có lỗi: " + err.message);
+
+                setTimeout(() => {
+                    btn.innerHTML = "⚡ AUTO FILL V2";
+                    btn.style.background = "linear-gradient(135deg, #8b5cf6, #6d28d9)";
+                    btn.disabled = false;
+                }, 2000);
+            }
+        };
+    });
+})();
