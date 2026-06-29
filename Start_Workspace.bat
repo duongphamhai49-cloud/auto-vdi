@@ -3,7 +3,7 @@ chcp 65001 >nul
 
 echo Dang khoi dong Server chup anh...
 cd /d "E:\Download\VDII\Auto_Edit_Tool"
-start "Capture Server" python safe_workflow_server.py
+start "Capture Server" python main_server.py
 timeout /t 1 >nul
 
 echo Dang mo cac tab tai lieu chinh (Ben trai)...
