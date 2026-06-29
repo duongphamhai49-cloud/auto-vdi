@@ -39,6 +39,28 @@
         console.warn(`[AutoFill V2] ⚠️ ${msg}`);
     }
 
+    /** Mô phỏng click đơn đầy đủ (pointer + mouse events) */
+    function simulateClick(element) {
+        if (!element) return;
+        const rect = element.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+
+        const baseInit = {
+            bubbles: true, cancelable: true,
+            clientX: x, clientY: y,
+            screenX: x, screenY: y,
+            button: 0, buttons: 1,
+            view: window
+        };
+
+        element.dispatchEvent(new PointerEvent('pointerdown', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mousedown', { ...baseInit, detail: 1 }));
+        element.dispatchEvent(new PointerEvent('pointerup', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mouseup', { ...baseInit, detail: 1 }));
+        element.dispatchEvent(new MouseEvent('click', { ...baseInit, detail: 1 }));
+    }
+
     /** Xử lý formatting text (giữ nguyên logic v1) */
     function processFormatting(text) {
         let safeStr = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -247,10 +269,10 @@
             }
         }
 
-        // Strategy 2: fallback index 1-4
-        if (filledCount === 0) {
+        // Strategy 2: fallback index 1-4 (chỉ kích hoạt nếu số lượng editors đủ lớn để bao gồm các ô phương án)
+        const allEditors = container.querySelectorAll('.ql-editor');
+        if (filledCount === 0 && allEditors.length >= 7) {
             log('Fallback: .ql-editor index 1-4');
-            const allEditors = container.querySelectorAll('.ql-editor');
             for (let i = 0; i < Math.min(4, options.length); i++) {
                 try {
                     if (allEditors[1 + i] && options[i]) {
@@ -265,6 +287,146 @@
         log(`✅ Phương án: ${filledCount}/4`);
         return container;
     }
+
+    // ==========================================
+    // ĐIỀN PHƯƠNG ÁN TRẮC NGHIỆM DẠNG TEXT-INPUT (KHÔNG PHẢI QUILL)
+    // Dạng này chỉ cần click 1 lần vào ô → input xuất hiện → nhập text thuần.
+    // Hàm này tự kiểm tra và bỏ qua nếu đã có Quill editors cho phương án.
+    // ==========================================
+
+    async function fillMultipleChoiceOptionsTextInput(options, container) {
+        if (!options || options.length === 0) return;
+
+        // Nếu đã có Quill editors cho phương án → bỏ qua (đã được xử lý bởi fillMultipleChoiceOptions)
+        const quillOptions = container.querySelectorAll('.col-md-9.flex-item.p-r-15 .ql-editor');
+        if (quillOptions.length >= 4) return;
+
+        // Tìm các ô text-input-wrapper CHỈ TRONG VÙNG PHƯƠNG ÁN (ant-card-small)
+        // Theo DOM report: div.ant-card.ant-card-bordered.ant-card-small > div.ant-card-body
+        //   chứa các ô: div.text-input-wrapper.cursor-pointer.d-flex
+        let wrappers = [];
+        const optionCard = container.querySelector('div.ant-card.ant-card-bordered.ant-card-small, div.ant-card-small, div.ant-card');
+        if (optionCard) {
+            wrappers = Array.from(optionCard.querySelectorAll('div.text-input-wrapper.cursor-pointer.d-flex'));
+        }
+        if (wrappers.length === 0) {
+            // Fallback: tìm trực tiếp trong container
+            wrappers = Array.from(container.querySelectorAll('div.text-input-wrapper.cursor-pointer.d-flex'));
+        }
+
+        if (wrappers.length < 1) return; // Không có ô nào → bỏ qua
+
+        log(`Phát hiện ${wrappers.length} ô phương án dạng text-input, bắt đầu điền...`);
+
+        let filledCount = 0;
+        for (let i = 0; i < Math.min(wrappers.length, options.length); i++) {
+            if (!options[i]) continue;
+            try {
+                const wrapper = wrappers[i];
+
+                // Giới hạn vùng tìm kiếm nghiêm ngặt trong phạm vi của phương án hiện tại
+                const searchArea = wrapper.closest('.ant-form-item-control') || wrapper.closest('.ant-form-item-control-wrapper') || wrapper.parentElement || wrapper;
+
+                // 1. Kiểm tra xem ô input đã hiển thị sẵn chưa
+                let input = searchArea.querySelector('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea');
+
+                // 2. Nếu chưa có, click để kích hoạt chế độ chỉnh sửa
+                if (!input) {
+                    const clickTarget = wrapper.querySelector('div.display-html-wrapper') || wrapper;
+                    simulateClick(clickTarget);
+                    try { clickTarget.click(); } catch (e) {}
+                    await sleep(400);
+                }
+
+                let filled = false;
+
+                // 3. Polling tìm input/textarea trong searchArea
+                for (let attempt = 0; attempt < 5; attempt++) {
+                    input = searchArea.querySelector('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea');
+                    if (!input) {
+                        const focused = document.activeElement;
+                        if (focused && searchArea.contains(focused) && focused.tagName !== 'BUTTON' && focused.type !== 'checkbox' && focused.type !== 'radio') {
+                            input = focused;
+                        }
+                    }
+                    if (input) break;
+                    await sleep(100);
+                }
+
+                if (input) {
+                    input.focus();
+                    input.select();
+
+                    // Set value qua native setter (hỗ trợ cả input và textarea)
+                    const prototype = input.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+                    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+                    if (nativeSetter) {
+                        nativeSetter.call(input, options[i]);
+                    } else {
+                        input.value = options[i];
+                    }
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    await sleep(100);
+
+                    // Giả lập Enter để lưu/xác nhận
+                    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+                    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+                    await sleep(100);
+
+                    // Blur để chắc chắn đóng edit
+                    input.blur();
+                    await sleep(200);
+                    filled = true;
+                }
+
+                // === Strategy 2: contenteditable ===
+                if (!filled) {
+                    const editable = wrapper.querySelector('[contenteditable="true"]');
+                    if (editable) {
+                        editable.focus();
+                        editable.textContent = '';
+                        document.execCommand('insertText', false, options[i]);
+                        editable.dispatchEvent(new Event('input', { bubbles: true }));
+                        await sleep(200);
+                        editable.blur();
+                        filled = true;
+                    }
+                }
+
+                // === Strategy 3: Quill editor xuất hiện sau click ===
+                if (!filled) {
+                    const qlEditor = wrapper.querySelector('.ql-editor');
+                    if (qlEditor) {
+                        await insertIntoQuill(qlEditor, options[i]);
+                        filled = true;
+                    }
+                }
+
+                if (filled) {
+                    filledCount++;
+                    log(`✅ PA${i + 1} (text-input) done`);
+                } else {
+                    warn(`PA${i + 1}: Không tìm thấy ô nhập sau click text-input-wrapper`);
+                }
+
+                // Click ra ngoài để đóng edit hiện tại trước khi chuyển sang ô tiếp
+                const outsideEl = container.querySelector('.wrapper-quill') || document.body;
+                outsideEl.click();
+                await sleep(200);
+
+            } catch (e) {
+                warn(`PA${i + 1} (text-input): ${e.message}`);
+                document.body.click();
+                await sleep(200);
+            }
+        }
+
+        if (filledCount > 0) {
+            log(`✅ Phương án (text-input): ${filledCount}/${Math.min(wrappers.length, options.length)}`);
+        }
+    }
+
 
     /** Tích checkbox/radio đáp án đúng cho trắc nghiệm và bỏ tích các ô còn lại */
     async function tickMultipleChoiceAnswer(correctAnswer, container) {
@@ -610,6 +772,8 @@
         // Bước 2: Điền theo dạng câu
         if (typeCode === 'TRAC_NGHIEM' && hasOptions) {
             await fillMultipleChoiceOptions(payload.options);
+            // Fallback: phương án dạng text-input (click-to-edit, không phải Quill)
+            await fillMultipleChoiceOptionsTextInput(payload.options, container);
             if (payload.correct_answer) {
                 await tickMultipleChoiceAnswer(payload.correct_answer, container);
             }

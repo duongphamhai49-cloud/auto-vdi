@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoFill V2 — Test Bench</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --border: #334155;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #8b5cf6;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, #1e1b4b 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .test-header {
+            text-align: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.3);
+        }
+
+        .test-header h1 {
+            color: var(--accent);
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+        }
+
+        .test-header p {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Tab bar */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(139,92,246,0.1); }
+
+        /* Main layout */
+        .main-layout {
+            display: flex;
+            gap: 0;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Left panel: JSON + controls */
+        .control-panel {
+            width: 380px;
+            min-width: 380px;
+            border-right: 1px solid var(--border);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: sticky;
+            top: 0;
+            height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .control-panel label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            font-weight: bold;
+        }
+
+        .control-panel textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            font-family: 'Consolas', monospace;
+            font-size: 0.75rem;
+            resize: vertical;
+            outline: none;
+        }
+
+        .control-panel textarea:focus { border-color: var(--accent); }
+
+        .btn-fill {
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-fill:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139,92,246,0.4); }
+        .btn-fill:active { transform: scale(0.97); }
+
+        .btn-reset {
+            padding: 0.5rem;
+            background: rgba(239,68,68,0.2);
+            color: var(--error);
+            border: 1px solid var(--error);
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .btn-load {
+            padding: 0.4rem 0.75rem;
+            background: rgba(16,185,129,0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        /* Right panel: Simulated LMS */
+        .lms-panel {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .lms-form { display: none; }
+        .lms-form.active { display: block; }
+
+        .lms-form h3 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Simulated LMS components */
+        .form-section {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-section-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 0.4rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Simulated wrapper-quill */
+        .wrapper-quill {
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            overflow: hidden;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .ql-editor {
+            min-height: 60px;
+            padding: 0.75rem;
+            outline: none;
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .ql-editor:focus {
+            background: rgba(139,92,246,0.05);
+        }
+
+        .ql-editor p { margin-bottom: 0.25rem; }
+        .ql-editor:empty::before {
+            content: 'Chưa có nội dung...';
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* Simulated ReactGrid */
+        .reactgrid {
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+
+        .reactgrid-content { position: relative; }
+
+        .rg-pane-center-middle {}
+
+        .rg-row {
+            display: grid;
+            grid-template-columns: 1fr 80px 80px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .rg-row:last-child { border-bottom: none; }
+
+        .rg-row.header {
+            background: rgba(139,92,246,0.15);
+            font-weight: bold;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        .rg-cell {
+            padding: 0.5rem 0.75rem;
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            border-right: 1px solid var(--border);
+            cursor: default;
+            position: relative;
+            min-height: 40px;
+            word-break: break-word;
+        }
+
+        .rg-cell:last-child { border-right: none; }
+
+        .rg-cell[data-cell-colidx="0"] {
+            cursor: text;
+        }
+
+        .rg-cell[data-cell-colidx="0"]:hover {
+            background: rgba(139,92,246,0.05);
+        }
+
+        .rg-cell[data-cell-colidx="1"],
+        .rg-cell[data-cell-colidx="2"] {
+            justify-content: center;
+        }
+
+        .rg-celleditor {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10;
+        }
+
+        .rg-celleditor input {
+            width: 100%;
+            height: 100%;
+            border: 2px solid var(--accent);
+            background: rgba(0,0,0,0.5);
+            color: var(--text);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            outline: none;
+            font-family: inherit;
+        }
+
+        label.margin-center {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        label.margin-center input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        /* Multiple choice option row */
+        .mc-option-row {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+
+        .mc-checkbox-col {
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.2);
+            border-right: 1px solid var(--border);
+        }
+
+        .mc-checkbox-col input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--success);
+        }
+
+        .col-md-9.flex-item.p-r-15 {
+            flex: 1;
+        }
+
+        /* Console log */
+        .console-log {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 0.25rem;
+            padding: 0.5rem;
+            font-family: 'Consolas', monospace;
+            font-size: 0.72rem;
+            max-height: 200px;
+            overflow-y: auto;
+            color: #10b981;
+            line-height: 1.4;
+        }
+
+        .console-log .warn { color: #f59e0b; }
+        .console-log .error { color: #ef4444; }
+
+        /* Hints and Solutions containers */
+        .hints, .solutions {
+            margin-top: 0.5rem;
+        }
+
+        /* Col-md-12 for TN đề bài */
+        .col-md-12 { width: 100%; }
+
+        /* Status badges */
+        .fill-status {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+        .fill-status.empty { background: rgba(255,255,255,0.1); color: var(--text-dim); }
+        .fill-status.filled { background: rgba(16,185,129,0.2); color: var(--success); }
+    </style>
+</head>
+<body>
+
+<div class="test-header">
+    <h1>🧪 AUTOFILL V2 — TEST BENCH</h1>
+    <p>Giả lập DOM trang LMS để test logic AutoFill mà không cần mở LMS thật</p>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('DUNG_SAI')">Đúng / Sai</button>
+    <button class="tab-btn" onclick="switchTab('TRAC_NGHIEM')">Trắc nghiệm</button>
+    <button class="tab-btn" onclick="switchTab('DIEN_DAPAN')">Điền đáp án</button>
+</div>
+
+<div class="main-layout">
+    <!-- LEFT: Control Panel -->
+    <div class="control-panel">
+        <label>📋 JSON Payload</label>
+        <textarea id="jsonInput" rows="16"></textarea>
+
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-load" onclick="loadSampleJSON('DUNG_SAI')">Mẫu Đ/S</button>
+            <button class="btn-load" onclick="loadSampleJSON('TRAC_NGHIEM')">Mẫu TN</button>
+            <button class="btn-load" onclick="loadSampleJSON('DIEN_DAPAN')">Mẫu ĐĐA</button>
+        </div>
+
+        <button class="btn-fill" onclick="runAutoFill()">⚡ CHẠY AUTOFILL</button>
+        <button class="btn-reset" onclick="resetAllForms()">🗑 Reset tất cả</button>
+
+        <label>📜 Console Log</label>
+        <div class="console-log" id="consoleLog">Sẵn sàng...</div>
+    </div>
+
+    <!-- RIGHT: Simulated LMS Forms -->
+    <div class="lms-panel">
+
+        <!-- ====== DẠNG ĐÚNG / SAI ====== -->
+        <div class="lms-form active" id="form_DUNG_SAI">
+            <h3>📝 Dạng câu: Đúng / Sai</h3>
+
+            <div class="form-section">
+                <div class="form-section-label">Đề bài</div>
+                <div class="wrapper-quill">
+                    <div class="ql-editor" contenteditable="true"></div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-label">Khẳng định (ReactGrid — double-click để sửa)</div>
+                <div class="reactgrid">
+                    <div class="reactgrid-content">
+                        <div class="rg-pane rg-pane-center-middle">
+                            <!-- Header -->
+                            <div class="rg-row header">
+                                <div class="rg-cell">Nội dung</div>
+                                <div class="rg-cell">Đúng</div>
+                                <div class="rg-cell">Sai</div>
+                            </div>
+                            <!-- KĐ 1 -->
+                            <div class="rg-row">
+                                <div class="rg-cell" data-cell-colidx="0" data-cell-rowidx="1"></div>
+                                <div class="rg-cell" data-cell-colidx="1"><label class="margin-center"><input type="radio" name="kd1_ds"></label></div>
+                                <div class="rg-cell" data-cell-colidx="2"><label class="margin-center"><input type="radio" name="kd1_ds"></label></div>
+                            </div>
+                            <!-- KĐ 2 -->
+                            <div class="rg-row">
+                                <div class="rg-cell" data-cell-colidx="0" data-cell-rowidx="2"></div>
+                                <div class="rg-cell" data-cell-colidx="1"><label class="margin-center"><input type="radio" name="kd2_ds"></label></div>
+                                <div class="rg-cell" data-cell-colidx="2"><label class="margin-center"><input type="radio" name="kd2_ds"></label></div>
+                            </div>
+                            <!-- KĐ 3 -->
+                            <div class="rg-row">
+                                <div class="rg-cell" data-cell-colidx="0" data-cell-rowidx="3"></div>
+                                <div class="rg-cell" data-cell-colidx="1"><label class="margin-center"><input type="radio" name="kd3_ds"></label></div>
+                                <div class="rg-cell" data-cell-colidx="2"><label class="margin-center"><input type="radio" name="kd3_ds"></label></div>
+                            </div>
+                            <!-- KĐ 4 -->
+                            <div class="rg-row">
+                                <div class="rg-cell" data-cell-colidx="0" data-cell-rowidx="4"></div>
+                                <div class="rg-cell" data-cell-colidx="1"><label class="margin-center"><input type="radio" name="kd4_ds"></label></div>
+                                <div class="rg-cell" data-cell-colidx="2"><label class="margin-center"><input type="radio" name="kd4_ds"></label></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-label">Gợi ý</div>
+                <div class="hints">
+                    <div class="wrapper-quill">
+                        <div class="ql-editor" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-label">Lời giải</div>
+                <div class="solutions">
+                    <div class="wrapper-quill">
+                        <div class="ql-editor" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== DẠNG TRẮC NGHIỆM ====== -->
+        <div class="lms-form" id="form_TRAC_NGHIEM">
+            <h3>📝 Dạng câu: Trắc nghiệm</h3>
+
+            <div class="form-section">
+                <div class="form-section-label">Đề bài</div>
+                <div class="col-md-12">
+                    <div class="wrapper-quill">
+                        <div class="ql-editor" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1.25rem; display: flex; gap: 1.5rem; background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 0.25rem; border: 1px dashed var(--border);">
+                <span style="font-weight: bold; font-size: 0.85rem; color: var(--text-dim);">DẠNG PHƯƠNG ÁN:</span>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:0.25rem; font-size:0.85rem;"><input type="radio" name="tn_type" value="quill" checked onclick="toggleMcType('quill')"> Dạng Quill (Mặc định)</label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:0.25rem; font-size:0.85rem;"><input type="radio" name="tn_type" value="textinput" onclick="toggleMcType('textinput')"> Dạng Text-Input (Mới)</label>
+            </div>
+
+            <!-- Dạng Quill (Mặc định) -->
+            <div class="form-section" id="options_quill_container">
+                <div class="form-section-label">Phương án (Quill)</div>
+                <!-- PA A -->
+                <div class="mc-option-row">
+                    <div class="mc-checkbox-col">
+                        <input type="checkbox" class="ant-checkbox-input" id="cb_tn_1">
+                    </div>
+                    <div class="col-md-9 flex-item p-r-15">
+                        <div class="wrapper-quill">
+                            <div class="ql-editor" contenteditable="true"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- PA B -->
+                <div class="mc-option-row">
+                    <div class="mc-checkbox-col">
+                        <input type="checkbox" class="ant-checkbox-input" id="cb_tn_2">
+                    </div>
+                    <div class="col-md-9 flex-item p-r-15">
+                        <div class="wrapper-quill">
+                            <div class="ql-editor" contenteditable="true"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- PA C -->
+                <div class="mc-option-row">
+                    <div class="mc-checkbox-col">
+                        <input type="checkbox" class="ant-checkbox-input" id="cb_tn_3">
+                    </div>
+                    <div class="col-md-9 flex-item p-r-15">
+                        <div class="wrapper-quill">
+                            <div class="ql-editor" contenteditable="true"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- PA D -->
+                <div class="mc-option-row">
+                    <div class="mc-checkbox-col">
+                        <input type="checkbox" class="ant-checkbox-input" id="cb_tn_4">
+                    </div>
+                    <div class="col-md-9 flex-item p-r-15">
+                        <div class="wrapper-quill">
+                            <div class="ql-editor" contenteditable="true"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dạng Text-Input (Mới) -->
+            <div class="form-section" id="options_textinput_container" style="display:none;">
+                <div class="form-section-label">Phương án (Text-Input/Khẳng định)</div>
+                <div class="ant-card ant-card-bordered ant-card-small" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 4px;">
+                    <div class="ant-card-body" style="padding: 10px;">
+                        <!-- PA 1 -->
+                        <div class="mc-option-row" style="border:none; margin-bottom: 10px; align-items: center; background:transparent;">
+                            <div class="mc-checkbox-col" style="border:none; background:transparent; width:50px;">
+                                <input type="checkbox" class="ant-checkbox-input">
+                            </div>
+                            <div class="ant-col ant-form-item-control-wrapper" style="flex:1;">
+                                <div class="ant-form-item-control">
+                                    <span class="ant-form-item-children">
+                                        <div class="text-input-wrapper cursor-pointer d-flex" style="border:1px solid var(--border); padding: 8px; border-radius:4px; min-height:40px; align-items:center; background: rgba(0,0,0,0.3);">
+                                            <div class="flex-grow-1 m-l-5:nth-of-type(1)">
+                                                <span class="content-display">
+                                                    <span>
+                                                        <div class="display-html-wrapper" style="color:var(--text-dim); font-size:0.9rem;">Bấm vào để nhập khẳng định 1...</div>
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- PA 2 -->
+                        <div class="mc-option-row" style="border:none; margin-bottom: 10px; align-items: center; background:transparent;">
+                            <div class="mc-checkbox-col" style="border:none; background:transparent; width:50px;">
+                                <input type="checkbox" class="ant-checkbox-input">
+                            </div>
+                            <div class="ant-col ant-form-item-control-wrapper" style="flex:1;">
+                                <div class="ant-form-item-control">
+                                    <span class="ant-form-item-children">
+                                        <div class="text-input-wrapper cursor-pointer d-flex" style="border:1px solid var(--border); padding: 8px; border-radius:4px; min-height:40px; align-items:center; background: rgba(0,0,0,0.3);">
+                                            <div class="flex-grow-1 m-l-5:nth-of-type(1)">
+                                                <span class="content-display">
+                                                    <span>
+                                                        <div class="display-html-wrapper" style="color:var(--text-dim); font-size:0.9rem;">Bấm vào để nhập khẳng định 2...</div>
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- PA 3 -->
+                        <div class="mc-option-row" style="border:none; margin-bottom: 10px; align-items: center; background:transparent;">
+                            <div class="mc-checkbox-col" style="border:none; background:transparent; width:50px;">
+                                <input type="checkbox" class="ant-checkbox-input">
+                            </div>
+                            <div class="ant-col ant-form-item-control-wrapper" style="flex:1;">
+                                <div class="ant-form-item-control">
+                                    <span class="ant-form-item-children">
+                                        <div class="text-input-wrapper cursor-pointer d-flex" style="border:1px solid var(--border); padding: 8px; border-radius:4px; min-height:40px; align-items:center; background: rgba(0,0,0,0.3);">
+                                            <div class="flex-grow-1 m-l-5:nth-of-type(1)">
+                                                <span class="content-display">
+                                                    <span>
+                                                        <div class="display-html-wrapper" style="color:var(--text-dim); font-size:0.9rem;">Bấm vào để nhập khẳng định 3...</div>
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- PA 4 -->
+                        <div class="mc-option-row" style="border:none; margin-bottom: 10px; align-items: center; background:transparent;">
+                            <div class="mc-checkbox-col" style="border:none; background:transparent; width:50px;">
+                                <input type="checkbox" class="ant-checkbox-input">
+                            </div>
+                            <div class="ant-col ant-form-item-control-wrapper" style="flex:1;">
+                                <div class="ant-form-item-control">
+                                    <span class="ant-form-item-children">
+                                        <div class="text-input-wrapper cursor-pointer d-flex" style="border:1px solid var(--border); padding: 8px; border-radius:4px; min-height:40px; align-items:center; background: rgba(0,0,0,0.3);">
+                                            <div class="flex-grow-1 m-l-5:nth-of-type(1)">
+                                                <span class="content-display">
+                                                    <span>
+                                                        <div class="display-html-wrapper" style="color:var(--text-dim); font-size:0.9rem;">Bấm vào để nhập khẳng định 4...</div>
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-label">Gợi ý</div>
+                <div class="hints">
+                    <div class="wrapper-quill">
+                        <div class="ql-editor" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-label">Lời giải</div>
+                <div class="solutions">
+                    <div class="wrapper-quill">
+                        <div class="ql-editor" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== DẠNG ĐIỀN ĐÁP ÁN ====== -->
+        <div class="lms-form" id="form_DIEN_DAPAN">
+            <h3>📝 Dạng câu: Điền đáp án</h3>
+
+            <div class="form-section">
+                <div class="form-section-label">Đề bài</div>
+                <div class="wrapper-quill">
+                    <div class="ql-editor" contenteditable="true"></div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-label">Gợi ý</div>
+                <div class="hints">
+                    <div class="wrapper-quill">
+                        <div class="ql-editor" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-label">Lời giải</div>
+                <div class="solutions">
+                    <div class="wrapper-quill">
+                        <div class="ql-editor" contenteditable="true"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // SAMPLE JSON DATA
+    // ==========================================
+    const SAMPLE_DATA = {
+        'DUNG_SAI': {
+            "typeCode": "DUNG_SAI",
+            "difficulty": "M1",
+            "debai": "Cho hai biến cố $A$ và $B$. Xét biểu diễn biến cố hợp $A \\cup B$ bằng biểu đồ Ven.\nXét tính đúng sai của các khẳng định sau:",
+            "goiy": "Kiểm chứng tính đúng sai của các khẳng định dựa vào định nghĩa biến cố hợp và ý nghĩa của các phép toán trên tập hợp thông qua biểu đồ Ven.",
+            "loigiai": "Khẳng định 1 đúng. Theo định nghĩa, biến cố hợp $A \\cup B$ của hai biến cố $A$ và $B$ tương ứng với tập hợp là hợp của hai tập hợp biểu diễn biến cố $A$ và biến cố $B$.\n\nKhẳng định 2 sai. Nếu hai tập hợp biểu diễn biến cố $A$ và biến cố $B$ không có phần chung, điều này mang ý nghĩa $A$ và $B$ là hai biến cố xung khắc.\n\nKhẳng định 3 đúng. Trong biểu đồ Ven, hợp của hai tập hợp là phần diện tích gộp chung.\n\nKhẳng định 4 sai. Biến cố hợp luôn được xác định, không yêu cầu điều kiện độc lập.",
+            "options": [
+                "Biến cố hợp $A \\cup B$ tương ứng với phần hợp của hai tập hợp biểu diễn biến cố $A$ và biến cố $B$.",
+                "Nếu hai tập hợp biểu diễn biến cố $A$ và biến cố $B$ không có phần chung thì biến cố hợp không tồn tại.",
+                "Biến cố hợp $A \\cup B$ được biểu diễn bằng toàn bộ phần diện tích thuộc ít nhất một trong hai hình.",
+                "Biến cố hợp $A \\cup B$ chỉ được xác định khi hai biến cố $A$ và $B$ độc lập với nhau."
+            ],
+            "correct_answer": [true, false, true, false],
+            "v2": true
+        },
+
+        'TRAC_NGHIEM': {
+            "typeCode": "TRAC_NGHIEM",
+            "difficulty": "M2",
+            "debai": "Cho hàm số $f(x) = x^3 - 3x^2 + 2$. Tìm giá trị cực đại của hàm số.",
+            "goiy": "Tính đạo hàm $f'(x)$, tìm nghiệm $f'(x) = 0$, sau đó xét dấu đạo hàm hoặc tính đạo hàm cấp 2.",
+            "loigiai": "Ta có $f'(x) = 3x^2 - 6x = 3x(x-2)$.\n$f'(x) = 0 \\Leftrightarrow x = 0$ hoặc $x = 2$.\n\nBảng biến thiên cho thấy:\n- $f'(x) > 0$ khi $x < 0$ hoặc $x > 2$\n- $f'(x) < 0$ khi $0 < x < 2$\n\nVậy hàm số đạt cực đại tại $x = 0$ với $f(0) = 2$.\n\nĐáp án: $2$.",
+            "options": [
+                "$-2$",
+                "$0$",
+                "$2$",
+                "$4$"
+            ],
+            "correct_answer": 3,
+            "v2": true
+        },
+
+        'DIEN_DAPAN': {
+            "typeCode": "DIEN_DAPAN",
+            "difficulty": "M1",
+            "debai": "Cho dãy số $(u_n)$ với $u_1 = 3$ và $u_{n+1} = u_n + 5$ với mọi $n \\geq 1$.\nĐiền số thích hợp vào chỗ trống:\n$u_{10} = $ ____",
+            "goiy": "Đây là dãy số cách đều (cấp số cộng) với công sai $d = 5$. Áp dụng công thức tổng quát $u_n = u_1 + (n-1)d$.",
+            "loigiai": "Dãy số $(u_n)$ là cấp số cộng với:\n- Số hạng đầu: $u_1 = 3$\n- Công sai: $d = 5$\n\nCông thức tổng quát: $u_n = u_1 + (n-1)d = 3 + (n-1) \\cdot 5 = 5n - 2$\n\nVậy: $u_{10} = 5 \\cdot 10 - 2 = 48$",
+            "options": [],
+            "correct_answer": "48",
+            "v2": true
+        }
+    };
+
+    // ==========================================
+    // TAB SWITCHING
+    // ==========================================
+    let currentTab = 'DUNG_SAI';
+
+    function switchTab(type) {
+        currentTab = type;
+
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // Show/hide forms
+        document.querySelectorAll('.lms-form').forEach(f => f.classList.remove('active'));
+        document.getElementById('form_' + type).classList.add('active');
+
+        // Auto-load sample JSON
+        loadSampleJSON(type);
+    }
+
+    function loadSampleJSON(type) {
+        document.getElementById('jsonInput').value = JSON.stringify(SAMPLE_DATA[type], null, 2);
+        currentTab = type;
+
+        // Switch tab visual
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        const tabNames = {'DUNG_SAI': 0, 'TRAC_NGHIEM': 1, 'DIEN_DAPAN': 2};
+        document.querySelectorAll('.tab-btn')[tabNames[type]].classList.add('active');
+
+        document.querySelectorAll('.lms-form').forEach(f => f.classList.remove('active'));
+        document.getElementById('form_' + type).classList.add('active');
+
+        logToConsole(`📋 Loaded sample JSON for: ${type}`, 'info');
+    }
+
+    function toggleMcType(type) {
+        if (type === 'quill') {
+            document.getElementById('options_quill_container').style.display = 'block';
+            document.getElementById('options_textinput_container').style.display = 'none';
+        } else {
+            document.getElementById('options_quill_container').style.display = 'none';
+            document.getElementById('options_textinput_container').style.display = 'block';
+        }
+    }
+
+    // ==========================================
+    // CONSOLE LOG
+    // ==========================================
+    function logToConsole(msg, type = 'info') {
+        const el = document.getElementById('consoleLog');
+        const line = document.createElement('div');
+        const time = new Date().toLocaleTimeString('vi-VN');
+        line.textContent = `[${time}] ${msg}`;
+        if (type === 'warn') line.className = 'warn';
+        if (type === 'error') line.className = 'error';
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+    }
+
+    // Override console for capturing script logs
+    const origLog = console.log;
+    const origWarn = console.warn;
+    console.log = function(...args) {
+        origLog.apply(console, args);
+        const msg = args.join(' ');
+        if (msg.includes('[AutoFill V2]')) {
+            logToConsole(msg.replace('[AutoFill V2] ', ''), 'info');
+        }
+    };
+    console.warn = function(...args) {
+        origWarn.apply(console, args);
+        const msg = args.join(' ');
+        if (msg.includes('[AutoFill V2]')) {
+            logToConsole(msg.replace('[AutoFill V2] ⚠️ ', ''), 'warn');
+        }
+    };
+
+    // ==========================================
+    // SIMULATE REACTGRID DOUBLE-CLICK BEHAVIOR
+    // ==========================================
+    document.querySelectorAll('div[data-cell-colidx="0"]').forEach(cell => {
+        cell.addEventListener('dblclick', function(e) {
+            // Remove any existing editor
+            const existing = document.querySelector('.rg-celleditor');
+            if (existing) existing.remove();
+
+            // Create cell editor (simulating ReactGrid behavior)
+            const editor = document.createElement('div');
+            editor.className = 'rg-celleditor rg-text-celleditor';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = cell.textContent || '';
+            editor.appendChild(input);
+            cell.style.position = 'relative';
+            cell.appendChild(editor);
+
+            input.focus();
+            input.select();
+
+            // Handle Enter/Tab to confirm
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                    cell.textContent = input.value;
+                    editor.remove();
+                    cell.style.background = input.value ? 'rgba(16,185,129,0.1)' : '';
+                }
+            });
+
+            // Handle click outside
+            input.addEventListener('blur', function() {
+                setTimeout(() => {
+                    if (editor.parentNode) {
+                        cell.textContent = input.value;
+                        editor.remove();
+                        cell.style.background = input.value ? 'rgba(16,185,129,0.1)' : '';
+                    }
+                }, 200);
+            });
+        });
+    });
+
+    // Giả lập chế độ click-to-edit cho text-input-wrapper
+    document.querySelectorAll('.text-input-wrapper').forEach((wrapper, idx) => {
+        wrapper.addEventListener('click', function(e) {
+            // Đảm bảo không tạo trùng lặp
+            if (wrapper.querySelector('input') || wrapper.querySelector('textarea')) return;
+
+            const display = wrapper.querySelector('.display-html-wrapper');
+            const originalText = display ? (display.textContent.startsWith('Bấm vào') ? '' : display.textContent) : '';
+
+            // Ẩn nội dung cũ
+            if (display) display.style.display = 'none';
+
+            // Tạo input giả lập
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalText;
+            input.style.cssText = 'width: 100%; background: rgba(0,0,0,0.5); color: var(--text); border: 2px solid var(--accent); padding: 4px; outline: none; border-radius: 4px;';
+            
+            wrapper.appendChild(input);
+            input.focus();
+            input.select();
+
+            // Lưu khi nhấn Enter/Tab hoặc blur
+            const saveAndClose = () => {
+                const val = input.value.trim();
+                if (display) {
+                    display.textContent = val || `Bấm vào để nhập khẳng định ${(idx % 4) + 1}...`;
+                    display.style.display = 'block';
+                }
+                input.remove();
+            };
+
+            input.addEventListener('keydown', function(evt) {
+                if (evt.key === 'Enter' || evt.key === 'Tab') {
+                    saveAndClose();
+                }
+            });
+
+            input.addEventListener('blur', function() {
+                setTimeout(saveAndClose, 200);
+            });
+        });
+    });
+
+    // ==========================================
+    // AUTOFILL LOGIC (copy từ AutoFillTool_v2.txt)
+    // ==========================================
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function processFormatting(text) {
+        let safeStr = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        safeStr = safeStr.replace(/(Điền số.*?thích hợp vào chỗ trống.*?:)/gi, '<i>$1</i>');
+        safeStr = safeStr.replace(/(Xét tính đúng sai của các khẳng định sau:?)/gi, '<i>$1</i>');
+        safeStr = safeStr.replace(/(Khẳng định\s+[A-D1-4]\s+(?:đúng|sai)[^\.\n]*\.?)/gi, '<b>$1</b>');
+        safeStr = safeStr.replace(/\*\*(<b>.*?<\/b>)\*\*/gi, '$1');
+        safeStr = safeStr.replace(/\*(<i>.*?<\/i>)\*/gi, '$1');
+        return safeStr;
+    }
+
+    function insertIntoQuill(editorElement, textContent) {
+        if (!editorElement || !textContent) return false;
+        editorElement.focus();
+
+        let children = Array.from(editorElement.children);
+        children.forEach(child => {
+            if (child.querySelectorAll('img').length === 0) {
+                child.remove();
+            }
+        });
+
+        let selection = window.getSelection();
+        let range = document.createRange();
+        range.setStart(editorElement, 0);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        let lines = textContent.replace(/\r/g, '').split('\n');
+        let fullHtml = '';
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            if (line.trim() === '') {
+                fullHtml += '<p><br></p>';
+            } else {
+                let formatted = processFormatting(line);
+                formatted = formatted.replace(/ {2}/g, '&nbsp;&nbsp;');
+                fullHtml += `<p>${formatted}</p>`;
+            }
+        }
+
+        document.execCommand('insertHTML', false, fullHtml);
+        editorElement.style.backgroundColor = '#1a3a2a';
+        setTimeout(() => editorElement.style.backgroundColor = '', 2000);
+        return true;
+    }
+
+    // Index mapping fallback (v1 compatible)
+    const INDEX_MAPPING = {
+        'TRAC_NGHIEM': { debai: 0, goiy: 5, loigiai: 6 },
+        'DUNG_SAI':    { debai: 0, goiy: 1, loigiai: 2 },
+        'DIEN_DAPAN':  { debai: 0, goiy: 1, loigiai: 2 }
+    };
+
+    function findEditorFor(field, typeCode) {
+        let editor = null;
+
+        // ACTIVE form only
+        const activeForm = document.getElementById('form_' + typeCode);
+        if (!activeForm) return null;
+
+        if (field === 'debai') {
+            if (typeCode === 'TRAC_NGHIEM') {
+                const container = activeForm.querySelector('.col-md-12 .wrapper-quill');
+                if (container) editor = container.querySelector('.ql-editor');
+            }
+            if (!editor) {
+                const allWrappers = activeForm.querySelectorAll('.wrapper-quill');
+                for (const w of allWrappers) {
+                    if (!w.closest('.hints') && !w.closest('.solutions') && !w.closest('.col-md-9')) {
+                        editor = w.querySelector('.ql-editor');
+                        if (editor) break;
+                    }
+                }
+            }
+        } else if (field === 'goiy') {
+            const hintsEl = activeForm.querySelector('.hints');
+            if (hintsEl) editor = hintsEl.querySelector('.ql-editor');
+        } else if (field === 'loigiai') {
+            const solEl = activeForm.querySelector('.solutions');
+            if (solEl) editor = solEl.querySelector('.ql-editor');
+        }
+
+        if (editor) {
+            console.log(`[AutoFill V2] ✅ Tìm thấy ${field} bằng container-based`);
+            return editor;
+        }
+
+        // Fallback index-based
+        const map = INDEX_MAPPING[typeCode] || INDEX_MAPPING['DUNG_SAI'];
+        const allEditors = activeForm.querySelectorAll('.ql-editor');
+        const idx = map[field];
+        if (idx !== undefined && allEditors[idx]) {
+            console.log(`[AutoFill V2] 🔄 Fallback index cho ${field}: idx=${idx} (total=${allEditors.length})`);
+            return allEditors[idx];
+        }
+
+        console.warn(`[AutoFill V2] ⚠️ ❌ Không tìm thấy editor cho ${field}`);
+        return null;
+    }
+
+    async function fillMainFields(payload) {
+        const typeCode = payload.typeCode;
+
+        if (payload.debai) {
+            try {
+                const editor = findEditorFor('debai', typeCode);
+                if (editor) { insertIntoQuill(editor, payload.debai); console.log('[AutoFill V2] ✅ Đã điền Đề bài'); await sleep(300); }
+            } catch (e) { console.warn(`[AutoFill V2] ⚠️ Lỗi Đề bài: ${e.message}`); }
+        }
+
+        if (payload.goiy) {
+            try {
+                const editor = findEditorFor('goiy', typeCode);
+                if (editor) { insertIntoQuill(editor, payload.goiy); console.log('[AutoFill V2] ✅ Đã điền Gợi ý'); await sleep(300); }
+            } catch (e) { console.warn(`[AutoFill V2] ⚠️ Lỗi Gợi ý: ${e.message}`); }
+        }
+
+        if (payload.loigiai) {
+            try {
+                const editor = findEditorFor('loigiai', typeCode);
+                if (editor) { insertIntoQuill(editor, payload.loigiai); console.log('[AutoFill V2] ✅ Đã điền Lời giải'); await sleep(300); }
+            } catch (e) { console.warn(`[AutoFill V2] ⚠️ Lỗi Lời giải: ${e.message}`); }
+        }
+    }
+
+    /** Mô phỏng click đơn đầy đủ (pointer + mouse events) */
+    function simulateClick(element) {
+        if (!element) return;
+        const rect = element.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+
+        const baseInit = {
+            bubbles: true, cancelable: true,
+            clientX: x, clientY: y,
+            screenX: x, screenY: y,
+            button: 0, buttons: 1,
+            view: window
+        };
+
+        element.dispatchEvent(new PointerEvent('pointerdown', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mousedown', { ...baseInit, detail: 1 }));
+        element.dispatchEvent(new PointerEvent('pointerup', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
+        element.dispatchEvent(new MouseEvent('mouseup', { ...baseInit, detail: 1 }));
+        element.dispatchEvent(new MouseEvent('click', { ...baseInit, detail: 1 }));
+    }
+
+    async function fillMultipleChoiceOptionsTextInput(options, container) {
+        if (!options || options.length === 0) return;
+
+        // Nếu đã có Quill editors cho phương án → bỏ qua
+        const quillOptions = container.querySelectorAll('.col-md-9.flex-item.p-r-15 .ql-editor');
+        if (quillOptions.length >= 4 && document.getElementById('options_quill_container')?.style.display !== 'none') return;
+
+        let wrappers = [];
+        const optionCard = container.querySelector('div.ant-card.ant-card-bordered.ant-card-small, div.ant-card-small, div.ant-card');
+        if (optionCard) {
+            wrappers = Array.from(optionCard.querySelectorAll('div.text-input-wrapper.cursor-pointer.d-flex'));
+        }
+        if (wrappers.length === 0) {
+            wrappers = Array.from(container.querySelectorAll('div.text-input-wrapper.cursor-pointer.d-flex'));
+        }
+
+        if (wrappers.length < 1) return;
+
+        console.log(`[AutoFill V2] Phát hiện ${wrappers.length} ô phương án dạng text-input, bắt đầu điền...`);
+
+        let filledCount = 0;
+        for (let i = 0; i < Math.min(wrappers.length, options.length); i++) {
+            if (!options[i]) continue;
+            try {
+                const wrapper = wrappers[i];
+
+                // Giới hạn vùng tìm kiếm nghiêm ngặt trong phạm vi của phương án hiện tại
+                const searchArea = wrapper.closest('.ant-form-item-control') || wrapper.closest('.ant-form-item-control-wrapper') || wrapper.parentElement || wrapper;
+
+                // 1. Kiểm tra xem ô input đã hiển thị sẵn chưa
+                let input = searchArea.querySelector('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea');
+
+                // 2. Nếu chưa có, click để kích hoạt chế độ chỉnh sửa
+                if (!input) {
+                    const clickTarget = wrapper.querySelector('div.display-html-wrapper') || wrapper;
+                    simulateClick(clickTarget);
+                    try { clickTarget.click(); } catch (e) {}
+                    await sleep(400);
+                }
+
+                let filled = false;
+
+                // 3. Polling tìm input/textarea trong searchArea
+                for (let attempt = 0; attempt < 5; attempt++) {
+                    input = searchArea.querySelector('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea');
+                    if (!input) {
+                        const focused = document.activeElement;
+                        if (focused && searchArea.contains(focused) && focused.tagName !== 'BUTTON' && focused.type !== 'checkbox' && focused.type !== 'radio') {
+                            input = focused;
+                        }
+                    }
+                    if (input) break;
+                    await sleep(100);
+                }
+
+                if (input) {
+                    input.focus();
+                    input.select();
+
+                    const prototype = input.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+                    const nativeSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+                    if (nativeSetter) {
+                        nativeSetter.call(input, options[i]);
+                    } else {
+                        input.value = options[i];
+                    }
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    await sleep(100);
+
+                    // Giả lập Enter để lưu/xác nhận
+                    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+                    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+                    await sleep(100);
+
+                    input.blur();
+                    await sleep(200);
+                    filled = true;
+                }
+
+                if (filled) {
+                    filledCount++;
+                    console.log(`[AutoFill V2] ✅ Đã điền PA${i + 1} (text-input)`);
+                } else {
+                    console.warn(`[AutoFill V2] ⚠️ PA${i + 1}: Không tìm thấy ô nhập sau click`);
+                }
+
+                const outsideEl = container.querySelector('.wrapper-quill') || document.body;
+                outsideEl.click();
+                await sleep(200);
+
+            } catch (e) {
+                console.warn(`[AutoFill V2] ⚠️ PA${i + 1} (text-input): ${e.message}`);
+                document.body.click();
+                await sleep(200);
+            }
+        }
+    }
+
+    async function fillMultipleChoiceOptions(options) {
+        if (!options || options.length === 0) return;
+
+        const activeForm = document.getElementById('form_TRAC_NGHIEM');
+        const optionContainers = activeForm.querySelectorAll('.col-md-9.flex-item.p-r-15');
+        let filledCount = 0;
+
+        for (let i = 0; i < Math.min(4, optionContainers.length, options.length); i++) {
+            try {
+                const editor = optionContainers[i].querySelector('.ql-editor');
+                if (editor && options[i]) {
+                    insertIntoQuill(editor, options[i]);
+                    filledCount++;
+                    await sleep(200);
+                }
+            } catch (e) {
+                console.warn(`[AutoFill V2] ⚠️ Lỗi phương án ${i + 1}: ${e.message}`);
+            }
+        }
+
+        console.log(`[AutoFill V2] ✅ Đã điền ${filledCount}/4 phương án`);
+    }
+
+    async function tickMultipleChoiceAnswer(correctAnswer) {
+        const ansIdx = parseInt(correctAnswer) - 1;
+        if (isNaN(ansIdx) || ansIdx < 0 || ansIdx > 3) return;
+
+        const activeForm = document.getElementById('form_TRAC_NGHIEM');
+        // Chỉ quét checkbox thuộc dạng phương án đang hiển thị
+        const visibleContainer = document.getElementById('options_textinput_container')?.style.display !== 'none'
+            ? document.getElementById('options_textinput_container')
+            : document.getElementById('options_quill_container');
+
+        const checkboxes = visibleContainer.querySelectorAll('input.ant-checkbox-input');
+
+        if (checkboxes.length >= 4) {
+            for (let i = 0; i < 4; i++) {
+                checkboxes[i].checked = (i === ansIdx);
+            }
+            console.log(`[AutoFill V2] ✅ Đã tích đáp án ${ansIdx + 1}`);
+        }
+    }
+
+    async function fillTrueFalseAssertions(options) {
+        if (!options || options.length === 0) return;
+
+        const activeForm = document.getElementById('form_DUNG_SAI');
+        const allCells = activeForm.querySelectorAll('div.rg-pane-center-middle div[data-cell-colidx="0"]');
+
+        // Bỏ header row
+        let dataCells = Array.from(allCells);
+        if (dataCells.length > 4) {
+            dataCells = dataCells.slice(1);
+        }
+
+        console.log(`[AutoFill V2] Tìm thấy ${dataCells.length} cells khẳng định`);
+
+        let filledCount = 0;
+        for (let i = 0; i < Math.min(4, dataCells.length, options.length); i++) {
+            if (!options[i]) continue;
+
+            try {
+                const cell = dataCells[i];
+
+                // Double-click
+                cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+                await sleep(500);
+
+                // Find input
+                let editInput = document.querySelector('div.rg-celleditor.rg-text-celleditor input');
+                if (!editInput) editInput = document.querySelector('div.rg-celleditor input');
+
+                if (editInput) {
+                    editInput.focus();
+                    editInput.select();
+                    await sleep(100);
+
+                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                        window.HTMLInputElement.prototype, 'value'
+                    ).set;
+                    nativeInputValueSetter.call(editInput, options[i]);
+                    editInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    editInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    await sleep(200);
+
+                    editInput.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true
+                    }));
+                    await sleep(400);
+
+                    filledCount++;
+                    console.log(`[AutoFill V2] ✅ Đã điền khẳng định ${i + 1}`);
+                } else {
+                    console.warn(`[AutoFill V2] ⚠️ Không tìm thấy input cho KĐ${i + 1}`);
+                    document.body.click();
+                    await sleep(300);
+                }
+            } catch (e) {
+                console.warn(`[AutoFill V2] ⚠️ Lỗi KĐ${i + 1}: ${e.message}`);
+                document.body.click();
+                await sleep(300);
+            }
+        }
+
+        document.body.click();
+        await sleep(200);
+        console.log(`[AutoFill V2] ✅ Đã điền ${filledCount}/4 khẳng định`);
+    }
+
+    async function tickTrueFalseAnswers(correctAnswers) {
+        if (!Array.isArray(correctAnswers) || correctAnswers.length !== 4) return;
+
+        const activeForm = document.getElementById('form_DUNG_SAI');
+        const trueInputs = activeForm.querySelectorAll('div.rg-pane-center-middle div[data-cell-colidx="1"] input');
+        const falseInputs = activeForm.querySelectorAll('div.rg-pane-center-middle div[data-cell-colidx="2"] input');
+
+        // Bỏ header nếu có
+        let trueRadios = Array.from(trueInputs);
+        let falseRadios = Array.from(falseInputs);
+        if (trueRadios.length > 4) trueRadios = trueRadios.slice(-4);
+        if (falseRadios.length > 4) falseRadios = falseRadios.slice(-4);
+
+        if (trueRadios.length >= 4 && falseRadios.length >= 4) {
+            for (let i = 0; i < 4; i++) {
+                const target = correctAnswers[i] ? trueRadios[i] : falseRadios[i];
+                if (target) {
+                    target.checked = true;
+                    console.log(`[AutoFill V2] ✅ Tích KĐ${i + 1}: ${correctAnswers[i] ? 'Đúng' : 'Sai'}`);
+                }
+            }
+        } else {
+            console.warn(`[AutoFill V2] ⚠️ Không đủ radio: Đúng=${trueRadios.length}, Sai=${falseRadios.length}`);
+        }
+    }
+
+    async function autoFillAll(payload) {
+        const typeCode = payload.typeCode;
+        const hasOptions = payload.options && payload.options.length === 4;
+
+        console.log(`[AutoFill V2] === BẮT ĐẦU AUTOFILL ===`);
+        console.log(`[AutoFill V2] Dạng: ${typeCode} | Options: ${hasOptions ? '4' : '0'}`);
+
+        const activeForm = document.getElementById('form_' + typeCode);
+        if (activeForm) {
+            console.log(`[AutoFill V2] Tổng .ql-editor: ${activeForm.querySelectorAll('.ql-editor').length}`);
+        }
+
+        await fillMainFields(payload);
+
+        if (typeCode === 'TRAC_NGHIEM' && hasOptions) {
+            await fillMultipleChoiceOptions(payload.options);
+            await fillMultipleChoiceOptionsTextInput(payload.options, activeForm || document);
+            if (payload.correct_answer) await tickMultipleChoiceAnswer(payload.correct_answer);
+        } else if (typeCode === 'DUNG_SAI' && hasOptions) {
+            await fillTrueFalseAssertions(payload.options);
+            if (Array.isArray(payload.correct_answer)) await tickTrueFalseAnswers(payload.correct_answer);
+        }
+
+        console.log(`[AutoFill V2] === HOÀN TẤT ===`);
+    }
+
+    // ==========================================
+    // RUN & RESET
+    // ==========================================
+    async function runAutoFill() {
+        const jsonStr = document.getElementById('jsonInput').value;
+
+        try {
+            const payload = JSON.parse(jsonStr);
+            if (!payload.typeCode) {
+                logToConsole('❌ JSON thiếu typeCode!', 'error');
+                return;
+            }
+
+            logToConsole(`▶️ Chạy AutoFill cho: ${payload.typeCode}`, 'info');
+            await autoFillAll(payload);
+            logToConsole('🎉 Hoàn tất!', 'info');
+        } catch (e) {
+            logToConsole(`❌ Lỗi: ${e.message}`, 'error');
+        }
+    }
+
+    function resetAllForms() {
+        document.querySelectorAll('.ql-editor').forEach(el => el.innerHTML = '');
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+        document.querySelectorAll('.rg-cell[data-cell-colidx="0"]').forEach(c => {
+            c.textContent = '';
+            c.style.background = '';
+        });
+        document.querySelectorAll('.text-input-wrapper .display-html-wrapper').forEach((display, idx) => {
+            display.textContent = `Bấm vào để nhập khẳng định ${(idx % 4) + 1}...`;
+            display.style.display = 'block';
+        });
+        document.querySelectorAll('.text-input-wrapper input').forEach(inp => inp.remove());
+        document.getElementById('consoleLog').innerHTML = '<div>🗑 Đã reset. Sẵn sàng...</div>';
+        logToConsole('Đã reset tất cả form', 'info');
+    }
+
+    // Load initial sample
+    loadSampleJSON('DUNG_SAI');
+</script>
+
+</body>
+</html>

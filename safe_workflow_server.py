@@ -41,6 +41,40 @@ _log_buffer = []
 _log_lock = threading.Lock()
 _log_counter = 0
 
+# Hàng đợi lệnh LMS và event mapping để giao tiếp bất đồng bộ với Tampermonkey
+lms_queue = []
+lms_event_map = {}
+lms_lock = threading.Lock()
+
+def enqueue_lms_command(action, payload=None):
+    global lms_queue, lms_event_map
+    session_id = int(time.time() * 1000)
+    evt = threading.Event()
+    with lms_lock:
+        lms_event_map[session_id] = {
+            'event': evt,
+            'result': None
+        }
+        lms_queue.append({
+            'action': action,
+            'session': session_id,
+            'payload': payload
+        })
+    return session_id, evt
+
+def wait_for_lms_result(session_id, timeout=30):
+    global lms_event_map
+    evt_data = None
+    with lms_lock:
+        evt_data = lms_event_map.get(session_id)
+    if evt_data:
+        success = evt_data['event'].wait(timeout=timeout)
+        with lms_lock:
+            res = lms_event_map.pop(session_id, None)
+        if success and res:
+            return res['result']
+    return None
+
 def log(msg, level="INFO"):
     """Hàm log tập trung. Xuất ra 2 nơi:
     1. Terminal (print) - plain text, không icon
@@ -480,7 +514,41 @@ class CaptureHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"status": "success", "message": "Đã ra lệnh dừng quy trình."}).encode('utf-8'))
             return
+        if self.path == '/lms/poll':
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
             
+            cmd = None
+            with lms_lock:
+                if len(lms_queue) > 0:
+                    cmd = lms_queue.pop(0)
+            
+            self.wfile.write(json.dumps({"command": cmd} if cmd else {}).encode('utf-8'))
+            return
+            
+        if self.path == '/lms/done':
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                res_data = json.loads(post_data.decode('utf-8'))
+                session_id = res_data.get('session')
+                with lms_lock:
+                    if session_id in lms_event_map:
+                        lms_event_map[session_id]['result'] = res_data
+                        lms_event_map[session_id]['event'].set()
+            except Exception as e:
+                log(f"Lỗi done lms: {e}", "ERROR")
+                
+            self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
+            return
+
         if self.path == '/search_id':
             STOP_FLAG = False
             content_length = int(self.headers.get('Content-Length', 0))
