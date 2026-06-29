@@ -6,68 +6,13 @@
 // @author       Bạn
 // @match        https://*.lotuslms.com/*
 // @match        https://daymai.vn/*
-// @grant        GM_xmlhttpRequest
-// @connect      localhost
+// @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    const SERVER = 'http://localhost:5050';
-    const POLL_INTERVAL = 500; // 0.5 giây gửi poll một lần
-    let isProcessing = false;
-    let badge = null;
-    let currentSession = 0;
-
     // ==========================================
-    // BADGE TRẠNG THÁI
-    // ==========================================
-    function createBadge() {
-        if (document.getElementById('aet-autofill-badge')) return;
-        badge = document.createElement('div');
-        badge.id = 'aet-autofill-badge';
-        badge.style.cssText = `
-            position: fixed; top: 8px; right: 280px; z-index: 9999999;
-            background: rgba(0,0,0,0.85); color: #10b981; padding: 6px 12px;
-            border-radius: 20px; font-size: 12px; font-family: monospace;
-            border: 1px solid #10b981; cursor: default;
-            backdrop-filter: blur(8px); transition: all 0.3s ease;
-        `;
-        badge.textContent = '🟢 LMS Autofill Ready';
-        document.body.appendChild(badge);
-    }
-
-    function setBadge(text, color) {
-        if (badge) {
-            badge.textContent = text;
-            badge.style.color = color;
-            badge.style.borderColor = color;
-        }
-    }
-
-    // ==========================================
-    // TIỆN ÍCH HTTP
-    // ==========================================
-    function postJSON(url, data) {
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                method: 'POST',
-                url: url,
-                headers: { 'Content-Type': 'application/json' },
-                data: JSON.stringify(data),
-                onload: (res) => {
-                    try {
-                        resolve(JSON.parse(res.responseText));
-                    } catch (e) {
-                        resolve({});
-                    }
-                },
-                onerror: reject,
-                ontimeout: reject,
-                timeout: 10000,
-            });
-        });
-    }
     // CẤU HÌNH
     // ==========================================
 
@@ -920,80 +865,4 @@
             }
         };
     });
-
-    async function doAutofill(payload) {
-        setBadge('⏳ Đang điền...', '#f59e0b');
-        try {
-            log('--- CHU KỲ 1: Khởi tạo & Dọn dẹp DOM ---');
-            await autoFillAll(payload, false);
-
-            await sleep(400);
-
-            log('--- CHU KỲ 2: Điền chính thức & Click Cập nhật ---');
-            await autoFillAll(payload, true);
-
-            setBadge('✅ Điền xong!', '#10b981');
-            await postJSON(`${SERVER}/lms/done`, { event: 'lms_autofill_done', session: currentSession });
-        } catch (err) {
-            console.error('[AutoFill V2] Autofill Error:', err);
-            setBadge('❌ Lỗi Autofill', '#ef4444');
-            await postJSON(`${SERVER}/lms/done`, {
-                event: 'lms_autofill_done',
-                session: currentSession,
-                error: err.message
-            });
-        }
-    }
-
-    async function handleCommand(cmd) {
-        const action = cmd.action;
-        currentSession = cmd.session || 0;
-        isProcessing = true;
-        setBadge(`⚙️ LMS: ${action}...`, '#f59e0b');
-
-        try {
-            if (action === 'autofill') {
-                await doAutofill(cmd.payload);
-            } else {
-                isProcessing = false;
-                setBadge('🟢 LMS Autofill Ready', '#10b981');
-                return;
-            }
-        } catch (err) {
-            console.error('[AutoFill V2] Error:', err);
-            setBadge(`❌ Lỗi: ${err.message}`, '#ef4444');
-            await postJSON(`${SERVER}/lms/done`, {
-                event: `lms_${action}_done`,
-                session: currentSession,
-                error: err.message,
-            });
-        }
-
-        isProcessing = false;
-        setBadge('🟢 LMS Autofill Ready', '#10b981');
-    }
-
-    async function pollServer() {
-        if (isProcessing) return;
-        try {
-            const res = await postJSON(`${SERVER}/lms/poll?tool=autofill`, {});
-            if (res && res.command) {
-                await handleCommand(res.command);
-            }
-        } catch (err) {
-            if (badge) setBadge('🔴 Mất kết nối', '#ef4444');
-        }
-    }
-
-    function init() {
-        createBadge();
-        setInterval(pollServer, POLL_INTERVAL);
-        setTimeout(pollServer, 1000);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
 })();

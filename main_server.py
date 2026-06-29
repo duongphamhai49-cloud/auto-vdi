@@ -883,6 +883,10 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 
                 log(f"Nhận lệnh điền LMS với dạng câu: {type_code}", "ACTION")
                 
+                # Đưa chuỗi JSON vào Clipboard để sẵn sàng dán
+                json_str = json.dumps(parsed_data, ensure_ascii=False)
+                ClipboardHelper.copy_text(json_str)
+                
                 # Quay lại tab LMS từ NotebookLM
                 log("Quay lại tab LMS (Ctrl + Shift + Tab)...", "ACTION")
                 GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
@@ -890,12 +894,14 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 CURRENT_TAB = 'LMS'
                 time.sleep(0.5)
                 
-                # Lấy focus tại Fcs_on_Edit_LMS
-                log("Focus Fcs_on_Edit_LMS...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_ON_EDIT_LMS)
+                # Click toạ độ nút dán lần 1
+                log("Click toạ độ dán lần 1 (649, 147)...", "ACTION")
+                pyautogui.click(x=649, y=147)
                 
-                # Gửi lệnh autofill cho Tampermonkey qua DOM Broker
-                LMSBroker.autofill(parsed_data)
+                # Đợi 3 giây rồi bấm lần nữa
+                time.sleep(3.0)
+                log("Click toạ độ dán lần 2 (649, 147)...", "ACTION")
+                pyautogui.click(x=649, y=147)
                 
                 # Chờ đợi Tampermonkey điền dữ liệu xong tùy theo loại câu
                 if type_code == 'DIEN_DAPAN':
