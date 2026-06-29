@@ -204,20 +204,27 @@ _log_lock = threading.Lock()
 _log_counter = 0
 
 # Hàng đợi lệnh LMS và event mapping để giao tiếp bất đồng bộ với Tampermonkey
-lms_queue = []
+lms_queues = {
+    'findopen': [],
+    'autofill': []
+}
 lms_event_map = {}
 lms_lock = threading.Lock()
 
 def enqueue_lms_command(action, payload=None):
-    global lms_queue, lms_event_map
+    global lms_queues, lms_event_map
     session_id = int(time.time() * 1000)
     evt = threading.Event()
+    
+    # Lệnh search, capture, edit -> findopen; lệnh autofill -> autofill
+    tool = 'autofill' if action == 'autofill' else 'findopen'
+    
     with lms_lock:
         lms_event_map[session_id] = {
             'event': evt,
             'result': None
         }
-        lms_queue.append({
+        lms_queues[tool].append({
             'action': action,
             'session': session_id,
             'payload': payload
@@ -537,7 +544,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         global STOP_FLAG, CURRENT_TAB
-        if self.path == '/stop':
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        query_params = parse_qs(parsed_url.query)
+
+        if path == '/stop':
             STOP_FLAG = True
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -545,7 +556,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"status": "success", "message": "Đã ra lệnh dừng quy trình."}).encode('utf-8'))
             return
-        if self.path == '/lms/poll':
+        if path == '/lms/poll':
+            tool = query_params.get('tool', ['findopen'])[0]
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')
@@ -553,13 +565,14 @@ class CaptureHandler(BaseHTTPRequestHandler):
             
             cmd = None
             with lms_lock:
-                if len(lms_queue) > 0:
-                    cmd = lms_queue.pop(0)
+                queue = lms_queues.get(tool, [])
+                if len(queue) > 0:
+                    cmd = queue.pop(0)
             
             self.wfile.write(json.dumps({"command": cmd} if cmd else {}).encode('utf-8'))
             return
             
-        if self.path == '/lms/done':
+        if path == '/lms/done':
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')
@@ -580,7 +593,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
             return
 
-        if self.path == '/search_id':
+        if path == '/search_id':
             STOP_FLAG = False
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
@@ -855,7 +868,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     fallback_cancel_routine()
                 self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
 
-        elif self.path == '/paste_lms':
+        elif path == '/paste_lms':
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')
@@ -902,7 +915,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log(f"LỖI TẠI PASTE_LMS: {e}", "ERROR")
                 fallback_cancel_routine()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
-        elif self.path == '/test_search_id':
+        elif path == '/test_search_id':
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')
@@ -916,7 +929,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 }).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
-        elif self.path == '/batch_start':
+        elif path == '/batch_start':
             # Endpoint: Bắt đầu phiên batch mới, tạo file history
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -947,7 +960,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 }).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
-        elif self.path == '/batch_item_start':
+        elif path == '/batch_item_start':
             # Endpoint: Gửi tin nhắn Discord khi bắt đầu xử lý 1 câu
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -968,7 +981,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
-        elif self.path == '/batch_log':
+        elif path == '/batch_log':
             # Endpoint: Ghi kết quả 1 ID vào file history
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1018,7 +1031,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
-        elif self.path == '/batch_end':
+        elif path == '/batch_end':
             # Endpoint: Kết thúc phiên batch, ghi footer + TỰ ĐỘNG gửi Gmail + Discord
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1095,7 +1108,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_GET(self):
-        if self.path == '/capture':
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        if path == '/capture':
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')
@@ -1114,7 +1129,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "success", "message": "Đã chụp và lưu vào Clipboard"}).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
-        elif self.path.startswith('/logs'):
+        elif path.startswith('/logs'):
             # Endpoint: Frontend poll log mới
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1124,8 +1139,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
             # Parse query param ?after=<id>
             after_id = 0
             try:
-                parsed = urlparse(self.path)
-                params = parse_qs(parsed.query)
+                params = parse_qs(parsed_url.query)
                 after_id = int(params.get('after', [0])[0])
             except:
                 pass
