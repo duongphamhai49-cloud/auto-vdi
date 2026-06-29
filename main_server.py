@@ -851,6 +851,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log("Đã click Copy từ NotebookLM.", "OK")
                     msg_extra += " | Đã Copy từ NBLM."
                     time.sleep(0.5)
+                    
+                    # Chuyển tab về LMS ngay lập tức
+                    log("Quay lại tab LMS ngay sau khi copy (Ctrl + Shift + Tab)...", "ACTION")
+                    GUIHelper.tab_swap(direction="backward")
+                    CURRENT_TAB = 'LMS'
+                    time.sleep(0.5)
                 else:
                     raise Exception("Không tìm thấy nút Copy của NotebookLM!")
 
@@ -887,20 +893,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 json_str = json.dumps(parsed_data, ensure_ascii=False)
                 ClipboardHelper.copy_text(json_str)
                 
-                # Quay lại tab LMS từ NotebookLM
-                log("Quay lại tab LMS (Ctrl + Shift + Tab)...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
-                GUIHelper.tab_swap(direction="backward")
-                CURRENT_TAB = 'LMS'
-                time.sleep(0.5)
-                
-                # Click toạ độ nút dán lần 1
-                log("Click toạ độ dán lần 1 (649, 147)...", "ACTION")
-                pyautogui.click(x=649, y=147)
-                
-                # Đợi 3 giây rồi bấm lần nữa
-                time.sleep(3.0)
-                log("Click toạ độ dán lần 2 (649, 147)...", "ACTION")
+                # Click vào nút dán 1 lần duy nhất tại tọa độ (649, 147)
+                log("Click nút dán tại tọa độ (649, 147)...", "ACTION")
                 pyautogui.click(x=649, y=147)
                 
                 # Chờ đợi Tampermonkey điền dữ liệu xong tùy theo loại câu
