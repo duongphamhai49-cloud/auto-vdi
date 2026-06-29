@@ -31,6 +31,20 @@
         return new Promise(r => setTimeout(r, ms));
     }
 
+    function findCardContainerByTitle(titleKeywords) {
+        const cards = document.querySelectorAll('.ant-card, .ant-card-bordered, .ant-row, .col-md-12');
+        for (const card of cards) {
+            const head = card.querySelector('.ant-card-head, .ant-card-head-title, .ant-form-item-label, label');
+            if (head) {
+                const text = head.textContent.trim().toLowerCase();
+                if (titleKeywords.some(keyword => text.includes(keyword))) {
+                    return card;
+                }
+            }
+        }
+        return null;
+    }
+
     function log(msg) {
         console.log(`[AutoFill V2] ${msg}`);
     }
@@ -50,8 +64,7 @@
             bubbles: true, cancelable: true,
             clientX: x, clientY: y,
             screenX: x, screenY: y,
-            button: 0, buttons: 1,
-            view: window
+            button: 0, buttons: 1
         };
 
         element.dispatchEvent(new PointerEvent('pointerdown', { ...baseInit, pointerId: 1, pointerType: 'mouse' }));
@@ -151,30 +164,96 @@
      * Tìm .ql-editor cho một trường cụ thể.
      * Ưu tiên container-based, fallback index-based (v1).
      */
-    function findEditorFor(field, typeCode) {
+    /**
+     * Tìm .ql-editor cho một trường cụ thể.
+     * Ưu tiên container-based, fallback index-based (v1).
+     */
+    async function findEditorFor(field, typeCode) {
         let editor = null;
 
         // === STRATEGY 1: Container-based ===
         if (field === 'debai') {
-            if (typeCode === 'TRAC_NGHIEM') {
-                const container = document.querySelector('.col-md-12 .wrapper-quill');
-                if (container) editor = container.querySelector('.ql-editor');
+            const debaiContainer = document.querySelector('.col-md-12 .wrapper-quill') || document.querySelector('.wrapper-quill');
+            if (debaiContainer) {
+                editor = debaiContainer.querySelector('.ql-editor');
+                if (!editor) {
+                    const clickTarget = debaiContainer.querySelector('i[aria-label="icon: edit"], svg, .quill') || debaiContainer;
+                    log('Click kích hoạt editor Đề bài...');
+                    simulateClick(clickTarget);
+                    try { clickTarget.click(); } catch (e) {}
+                    
+                    // Poll chờ editor xuất hiện
+                    for (let i = 0; i < 20; i++) {
+                        editor = debaiContainer.querySelector('.ql-editor');
+                        if (editor) break;
+                        await sleep(100);
+                    }
+                }
             }
             if (!editor) {
                 const allWrappers = document.querySelectorAll('.wrapper-quill');
                 for (const w of allWrappers) {
                     if (!w.closest('.hints') && !w.closest('.solutions') && !w.closest('.col-md-9')) {
                         editor = w.querySelector('.ql-editor');
+                        if (!editor) {
+                            const clickTarget = w.querySelector('i[aria-label="icon: edit"], svg, .quill') || w;
+                            log('Click kích hoạt editor Đề bài (wrapper)...');
+                            simulateClick(clickTarget);
+                            try { clickTarget.click(); } catch (e) {}
+                            
+                            // Poll chờ editor xuất hiện
+                            for (let i = 0; i < 20; i++) {
+                                editor = w.querySelector('.ql-editor');
+                                if (editor) break;
+                                await sleep(100);
+                            }
+                        }
                         if (editor) break;
                     }
                 }
             }
         } else if (field === 'goiy') {
-            const hintsEl = document.querySelector('.hints');
-            if (hintsEl) editor = hintsEl.querySelector('.ql-editor');
+            let hintsEl = document.querySelector('.hints');
+            if (!hintsEl) {
+                hintsEl = findCardContainerByTitle(['gợi ý', 'hint']);
+            }
+            if (hintsEl) {
+                editor = hintsEl.querySelector('.ql-editor');
+                if (!editor) {
+                    const clickTarget = hintsEl.querySelector('i[aria-label="icon: edit"], svg, .quill') || hintsEl;
+                    log('Click kích hoạt editor Gợi ý...');
+                    simulateClick(clickTarget);
+                    try { clickTarget.click(); } catch (e) {}
+                    
+                    // Poll chờ editor xuất hiện
+                    for (let i = 0; i < 20; i++) {
+                        editor = hintsEl.querySelector('.ql-editor');
+                        if (editor) break;
+                        await sleep(100);
+                    }
+                }
+            }
         } else if (field === 'loigiai') {
-            const solEl = document.querySelector('.solutions');
-            if (solEl) editor = solEl.querySelector('.ql-editor');
+            let solEl = document.querySelector('.solutions');
+            if (!solEl) {
+                solEl = findCardContainerByTitle(['lời giải', 'hướng dẫn', 'solution', 'explanation']);
+            }
+            if (solEl) {
+                editor = solEl.querySelector('.ql-editor');
+                if (!editor) {
+                    const clickTarget = solEl.querySelector('i[aria-label="icon: edit"], svg, .quill') || solEl;
+                    log('Click kích hoạt editor Lời giải...');
+                    simulateClick(clickTarget);
+                    try { clickTarget.click(); } catch (e) {}
+                    
+                    // Poll chờ editor xuất hiện
+                    for (let i = 0; i < 20; i++) {
+                        editor = solEl.querySelector('.ql-editor');
+                        if (editor) break;
+                        await sleep(100);
+                    }
+                }
+            }
         }
 
         if (editor) {
@@ -183,8 +262,14 @@
         }
 
         // === STRATEGY 2: Fallback index-based (v1) ===
-        const map = INDEX_MAPPING[typeCode] || INDEX_MAPPING['DUNG_SAI'];
         const allEditors = document.querySelectorAll('.ql-editor');
+        let map = INDEX_MAPPING[typeCode] || INDEX_MAPPING['DUNG_SAI'];
+        
+        // Nếu là trắc nghiệm nhưng số lượng editor < 5 (options là text-input chứ không phải Quill)
+        if (typeCode === 'TRAC_NGHIEM' && allEditors.length < 5) {
+            map = { debai: 0, goiy: 1, loigiai: 2 };
+        }
+        
         const idx = map[field];
 
         if (idx !== undefined && allEditors[idx]) {
@@ -205,7 +290,7 @@
 
         if (payload.debai) {
             try {
-                const editor = findEditorFor('debai', typeCode);
+                const editor = await findEditorFor('debai', typeCode);
                 if (editor) { 
                     await insertIntoQuill(editor, payload.debai); 
                     log('✅ Đề bài'); 
@@ -216,7 +301,7 @@
 
         if (payload.goiy) {
             try {
-                const editor = findEditorFor('goiy', typeCode);
+                const editor = await findEditorFor('goiy', typeCode);
                 if (editor) { 
                     await insertIntoQuill(editor, payload.goiy); 
                     log('✅ Gợi ý'); 
@@ -227,7 +312,7 @@
 
         if (payload.loigiai) {
             try {
-                const editor = findEditorFor('loigiai', typeCode);
+                const editor = await findEditorFor('loigiai', typeCode);
                 if (editor) { 
                     await insertIntoQuill(editor, payload.loigiai); 
                     log('✅ Lời giải'); 
