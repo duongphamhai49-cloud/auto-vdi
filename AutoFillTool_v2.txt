@@ -82,6 +82,9 @@
         safeStr = safeStr.replace(/(Xét tính đúng sai của các khẳng định sau:?)/gi, '<i>$1</i>');
         safeStr = safeStr.replace(/(Khẳng định\s+[A-D1-4]\s+(?:đúng|sai)[^\.\n]*\.?)/gi, '<b>$1</b>');
 
+        // Hỗ trợ in đậm cho chữ "những" / "Những" định dạng markdown
+        safeStr = safeStr.replace(/\*\*(những)\*\*?/gi, '<b>$1</b>');
+
         safeStr = safeStr.replace(/\*\*(<b>.*?<\/b>)\*\*/gi, '$1');
         safeStr = safeStr.replace(/\*(<i>.*?<\/i>)\*/gi, '$1');
 
@@ -517,10 +520,19 @@
     async function tickMultipleChoiceAnswer(correctAnswer, container) {
         if (!correctAnswer || !container) return;
 
-        const ansIdx = parseInt(correctAnswer) - 1; // 1-based → 0-based
-        if (isNaN(ansIdx) || ansIdx < 0 || ansIdx > 3) return;
+        let correctIndices = [];
+        if (Array.isArray(correctAnswer)) {
+            correctIndices = correctAnswer.map(x => parseInt(x) - 1).filter(idx => !isNaN(idx) && idx >= 0 && idx <= 3);
+        } else {
+            const ansIdx = parseInt(correctAnswer) - 1;
+            if (!isNaN(ansIdx) && ansIdx >= 0 && ansIdx <= 3) {
+                correctIndices = [ansIdx];
+            }
+        }
 
-        log(`Bắt đầu tích đáp án trắc nghiệm: phương án ${ansIdx + 1}`);
+        if (correctIndices.length === 0) return;
+
+        log(`Bắt đầu tích đáp án trắc nghiệm: các phương án ${correctIndices.map(i => i + 1).join(', ')}`);
 
         let inputs = [];
 
@@ -563,7 +575,7 @@
             // Đảm bảo trạng thái tích chính xác tuyệt đối (chỉ tích ô đúng, bỏ tích tất cả ô khác)
             for (let i = 0; i < 4; i++) {
                 try {
-                    const shouldBeChecked = (i === ansIdx);
+                    const shouldBeChecked = correctIndices.includes(i);
                     const input = inputs[i];
 
                     if (input.checked !== shouldBeChecked) {

@@ -995,31 +995,55 @@
                         parsedAnswerData = rawAns;
                     }
                 } else if (isMultipleChoice) {
-                    let choiceNum = null;
-                    let m1 = rawAns.match(/số\s*([1-4])/i);
-                    let m2 = rawAns.match(/đáp án\s*([A-D])/i);
-
-                    if (m1) choiceNum = parseInt(m1[1]);
-                    else if (m2) {
-                        const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
-                        choiceNum = map[m2[1].toUpperCase()];
-                    }
-
-                    if (!choiceNum) {
-                        const cleanAns = rawAns.replace(/[\$\.\s]/g, '').toLowerCase();
-                        for (let i = 0; i < options.length; i++) {
-                            const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
-                            if (cleanOpt && (cleanOpt.includes(cleanAns) || cleanAns.includes(cleanOpt))) {
-                                choiceNum = i + 1;
-                                break;
+                    const parts = rawAns.split(/\s+và\s+|\s+and\s+|,/i).map(p => p.trim()).filter(Boolean);
+                    const foundIndices = [];
+                    
+                    for (const part of parts) {
+                        let choiceNum = null;
+                        let m1 = part.match(/(?:số|lựa chọn|phương án)\s*([1-4])/i);
+                        let m2 = part.match(/(?:đáp án|phương án)\s*([A-D])/i);
+                        if (m1) {
+                            choiceNum = parseInt(m1[1]);
+                        } else if (m2) {
+                            const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+                            choiceNum = map[m2[1].toUpperCase()];
+                        }
+                        
+                        if (!choiceNum) {
+                            const cleanPart = part.replace(/[\$\.\s]/g, '').toLowerCase();
+                            if (/^[1-4]$/.test(cleanPart)) {
+                                choiceNum = parseInt(cleanPart);
+                            } else if (/^[a-d]$/i.test(cleanPart)) {
+                                const map = { 'a': 1, 'b': 2, 'c': 3, 'd': 4 };
+                                choiceNum = map[cleanPart];
+                            } else if (cleanPart) {
+                                for (let i = 0; i < options.length; i++) {
+                                    const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
+                                    if (cleanOpt && (cleanOpt.includes(cleanPart) || cleanPart.includes(cleanOpt))) {
+                                        choiceNum = i + 1;
+                                        break;
+                                    }
+                                }
                             }
+                        }
+                        
+                        if (choiceNum && !foundIndices.includes(choiceNum)) {
+                            foundIndices.push(choiceNum);
                         }
                     }
 
-                    if (choiceNum) {
-                        answerTitleStr = `Lựa chọn ${choiceNum}`;
-                        answerContentStr = options[choiceNum - 1];
-                        parsedAnswerData = choiceNum;
+                    if (foundIndices.length > 0) {
+                        if (foundIndices.length === 1) {
+                            const choiceNum = foundIndices[0];
+                            answerTitleStr = `Lựa chọn ${choiceNum}`;
+                            answerContentStr = options[choiceNum - 1];
+                            parsedAnswerData = choiceNum;
+                        } else {
+                            foundIndices.sort((a, b) => a - b);
+                            answerTitleStr = `Các lựa chọn: ${foundIndices.join(', ')}`;
+                            answerContentStr = foundIndices.map(idx => `${idx}: ${options[idx - 1]}`).join(' | ');
+                            parsedAnswerData = foundIndices;
+                        }
                     } else {
                         answerTitleStr = `Lựa chọn ?`;
                         answerContentStr = rawAns;
