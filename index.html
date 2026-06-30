@@ -923,7 +923,7 @@
                 if (lines.length >= 5) {
                     options = lines.slice(-4).map(l => l.trim());
                     deBai = lines.slice(0, -4).join('\n').trim();
-                    options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, ''));
+                    options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, ''));
                 } else {
                     deBai = questionText;
                 }
@@ -947,32 +947,56 @@
             // Format short answer (fill-in-the-blank)
             if (deBai.includes('____') && ansMatch && options.length === 0) {
                 let rawAns = ansMatch[1].replace(/\$/g, '').trim();
-                answerTitleStr = rawAns; // For Short Answer
-                parsedAnswerData = rawAns;
-
-                let replacement = '__' + rawAns + '__';
-
-                // Allow digits, decimals, and negative sign
-                if (/^-?\d+(\.\d+)?$/.test(rawAns)) {
-                    let variants = [rawAns];
-
-                    if (rawAns.startsWith('-')) {
-                        variants.push('- ' + rawAns.substring(1));
-                    }
-
-                    let numStr = rawAns.replace('-', '');
-                    if (numStr.length >= 4 && !numStr.includes('.')) {
-                        let withSpaces = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        variants.push(rawAns.startsWith('-') ? '-' + withSpaces : withSpaces);
-                        if (rawAns.startsWith('-')) {
-                            variants.push('- ' + withSpaces);
+                const numBlanks = (deBai.match(/____/g) || []).length;
+                
+                let ansParts = [];
+                if (numBlanks <= 1) {
+                    ansParts = [rawAns];
+                } else {
+                    ansParts = rawAns.split(/\s+và\s+|\s+and\s+/i).map(p => p.trim()).filter(Boolean);
+                    if (ansParts.length < numBlanks) {
+                        const commaSplitParts = [];
+                        ansParts.forEach(part => {
+                            const subs = part.split(',').map(s => s.trim()).filter(Boolean);
+                            commaSplitParts.push(...subs);
+                        });
+                        if (commaSplitParts.length <= numBlanks) {
+                            ansParts = commaSplitParts;
                         }
                     }
-
-                    replacement = '__' + [...new Set(variants)].join('/') + '__';
                 }
+                
+                answerTitleStr = ansParts.join(' | ');
+                parsedAnswerData = rawAns;
 
-                deBai = deBai.replace(/____/g, replacement);
+                const replacements = ansParts.map(part => {
+                    let cleanPart = part.replace(/\$/g, '').trim();
+                    let variants = [cleanPart];
+                    if (/^-?\d+([.,]\d+)?$/.test(cleanPart)) {
+                        // Normalize decimals for variant checks if needed, but keep original representation
+                        if (cleanPart.startsWith('-')) {
+                            variants.push('- ' + cleanPart.substring(1));
+                        }
+
+                        let numStr = cleanPart.replace('-', '');
+                        // Also support comma separator for thousands in variants
+                        if (numStr.length >= 4 && !numStr.includes('.') && !numStr.includes(',')) {
+                            let withSpaces = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                            variants.push(cleanPart.startsWith('-') ? '-' + withSpaces : withSpaces);
+                            if (cleanPart.startsWith('-')) {
+                                variants.push('- ' + withSpaces);
+                            }
+                        }
+                    }
+                    return '__' + [...new Set(variants)].join('/') + '__';
+                });
+
+                let replaceIdx = 0;
+                while (deBai.includes('____') && replacements.length > 0) {
+                    const repl = replacements[replaceIdx % replacements.length];
+                    deBai = deBai.replace('____', repl);
+                    replaceIdx++;
+                }
             }
             else if (ansMatch) {
                 // Parse True/False or Multiple Choice Answer
