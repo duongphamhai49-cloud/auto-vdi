@@ -44,13 +44,15 @@ class GUIHelper:
     Lớp hỗ trợ toàn bộ các thao tác giao diện người dùng (PyAutoGUI).
     Tuân thủ nguyên tắc Single Responsibility (SRP): Chỉ chịu trách nhiệm về tương tác GUI.
     """
-    FCS_GEM_LMS = (1137, 372)      # Tọa độ focus trình duyệt chứa LMS và NBLM (Trái)
+    FCS_GEM_LMS = (1183, 603)      # Tọa độ focus trình duyệt chứa LMS và NBLM (Trái)
     FCS_ON_NBLM = (895, 401)       # Tọa độ focus NotebookLM
     FCS_ON_EDIT_LMS = (989, 544)   # Tọa độ focus giữa Modal Edit câu hỏi trên LMS
     FCS_LMS_CANCEL = (24, 702)     # Tọa độ focus an toàn để đóng modal bằng nút Cancel
+    FCS_ON_GEM = (1607, 297)       # Tọa độ focus Gemini
     
     GEMINI_CHATBOX = (1526, 445)   # Tọa độ ô chat Gemini (Phải trên)
     GEMINI_SEND_BTN = (1872, 455)  # Tọa độ nút gửi của Gemini
+    GEMINI_SEND_PIXEL = (1862, 469) # Tọa độ pixel kiểm tra nút Send của Gemini
     
     NBLM_CHATBOX = (530, 936)      # Tọa độ ô chat NotebookLM
     NBLM_SEND_BTN = (889, 922)     # Tọa độ nút gửi của NotebookLM
@@ -59,7 +61,7 @@ class GUIHelper:
     GEMINI_COPY_REGION = (1294, 107, 585, 320) # Vùng tìm ảnh copy Gemini
     GEMINI_COPY_FALLBACK = (1482, 335)
     
-    NBLM_COPY_REGION = (18, 605, 1165, 82)    # Vùng tìm ảnh copy NotebookLM
+    NBLM_COPY_REGION = (354, 447, 598, 455)    # Vùng tìm ảnh copy NotebookLM mới
 
     @classmethod
     def focus(cls, coords):
@@ -500,6 +502,8 @@ GEMINI_CHATBOX_Y = 445
 # 5. Tọa độ nút Send của Gemini (Dùng để check màu xanh)
 GEMINI_SEND_BTN_X = 1872
 GEMINI_SEND_BTN_Y = 455
+GEMINI_SEND_PIXEL_X = 1862
+GEMINI_SEND_PIXEL_Y = 469
 
 # 6. Vùng tìm kiếm nhanh cho nút Bút (Left, Top, Width, Height)
 PENCIL1_REGION = (1009, 181, 92, 802) # Từ (1009,181) đến (1101, 983)
@@ -513,7 +517,7 @@ GEMINI_COPY_FALLBACK = (1482, 335)
 # 8. Tọa độ và Vùng tìm kiếm của NotebookLM
 NBLM_SEND_BTN_X = 889
 NBLM_SEND_BTN_Y = 922
-NBLM_COPY_REGION = (18, 605, 1165, 82) # Từ (18, 605) đến (1183, 687)
+NBLM_COPY_REGION = (354, 447, 598, 455) # Vùng tìm ảnh copy NotebookLM mới
 
 # ==========================================
 
@@ -614,27 +618,39 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 return
             
             try:
-                # 1. Gọi Tampermonkey qua DOM để tìm kiếm ID
+                log(f"=== BẮT ĐẦU XỬ LÝ ID: {question_id} ===", "STATUS")
+                
+                # 1. Gọi Tampermonkey qua DOM để tìm kiếm ID (Không scroll, click thẳng input)
+                log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
                 res_search = LMSBroker.search(question_id)
                 if not res_search or res_search.get('error'):
                     err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
-                    raise Exception(f"Lỗi tìm ID: {err}")
-
+                    raise Exception(f"Lỗi tìm kiếm ID: {err}")
+                log("Đã tìm thấy câu hỏi trên LMS.", "OK")
+                
                 # 2. Gọi Tampermonkey qua DOM để chụp ảnh câu hỏi dạng base64
+                log("Đang chụp ảnh câu hỏi bằng Tampermonkey...", "STATUS")
                 res_capture = LMSBroker.capture()
                 if not res_capture or res_capture.get('error') or 'image' not in res_capture:
                     err = res_capture.get('error') if res_capture else "Timeout chụp ảnh"
                     raise Exception(f"Lỗi chụp ảnh: {err}")
                 
-                # Giải mã base64 và nạp ảnh vào Clipboard
                 img_b64 = res_capture['image']
                 if not ClipboardHelper.write_base64_image(img_b64):
                     raise Exception("Không thể lưu ảnh chụp vào Clipboard!")
-
+                
                 # 3. Gọi Tampermonkey qua DOM để mở chế độ sửa (Click 2 lần cây bút)
                 # Bắt đầu bất đồng bộ, Python không chờ mà tiến hành dán Gemini ngay
                 log("Gửi lệnh mở Edit (2 bút chì) cho Tampermonkey...", "STATUS")
                 session_id_edit, evt_edit = enqueue_lms_command('edit')
+
+                # Lưu màu rảnh rỗi động của Gemini trước khi dán ảnh
+                try:
+                    gemini_idle_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
+                    log(f"Đã lưu màu rảnh rỗi của Gemini: {gemini_idle_color}", "OK")
+                except Exception as e:
+                    gemini_idle_color = None
+                    log(f"Không thể đọc màu rảnh rỗi động của Gemini: {e}", "WARN")
 
                 # 4. Tranh thủ thời gian đợi LMS load -> Đi qua Gemini (Phải) dán ảnh
                 log("Tranh thủ chuyển sang dán ảnh vào Gemini...", "STATUS")
@@ -645,20 +661,24 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log("Chờ đúng 3s để Gemini load ảnh...", "STATUS")
                 time.sleep(3.0)
                 
-                # Mắt thần quét tìm nút Gemini Send trong vùng quy định
-                log("Quét tìm nút Gemini Send để gửi ảnh...", "STATUS")
-                gemini_send_pos = None
-                for _ in range(15): # Tìm tối đa 3 giây (15 * 0.2s)
-                    try:
-                        gemini_send_pos = pyautogui.locateOnScreen('gemini_send.png', region=(1312, 317, 607, 212), confidence=0.8)
-                        if gemini_send_pos:
-                            log("Đã phát hiện nút Gemini Send!", "OK")
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(0.2)
+                # Kiểm tra màu pixel tại GEMINI_SEND_PIXEL xem đã khớp với màu rảnh rỗi chưa
+                log("Kiểm tra trạng thái load ảnh bằng pixel check...", "STATUS")
+                load_ok = False
+                if gemini_idle_color:
+                    for _ in range(14): # Poll tối đa 7s (14 * 0.5s)
+                        try:
+                            if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_idle_color, tolerance=15):
+                                load_ok = True
+                                log("Phát hiện Gemini đã load ảnh xong (Khớp màu Send rảnh rỗi)!", "OK")
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.5)
                 
-                # Bấm enter gửi ảnh (tìm được hay không vẫn nhấn enter như cũ)
+                if not load_ok:
+                    log("Không thấy màu Send rảnh rỗi khớp, tiến hành bấm Enter cưỡng bức...", "WARN")
+
+                # Bấm enter gửi ảnh
                 pyautogui.press('enter')
                 log("Đã gửi ảnh lên Gemini.", "OK")
                 
@@ -671,37 +691,40 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log("Tampermonkey đã mở modal soạn thảo thành công.", "OK")
                 msg_extra = "Đã tìm & mở Edit (DOM) | Đã gửi Gemini."
 
-                # 6. Đợi Gemini xử lý xong (6s sau khi nhấn Enter + check nút Send xuất hiện lại)
-                log("Chờ Gemini xử lý phản hồi (nghỉ 6s)...", "STATUS")
-                time.sleep(6.0)
+                # 6. Đợi Gemini xử lý xong (5s sau khi nhấn Enter + check màu rảnh rỗi)
+                log("Chờ Gemini xử lý phản hồi (nghỉ 5s)...", "STATUS")
+                time.sleep(5.0)
                 
-                log("Chờ nút Gemini Send xuất hiện lại để xác nhận xử lý xong...", "STATUS")
+                log("Kiểm tra xem Gemini đã phản hồi xong chưa...", "STATUS")
                 gemini_done = False
-                for _ in range(50): # Tìm tối đa 10s (50 * 0.2s)
-                    try:
-                        if pyautogui.locateOnScreen('gemini_send.png', region=(1312, 317, 607, 212), confidence=0.8):
-                            gemini_done = True
-                            log("Nút Send đã xuất hiện trở lại, Gemini hoàn tất!", "OK")
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(0.2)
+                if gemini_idle_color:
+                    for _ in range(20): # Poll tối đa 10s (20 * 0.5s)
+                        try:
+                            if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_idle_color, tolerance=15):
+                                gemini_done = True
+                                log("Phát hiện Gemini đã phản hồi xong (Khớp màu Send rảnh rỗi)!", "OK")
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.5)
                 
                 if not gemini_done:
-                    log("Không xác nhận được nút Send, vẫn tiến hành copy theo tọa độ dự phòng...", "WARN")
+                    log("Hết 10s kiểm tra màu nhưng chưa khớp, vẫn tiến hành quy trình lấy output...", "WARN")
                 
-                # Cuộn chuột thật mạnh xuống dưới trên trang Gemini để tìm nút Copy
-                log("Cuộn trang Gemini xuống tận cùng để tìm nút Copy...", "ACTION")
-                pyautogui.click(x=1587, y=240) # Focus sang Gemini
-                time.sleep(0.2)
-                pyautogui.scroll(-5000)
-                pyautogui.scroll(-5000)
-                time.sleep(0.3)
+                # Lấy focus tại FCS_ON_GEM trước khi gửi phím End
+                log("Focus vào vùng Gemini (FCS_ON_GEM) để chuẩn bị copy...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_ON_GEM)
+                time.sleep(0.1)
                 
-                # Tìm nút Copy Gemini (Thử lần 1)
+                # Bấm phím End lần 1
+                log("Nhấn phím End lần 1...", "ACTION")
+                pyautogui.press('end')
+                time.sleep(0.5) # Đợi đúng 0.5s
+                
+                # Tìm nút Copy Gemini lần 1
                 log("Tìm nút Copy Gemini (Lần 1)...", "SEARCH")
                 copy_pos = None
-                for _ in range(25): # Thử trong 2.5s
+                for _ in range(25): # Thử quét trong 2.5s
                     try:
                         copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
                         if copy_pos:
@@ -711,13 +734,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.1)
                 
                 if not copy_pos:
-                    log("Lần 1 không thấy nút Copy. Đợi tiếp 5s và cuộn chuột mạnh lần 2...", "WARN")
-                    time.sleep(5.0)
-                    pyautogui.scroll(-5000)
-                    pyautogui.scroll(-5000)
-                    time.sleep(0.3)
+                    log("Không tìm thấy nút Copy lần 1. Nhấn phím End lần 2...", "WARN")
+                    pyautogui.press('end')
+                    time.sleep(0.5) # Đợi tiếp 0.5s
+                    
                     log("Tìm nút Copy Gemini (Lần 2)...", "SEARCH")
-                    for _ in range(25):
+                    for _ in range(25): # Thử quét tiếp trong 2.5s
                         try:
                             copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
                             if copy_pos:
@@ -736,11 +758,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     pyautogui.press('f5')
                     log("Đã bấm F5 tải lại Gemini.", "ACTION")
                 else:
-                    log("Không tìm thấy nút Copy Gemini, sử dụng tọa độ dự phòng...", "ERROR")
-                    pyautogui.click(x=GUIHelper.GEMINI_COPY_FALLBACK[0], y=GUIHelper.GEMINI_COPY_FALLBACK[1])
-                    msg_extra += " | Đã Copy Gemini (Dự phòng)."
-                    time.sleep(0.5)
-                    pyautogui.press('f5')
+                    raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
 
                 # 7. Chuyển sang NotebookLM để dán gửi
                 log("Focus lại cửa sổ chứa LMS & NBLM (Fcs_Gem_LMS)...", "ACTION")
@@ -767,15 +785,16 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log("Đã dán và gửi nội dung vào NotebookLM.", "OK")
                 msg_extra += " | Đã gửi NBLM."
 
-                # 8. Đợi NBLM phản hồi (Đảo tab chống Timeout)
-                log("Đợi đúng 10s sau khi gửi NotebookLM...", "STATUS")
+                # Sau khi gửi xong, lập tức lấy focus tại FCS_ON_NBLM
+                log("Lập tức focus NotebookLM (FCS_ON_NBLM)...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
+
+                # Sau đó đợi cứng 10s rồi mới bắt đầu quy trình đảo tab
+                log("Đợi cứng 10s sau khi gửi NotebookLM...", "STATUS")
                 time.sleep(10.0)
                 
-                log("Focus Fcs_on_NBLM để kiểm tra trạng thái...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
-                
                 nblm_done = False
-                # Vòng lặp tối đa 10 chu kỳ đảo tab
+                # Vòng lặp tối đa 10 chu kỳ đảo tab (Không lấy focus gì nữa trong suốt quá trình này)
                 for cycle in range(10):
                     if STOP_FLAG:
                         raise Exception("Bị dừng bởi người dùng!")
@@ -802,9 +821,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             raise Exception("Bị dừng bởi người dùng!")
                         time.sleep(1.0)
                     
-                    # Quay lại NBLM
+                    # Quay lại NBLM (chỉ đảo tab, không lấy focus)
                     log("Quay lại NotebookLM...", "STATUS")
-                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
                     GUIHelper.tab_swap(direction="forward")
                     CURRENT_TAB = 'NBLM'
                     time.sleep(1.0) # Chờ render tab
@@ -812,15 +830,17 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 if not nblm_done:
                     raise Exception("Chờ quá lâu mà NotebookLM không phản hồi (Timeout 10 chu kỳ)!")
 
-                # 9. Lăn chuột mạnh NBLM 100,000px trong 3s và tìm nút Copy
-                log("Focus Fcs_on_NBLM để lăn chuột...", "ACTION")
+                # 9. Lấy Output của NotebookLM
+                log("Focus NotebookLM (FCS_ON_NBLM) trước khi nhấn End...", "ACTION")
                 GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
+                time.sleep(0.1)
+
+                # Bấm phím End lần 1
+                log("Nhấn phím End lần 1...", "ACTION")
+                pyautogui.press('end')
+                time.sleep(0.5) # Đợi đúng 0.5s
                 
-                log("Lăn chuột mạnh NotebookLM xuống chi tiết...", "ACTION")
-                GUIHelper.scroll_down_strongly(seconds=3.0)
-                time.sleep(0.3)
-                
-                # Tìm nút Copy NBLM (Lần 1)
+                # Tìm nút Copy NBLM lần 1
                 log("Tìm nút Copy NotebookLM (Lần 1)...", "SEARCH")
                 nblm_copy_pos = None
                 for _ in range(30):
@@ -833,9 +853,10 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.1)
                 
                 if not nblm_copy_pos:
-                    log("Lần 1 không thấy nút Copy NBLM. Thử lăn mạnh lần 2...", "WARN")
-                    GUIHelper.scroll_down_strongly(seconds=3.0)
-                    time.sleep(0.3)
+                    log("Không tìm thấy nút Copy NBLM lần 1. Nhấn phím End lần 2...", "WARN")
+                    pyautogui.press('end')
+                    time.sleep(0.5) # Đợi tiếp 0.5s
+                    
                     log("Tìm nút Copy NotebookLM (Lần 2)...", "SEARCH")
                     for _ in range(30):
                         try:
@@ -858,7 +879,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     CURRENT_TAB = 'LMS'
                     time.sleep(0.5)
                 else:
-                    raise Exception("Không tìm thấy nút Copy của NotebookLM!")
+                    raise Exception("Không tìm thấy nút Copy của NotebookLM sau 2 lần bấm End!")
 
                 # Đọc kết quả từ Clipboard trả về cho index.html
                 copied_text = ClipboardHelper.paste_text()
