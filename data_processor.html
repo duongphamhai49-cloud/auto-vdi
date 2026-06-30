@@ -255,6 +255,23 @@
             transform: translateY(-5px) scale(1.1);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         }
+        
+        .sw-btn {
+            transition: all 0.2s ease;
+        }
+        .sw-btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .sw-btn:active {
+            transform: scale(0.95) !important;
+        }
+
+        .btn-delete-file:hover {
+            opacity: 1 !important;
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
@@ -264,14 +281,14 @@
     </div>
 
     <div class="file-upload-wrapper">
-        <label for="historyFile" class="file-upload-btn" title="Tải lên file History (.txt)">
+        <label for="historyFile" class="file-upload-btn" title="Tải thêm file History (.txt)">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
         </label>
-        <input type="file" id="historyFile" class="file-upload-input" accept=".txt">
+        <input type="file" id="historyFile" class="file-upload-input" accept=".txt" multiple>
     </div>
 
     <div id="card_container">
@@ -284,8 +301,121 @@
         </svg>
     </button>
 
+    <div id="stopwatch_widget" style="position: fixed; bottom: 30px; left: 30px; z-index: 1000; background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border-radius: 8px; padding: 0.35rem 0.6rem; display: flex; align-items: center; gap: 0.6rem; width: auto; min-width: 140px; transition: all 0.3s ease;">
+        <!-- Time display -->
+        <div id="stopwatch_time" style="font-family: monospace; font-size: 0.95rem; font-weight: bold; color: #ffffff; min-width: 60px; text-shadow: 0 0 6px rgba(255, 255, 255, 0.3); text-align: center;">00:00:00</div>
+        
+        <!-- Divider -->
+        <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.3);"></div>
+        
+        <!-- Stats: Questions count -->
+        <div id="sw_stats_q" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold;" title="Tổng số câu hỏi duy nhất">
+            <span>📝</span>
+            <span id="sw_q_count">0</span>
+        </div>
+        
+        <!-- Stats: Flagged count -->
+        <div id="sw_stats_f" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" title="Số câu chưa check">
+            <span id="sw_f_icon" style="opacity: 0.6;">🚩</span>
+            <span id="sw_f_count">0</span>
+        </div>
+        
+        <!-- Divider -->
+        <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.3);"></div>
+        
+        <!-- Controls wrapper -->
+        <div style="display: flex; gap: 0.25rem; align-items: center;">
+            <!-- Play / Pause -->
+            <button id="sw_play_btn" class="sw-btn" onclick="toggleStopwatch()" style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;" title="Bắt đầu / Tạm dừng">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+            <!-- Reset -->
+            <button id="sw_reset_btn" class="sw-btn" onclick="resetStopwatch()" style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;" title="Đặt lại">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+            </button>
+            <!-- Hide / Show -->
+            <button id="sw_hide_btn" class="sw-btn" onclick="toggleHideStopwatch()" style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;" title="Ẩn / Hiện thời gian">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+        </div>
+    </div>
+
     <script>
         window.allParsedData = {};
+
+        // Stopwatch State
+        let stopwatchInterval = null;
+        let stopwatchSeconds = 0;
+        let stopwatchIsRunning = false;
+        let stopwatchIsHidden = false;
+
+        function updateStopwatchDisplay() {
+            const timeEl = document.getElementById('stopwatch_time');
+            if (!timeEl) return;
+
+            if (stopwatchIsHidden) {
+                timeEl.textContent = '**:**:**';
+                timeEl.style.color = 'rgba(255, 255, 255, 0.7)';
+                return;
+            }
+
+            timeEl.style.color = '#ffffff';
+            const h = Math.floor(stopwatchSeconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((stopwatchSeconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (stopwatchSeconds % 60).toString().padStart(2, '0');
+            timeEl.textContent = `${h}:${m}:${s}`;
+        }
+
+        function toggleStopwatch() {
+            const playBtn = document.getElementById('sw_play_btn');
+            if (!playBtn) return;
+
+            if (stopwatchIsRunning) {
+                // Pause
+                clearInterval(stopwatchInterval);
+                stopwatchIsRunning = false;
+                playBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+                playBtn.style.background = 'rgba(0, 0, 0, 0.25)';
+            } else {
+                // Start / Continue
+                stopwatchInterval = setInterval(() => {
+                    stopwatchSeconds++;
+                    updateStopwatchDisplay();
+                }, 1000);
+                stopwatchIsRunning = true;
+                playBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+                playBtn.style.background = 'rgba(239, 68, 68, 0.6)';
+            }
+        }
+
+        function resetStopwatch() {
+            clearInterval(stopwatchInterval);
+            stopwatchSeconds = 0;
+            stopwatchIsRunning = false;
+            updateStopwatchDisplay();
+            
+            const playBtn = document.getElementById('sw_play_btn');
+            if (playBtn) {
+                playBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+                playBtn.style.background = 'rgba(0, 0, 0, 0.25)';
+            }
+        }
+
+        function toggleHideStopwatch() {
+            const hideBtn = document.getElementById('sw_hide_btn');
+            if (!hideBtn) return;
+
+            stopwatchIsHidden = !stopwatchIsHidden;
+            updateStopwatchDisplay();
+
+            if (stopwatchIsHidden) {
+                hideBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+                hideBtn.title = "Hiện thời gian";
+            } else {
+                hideBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                hideBtn.title = "Ẩn thời gian";
+            }
+        }
 
         // Confirm before refresh/close if data exists
         window.addEventListener('beforeunload', function(e) {
@@ -295,173 +425,323 @@
             }
         });
 
-        document.getElementById('historyFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        function parseFileDate(dtStr) {
+            if (!dtStr || dtStr === 'Không rõ') return 0;
+            const parts = dtStr.trim().split(/\s+/);
+            if (parts.length === 2) {
+                let datePart = '';
+                let timePart = '';
+                if (parts[0].includes('/') || parts[0].includes('-')) {
+                    datePart = parts[0];
+                    timePart = parts[1];
+                } else {
+                    datePart = parts[1];
+                    timePart = parts[0];
+                }
+                const dateSubparts = datePart.split(/[\/\-]/);
+                if (dateSubparts.length === 3) {
+                    const day = parseInt(dateSubparts[0]);
+                    const month = parseInt(dateSubparts[1]) - 1;
+                    const year = parseInt(dateSubparts[2]);
+                    const timeSubparts = timePart.split(':');
+                    const hour = timeSubparts.length > 0 ? parseInt(timeSubparts[0]) : 0;
+                    const minute = timeSubparts.length > 1 ? parseInt(timeSubparts[1]) : 0;
+                    const second = timeSubparts.length > 2 ? parseInt(timeSubparts[2]) : 0;
+                    return new Date(year, month, day, hour, minute, second).getTime();
+                }
+            }
+            return 0;
+        }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                // Normalize line endings: completely remove \r to avoid double newlines from \r\r\n
-                const text = e.target.result.replace(/\r/g, '');
-                processHistoryContent(text);
-            };
-            reader.readAsText(file);
+        window.loadedFilesData = [];
+
+        document.getElementById('historyFile').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            let readCount = 0;
+
+            files.forEach((file) => {
+                // Overwrite file with same name if already loaded
+                window.loadedFilesData = window.loadedFilesData.filter(f => f.name !== file.name);
+
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const text = evt.target.result.replace(/\r/g, '');
+                    
+                    // Parse times to determine file timestamp
+                    const timeMatch = text.match(/PHIẾU TỰ ĐỘNG - (.*)/);
+                    let startTime = timeMatch ? timeMatch[1].trim() : 'Không rõ';
+                    const endTimeMatch = text.match(/Hoàn thành lúc: (.*)/);
+                    let endTime = endTimeMatch ? endTimeMatch[1].trim() : 'Không rõ';
+                    
+                    let fileTimestamp = parseFileDate(endTime);
+                    if (fileTimestamp === 0) {
+                        fileTimestamp = parseFileDate(startTime);
+                    }
+                    if (fileTimestamp === 0) {
+                        fileTimestamp = Date.now();
+                    }
+
+                    window.loadedFilesData.push({
+                        name: file.name,
+                        content: text,
+                        timestamp: fileTimestamp
+                    });
+                    readCount++;
+                    if (readCount === files.length) {
+                        // Sắp xếp tăng dần theo timestamp (file cũ hơn trước, file mới hơn sau)
+                        // để khi ghi đè duplicate ID, bản mới nhất (muộn hơn) sẽ đè bản cũ
+                        window.loadedFilesData.sort((a, b) => a.timestamp - b.timestamp);
+                        processHistoryContent(window.loadedFilesData);
+                    }
+                };
+                reader.readAsText(file);
+            });
+            // Reset input value to allow uploading same file again
+            e.target.value = '';
         });
 
-        function processHistoryContent(text) {
+        function updateFlaggedCount() {
+            const flaggedCards = document.querySelectorAll('.status-btn[data-flagged="true"]');
+            const countSpan = document.getElementById('sw_f_count');
+            const iconSpan = document.getElementById('sw_f_icon');
+            if (countSpan) {
+                countSpan.textContent = flaggedCards.length;
+            }
+            if (iconSpan) {
+                if (flaggedCards.length > 0) {
+                    iconSpan.style.opacity = '1';
+                    iconSpan.style.color = '#ffdd00';
+                } else {
+                    iconSpan.style.opacity = '0.6';
+                    iconSpan.style.color = '#ffffff';
+                }
+            }
+        }
+
+        function toggleFlag(btn, event, originalStatus) {
+            event.stopPropagation(); // Ngăn chặn toggle đóng/mở card body
+            const isFlagged = btn.getAttribute('data-flagged') === 'true';
+            
+            if (isFlagged) {
+                btn.setAttribute('data-flagged', 'false');
+                if (originalStatus === 'success') {
+                    btn.innerHTML = `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                } else {
+                    btn.innerHTML = `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                }
+            } else {
+                btn.setAttribute('data-flagged', 'true');
+                btn.innerHTML = `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+            }
+            
+            updateFlaggedCount();
+        }
+
+        function deleteFileByName(name, event) {
+            if (event) event.stopPropagation();
+            
+            const conf1 = confirm(`Bạn có chắc chắn muốn xóa file "${name}" không?`);
+            if (!conf1) return;
+            
+            const conf2 = confirm(`XÁC NHẬN LẠI: Bạn có thực sự muốn xóa file "${name}" khỏi danh sách dữ liệu hiện tại?`);
+            if (!conf2) return;
+            
+            // Remove from array
+            window.loadedFilesData = window.loadedFilesData.filter(f => f.name !== name);
+            
+            // Re-render
+            processHistoryContent(window.loadedFilesData);
+        }
+
+        function processHistoryContent(filesData) {
             const container = document.getElementById('card_container');
             container.innerHTML = ''; 
             window.allParsedData = {};
 
-            const blocks = text.split(/={30,}\n?|-{50,}\n?/);
+            let headerHtml = '<div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; margin-bottom: 2rem; width: 100%;">';
             
-            const resultMatch = text.match(/KẾT QUẢ:\s*(\d+)\/(\d+)/);
-            const successCount = resultMatch ? parseInt(resultMatch[1]) : 0;
-            const totalCount = resultMatch ? parseInt(resultMatch[2]) : 0;
-            const failCount = totalCount - successCount;
+            const mergedEntries = new Map();
+            let entryCounter = 0;
 
-            const timeMatch = text.match(/PHIẾU TỰ ĐỘNG - (.*)/);
-            let startTime = timeMatch ? timeMatch[1].trim() : 'Không rõ';
+            filesData.forEach((fileData, fileIdx) => {
+                const text = fileData.content;
+                const fileName = fileData.name;
 
-            const durationMatch = text.match(/Tổng thời gian: (.*)/);
-            let duration = durationMatch ? durationMatch[1].trim() : 'Không rõ';
+                const resultMatch = text.match(/KẾT QUẢ:\s*(\d+)\/(\d+)/);
+                const successCount = resultMatch ? parseInt(resultMatch[1]) : 0;
+                const totalCount = resultMatch ? parseInt(resultMatch[2]) : 0;
+                const failCount = totalCount - successCount;
 
-            const endTimeMatch = text.match(/Hoàn thành lúc: (.*)/);
-            let endTime = endTimeMatch ? endTimeMatch[1].trim() : 'Không rõ';
+                const timeMatch = text.match(/PHIẾU TỰ ĐỘNG - (.*)/);
+                let startTime = timeMatch ? timeMatch[1].trim() : 'Không rõ';
 
-            function formatDateTime(dtStr) {
-                if (dtStr === 'Không rõ') return dtStr;
-                const parts = dtStr.split(' ');
-                if (parts.length === 2) {
-                    return parts[1] + ' ' + parts[0];
+                const durationMatch = text.match(/Tổng thời gian: (.*)/);
+                let duration = durationMatch ? durationMatch[1].trim() : 'Không rõ';
+
+                const endTimeMatch = text.match(/Hoàn thành lúc: (.*)/);
+                let endTime = endTimeMatch ? endTimeMatch[1].trim() : 'Không rõ';
+
+                function formatDateTime(dtStr) {
+                    if (dtStr === 'Không rõ') return dtStr;
+                    const parts = dtStr.split(' ');
+                    if (parts.length === 2) {
+                        return parts[1] + ' ' + parts[0];
+                    }
+                    return dtStr;
                 }
-                return dtStr;
-            }
 
-            function formatDuration(durStr) {
-                if (durStr === 'Không rõ') return durStr;
-                let h = 0, m = 0, s = 0;
-                const hMatch = durStr.match(/(\d+)\s*giờ/);
-                const mMatch = durStr.match(/(\d+)\s*phút/);
-                const sMatch = durStr.match(/(\d+)\s*giây/);
-                
-                if (hMatch) h = parseInt(hMatch[1]);
-                if (mMatch) m = parseInt(mMatch[1]);
-                if (sMatch) s = parseInt(sMatch[1]);
-                
-                const pad = (num) => num.toString().padStart(2, '0');
-                return `${pad(h)}:${pad(m)}:${pad(s)}`;
-            }
+                function formatDuration(durStr) {
+                    if (durStr === 'Không rõ') return durStr;
+                    let h = 0, m = 0, s = 0;
+                    const hMatch = durStr.match(/(\d+)\s*giờ/);
+                    const mMatch = durStr.match(/(\d+)\s*phút/);
+                    const sMatch = durStr.match(/(\d+)\s*giây/);
+                    
+                    if (hMatch) h = parseInt(hMatch[1]);
+                    if (mMatch) m = parseInt(mMatch[1]);
+                    if (sMatch) s = parseInt(sMatch[1]);
+                    
+                    const pad = (num) => num.toString().padStart(2, '0');
+                    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+                }
 
-            startTime = formatDateTime(startTime);
-            endTime = formatDateTime(endTime);
-            duration = formatDuration(duration);
+                startTime = formatDateTime(startTime);
+                endTime = formatDateTime(endTime);
+                duration = formatDuration(duration);
+
+                if (resultMatch) {
+                    headerHtml += `
+                    <div style="position: relative; width: 100%; max-width: 600px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                        <!-- Nút xóa file (Góc phải trên) -->
+                        <button class="btn-delete-file" onclick="deleteFileByName('${fileName}', event)" style="position: absolute; top: 12px; right: 12px; cursor: pointer; background: none; border: none; padding: 0.25rem; color: var(--error); opacity: 0.6; transition: all 0.2s;" title="Xóa file này khỏi danh sách">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                        <div style="color: var(--accent); font-weight: bold; font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; padding-right: 25px; word-break: break-all;">
+                            📁 ${fileName}
+                        </div>
+                        <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 0.75rem;">
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase;">Thành công</div>
+                                <div style="color: var(--success); font-size: 1.3rem; font-weight: bold;">${successCount}</div>
+                            </div>
+                            <div style="text-align: center; border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color); padding: 0 1.5rem;">
+                                <div style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase;">Tổng số</div>
+                                <div style="color: var(--text-primary); font-size: 1.3rem; font-weight: bold;">${totalCount}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase;">Thất bại</div>
+                                <div style="color: var(--error); font-size: 1.3rem; font-weight: bold;">${failCount}</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
+                            <div>⏱ Bắt đầu: <span style="color: #fff; font-weight: bold;">${startTime}</span></div>
+                            <div>⌛ Tổng: <span style="color: #ffff66; font-weight: bold;">${duration}</span></div>
+                            <div>🏁 Xong: <span style="color: #fff; font-weight: bold;">${endTime}</span></div>
+                        </div>
+                    </div>`;
+                }
+
+                const blocks = text.split(/={30,}\n?|-{50,}\n?/);
+                blocks.forEach((block) => {
+                    const lines = block.split('\n');
+                    let stt = '';
+                    let id = '';
+                    let status = '';
+                    let contentArr = [];
+                    let isContent = false;
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (line.startsWith('- STT:')) {
+                            stt = line.replace('- STT:', '').trim();
+                            isContent = false;
+                        } else if (line.startsWith('- ID:')) {
+                            id = line.replace('- ID:', '').trim();
+                            isContent = false;
+                        } else if (line.startsWith('- Trạng thái:')) {
+                            status = line.replace('- Trạng thái:', '').trim();
+                            isContent = false;
+                        } else if (line.startsWith('- Nội dung:')) {
+                            isContent = true;
+                            const rest = line.replace('- Nội dung:', '').trim();
+                            if (rest) contentArr.push(rest);
+                        } else if (isContent) {
+                            contentArr.push(lines[i]);
+                        }
+                    }
+                    
+                    if (!stt && !id) return;
+
+                    const rawNotebookContent = contentArr.join('\n').trim();
+                    const key = id || `NO_ID_${entryCounter++}`;
+                    
+                    mergedEntries.set(key, {
+                        stt: stt,
+                        id: id,
+                        status: status,
+                        rawNotebookContent: rawNotebookContent,
+                        fileName: fileName
+                    });
+                });
+            });
+
+            headerHtml += '</div>';
+
+            // Sắp xếp đúng trình tự từ 1 -> hết của STT
+            const sortedEntries = Array.from(mergedEntries.values()).sort((a, b) => {
+                const sttA = parseInt(a.stt) || 99999;
+                const sttB = parseInt(b.stt) || 99999;
+                return sttA - sttB;
+            });
+
+            // Cập nhật số lượng câu hỏi vào đồng hồ
+            const qCountEl = document.getElementById('sw_q_count');
+            if (qCountEl) {
+                qCountEl.textContent = sortedEntries.length;
+            }
 
             let html = '';
-
-            if (resultMatch) {
-                html += `
-                <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center; margin-bottom: 2rem;">
-                    
-                    <!-- BOX 1: Success - Total - Fail -->
-                    <div style="display: flex; gap: 2rem; background: var(--card-bg); border: 1px solid #fff; border-radius: 0.5rem; padding: 0.8rem 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3); align-items: center;">
-                        <div style="text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">Thành công</div>
-                            <div style="color: var(--success); font-size: 1.6rem; font-weight: bold;">${successCount}</div>
-                        </div>
-                        <div style="text-align: center; border-left: 1px solid #fff; border-right: 1px solid #fff; padding: 0 2rem;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">Tổng số</div>
-                            <div style="color: var(--text-primary); font-size: 1.6rem; font-weight: bold;">${totalCount}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">Thất bại</div>
-                            <div style="color: var(--error); font-size: 1.6rem; font-weight: bold;">${failCount}</div>
-                        </div>
-                    </div>
-
-                    <!-- BOX 2: Times -->
-                    <div style="display: flex; gap: 1.5rem; align-items: center;">
-                        <div style="display: flex; gap: 1.5rem; border: 1px solid #fff; border-radius: 0.4rem; padding: 0.5rem 1rem; align-items: center; background: var(--card-bg);">
-                            <div style="text-align: center;">
-                                <div style="color: var(--text-secondary); font-size: 0.55rem; text-transform: uppercase;">BẮT ĐẦU</div>
-                                <div style="color: #fff; font-size: 0.8rem; font-weight: bold; margin-top: 0.15rem;">${startTime}</div>
-                            </div>
-                            <div style="width: 1px; height: 100%; background-color: rgba(255,255,255,0.3);"></div>
-                            <div style="text-align: center;">
-                                <div style="color: var(--text-secondary); font-size: 0.55rem; text-transform: uppercase;">HOÀN THÀNH</div>
-                                <div style="color: #fff; font-size: 0.8rem; font-weight: bold; margin-top: 0.15rem;">${endTime}</div>
-                            </div>
-                        </div>
-
-                        <div style="text-align: center; background: var(--card-bg); border: 1px solid #fff; border-radius: 0.4rem; padding: 0.5rem 1rem;">
-                            <div style="color: var(--text-secondary); font-size: 0.55rem; text-transform: uppercase;">TỔNG</div>
-                            <div style="color: #ffff66; font-size: 0.85rem; font-weight: bold; margin-top: 0.15rem;">${duration}</div>
-                        </div>
-                    </div>
-
-                </div>`;
-            }
-
             let validIndex = 0;
-            
-            blocks.forEach((block) => {
-                const lines = block.split('\n');
-                let stt = '';
-                let id = '';
-                let status = '';
-                let contentArr = [];
-                let isContent = false;
+
+            sortedEntries.forEach((entry) => {
+                const parsed = parseNotebookOutputLocal(entry.rawNotebookContent, validIndex);
+                const isSuccess = entry.status.toLowerCase().includes('thành công');
                 
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (line.startsWith('- STT:')) {
-                        stt = line.replace('- STT:', '').trim();
-                        isContent = false;
-                    } else if (line.startsWith('- ID:')) {
-                        id = line.replace('- ID:', '').trim();
-                        isContent = false;
-                    } else if (line.startsWith('- Trạng thái:')) {
-                        status = line.replace('- Trạng thái:', '').trim();
-                        isContent = false;
-                    } else if (line.startsWith('- Nội dung:')) {
-                        isContent = true;
-                        const rest = line.replace('- Nội dung:', '').trim();
-                        if (rest) contentArr.push(rest);
-                    } else if (isContent) {
-                        contentArr.push(lines[i]); // Keep original formatting
+                // Trình diễn icon dưới dạng nút bấm trạng thái/lá cờ chưa check
+                const statusBtn = `
+                <button class="status-btn" data-flagged="false" onclick="toggleFlag(this, event, '${isSuccess ? 'success' : 'fail'}')" style="cursor: pointer; background: none; border: none; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
+                    ${isSuccess 
+                        ? `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` 
+                        : `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
                     }
-                }
+                </button>`;
                 
-                if (!stt && !id) return; 
-
-                const rawNotebookContent = contentArr.join('\n').trim();
-                const parsed = parseNotebookOutputLocal(rawNotebookContent, validIndex);
-
-                const isSuccess = status.toLowerCase().includes('thành công');
-                const statusIcon = isSuccess 
-                    ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` 
-                    : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-                
-                let sttDisplay = stt ? stt.padStart(2, '0') : '?';
+                let sttDisplay = entry.stt ? entry.stt.padStart(2, '0') : '?';
 
                 html += `
                 <div class="card">
                     <div class="section-header" onclick="toggleCardBody(${validIndex})">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             <span style="font-weight: bold; color: var(--accent); font-size: 1.1rem;">${sttDisplay}</span>
                             <span style="color: var(--text-secondary); margin: 0 0.25rem;">|</span>
-                            <span style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem;">${id || '?'}</span>
-                            ${id ? `<button class="btn-copy-header" onclick="event.stopPropagation(); navigator.clipboard.writeText('${id}'); this.style.opacity='0.4'; this.style.transform='scale(0.95)'; setTimeout(()=>{this.style.opacity='1'; this.style.transform='none';}, 200);" title="Copy ID">
+                            <span style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem; word-break: break-all;">${entry.id || '?'}</span>
+                            ${entry.id ? `<button class="btn-copy-header" onclick="event.stopPropagation(); navigator.clipboard.writeText('${entry.id}'); this.style.opacity='0.4'; this.style.transform='scale(0.95)'; setTimeout(()=>{this.style.opacity='1'; this.style.transform='none';}, 200);" title="Copy ID">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             </button>` : ''}
+                            <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem; font-style: italic; opacity: 0.8;">(Từ: ${entry.fileName})</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 1rem; padding-right: 0.5rem;">
-                            ${statusIcon}
+                            ${statusBtn}
                         </div>
                     </div>
                     
                     <div class="section-body" id="card_body_${validIndex}">
-                        <textarea rows="4" readonly style="margin-bottom: 0.5rem; resize: vertical; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.6);">${rawNotebookContent}</textarea>
+                        <textarea rows="4" readonly style="margin-bottom: 0.5rem; resize: vertical; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.6);">${entry.rawNotebookContent}</textarea>
                         
                         <div style="display: flex; flex-direction: column; gap: 1rem;">
                             <div class="action-buttons-grid">
@@ -475,19 +755,31 @@
                             </div>
                         </div>
                     </div>
-                </div>
-                `;
-                
+                </div>`;
                 validIndex++;
             });
-            
+
             if (validIndex === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--warning);">Không tìm thấy dữ liệu hợp lệ trong file này.</div>';
+                container.innerHTML = '<div style="text-align: center; color: var(--warning); padding: 2rem;">Chưa tải dữ liệu file history nào. Vui lòng bấm nút tròn xanh lục ở trên để tải file!</div>';
+                
+                // Reset stats in stopwatch to 0 when no files loaded
+                const qCountEl = document.getElementById('sw_q_count');
+                if (qCountEl) qCountEl.textContent = '0';
+                const fCountEl = document.getElementById('sw_f_count');
+                if (fCountEl) fCountEl.textContent = '0';
+                const fIconEl = document.getElementById('sw_f_icon');
+                if (fIconEl) {
+                    fIconEl.style.opacity = '0.6';
+                    fIconEl.style.color = '#ffffff';
+                }
                 return;
             }
 
-            container.innerHTML = html;
+            container.innerHTML = headerHtml + html;
             
+            // Cập nhật số cờ đỏ
+            updateFlaggedCount();
+
             // Resize textareas
             setTimeout(() => {
                 document.querySelectorAll('.section-body .field-group textarea').forEach(autoResize);
@@ -625,7 +917,7 @@
                 if (lines.length >= 5) {
                     options = lines.slice(-4).map(l => l.trim());
                     deBai = lines.slice(0, -4).join('\n').trim();
-                    options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, ''));
+                    options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, ''));
                 } else {
                     deBai = questionText;
                 }
@@ -648,22 +940,56 @@
 
             if (deBai.includes('____') && ansMatch && options.length === 0) {
                 let rawAns = ansMatch[1].replace(/\$/g, '').trim();
-                answerTitleStr = rawAns;
+                const numBlanks = (deBai.match(/____/g) || []).length;
+                
+                let ansParts = [];
+                if (numBlanks <= 1) {
+                    ansParts = [rawAns];
+                } else {
+                    ansParts = rawAns.split(/\s+và\s+|\s+and\s+/i).map(p => p.trim()).filter(Boolean);
+                    if (ansParts.length < numBlanks) {
+                        const commaSplitParts = [];
+                        ansParts.forEach(part => {
+                            const subs = part.split(',').map(s => s.trim()).filter(Boolean);
+                            commaSplitParts.push(...subs);
+                        });
+                        if (commaSplitParts.length <= numBlanks) {
+                            ansParts = commaSplitParts;
+                        }
+                    }
+                }
+                
+                answerTitleStr = ansParts.join(' | ');
                 parsedAnswerData = rawAns;
 
-                let replacement = '__' + rawAns + '__';
-                if (/^-?\d+(\.\d+)?$/.test(rawAns)) {
-                    let variants = [rawAns];
-                    if (rawAns.startsWith('-')) variants.push('- ' + rawAns.substring(1));
-                    let numStr = rawAns.replace('-', '');
-                    if (numStr.length >= 4 && !numStr.includes('.')) {
-                        let withSpaces = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                        variants.push(rawAns.startsWith('-') ? '-' + withSpaces : withSpaces);
-                        if (rawAns.startsWith('-')) variants.push('- ' + withSpaces);
+                const replacements = ansParts.map(part => {
+                    let cleanPart = part.replace(/\$/g, '').trim();
+                    let variants = [cleanPart];
+                    if (/^-?\d+([.,]\d+)?$/.test(cleanPart)) {
+                        // Normalize decimals for variant checks if needed, but keep original representation
+                        if (cleanPart.startsWith('-')) {
+                            variants.push('- ' + cleanPart.substring(1));
+                        }
+
+                        let numStr = cleanPart.replace('-', '');
+                        // Also support comma separator for thousands in variants
+                        if (numStr.length >= 4 && !numStr.includes('.') && !numStr.includes(',')) {
+                            let withSpaces = numStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                            variants.push(cleanPart.startsWith('-') ? '-' + withSpaces : withSpaces);
+                            if (cleanPart.startsWith('-')) {
+                                variants.push('- ' + withSpaces);
+                            }
+                        }
                     }
-                    replacement = '__' + [...new Set(variants)].join('/') + '__';
+                    return '__' + [...new Set(variants)].join('/') + '__';
+                });
+
+                let replaceIdx = 0;
+                while (deBai.includes('____') && replacements.length > 0) {
+                    const repl = replacements[replaceIdx % replacements.length];
+                    deBai = deBai.replace('____', repl);
+                    replaceIdx++;
                 }
-                deBai = deBai.replace(/____/g, replacement);
             }
             else if (ansMatch) {
                 let rawAns = ansMatch[1].trim();
@@ -684,31 +1010,55 @@
                         parsedAnswerData = rawAns;
                     }
                 } else if (isMultipleChoice) {
-                    let choiceNum = null;
-                    let m1 = rawAns.match(/số\s*([1-4])/i);
-                    let m2 = rawAns.match(/đáp án\s*([A-D])/i);
-
-                    if (m1) choiceNum = parseInt(m1[1]);
-                    else if (m2) {
-                        const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
-                        choiceNum = map[m2[1].toUpperCase()];
-                    }
-
-                    if (!choiceNum) {
-                        const cleanAns = rawAns.replace(/[\$\.\s]/g, '').toLowerCase();
-                        for (let i = 0; i < options.length; i++) {
-                            const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
-                            if (cleanOpt && (cleanOpt.includes(cleanAns) || cleanAns.includes(cleanOpt))) {
-                                choiceNum = i + 1;
-                                break;
+                    const parts = rawAns.split(/\s+và\s+|\s+and\s+|,/i).map(p => p.trim()).filter(Boolean);
+                    const foundIndices = [];
+                    
+                    for (const part of parts) {
+                        let choiceNum = null;
+                        let m1 = part.match(/(?:số|lựa chọn|phương án)\s*([1-4])/i);
+                        let m2 = part.match(/(?:đáp án|phương án)\s*([A-D])/i);
+                        if (m1) {
+                            choiceNum = parseInt(m1[1]);
+                        } else if (m2) {
+                            const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+                            choiceNum = map[m2[1].toUpperCase()];
+                        }
+                        
+                        if (!choiceNum) {
+                            const cleanPart = part.replace(/[\$\.\s]/g, '').toLowerCase();
+                            if (/^[1-4]$/.test(cleanPart)) {
+                                choiceNum = parseInt(cleanPart);
+                            } else if (/^[a-d]$/i.test(cleanPart)) {
+                                const map = { 'a': 1, 'b': 2, 'c': 3, 'd': 4 };
+                                choiceNum = map[cleanPart];
+                            } else if (cleanPart) {
+                                for (let i = 0; i < options.length; i++) {
+                                    const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
+                                    if (cleanOpt && (cleanOpt.includes(cleanPart) || cleanPart.includes(cleanOpt))) {
+                                        choiceNum = i + 1;
+                                        break;
+                                    }
+                                }
                             }
+                        }
+                        
+                        if (choiceNum && !foundIndices.includes(choiceNum)) {
+                            foundIndices.push(choiceNum);
                         }
                     }
 
-                    if (choiceNum) {
-                        answerTitleStr = `Lựa chọn ${choiceNum}`;
-                        answerContentStr = options[choiceNum - 1];
-                        parsedAnswerData = choiceNum;
+                    if (foundIndices.length > 0) {
+                        if (foundIndices.length === 1) {
+                            const choiceNum = foundIndices[0];
+                            answerTitleStr = `Lựa chọn ${choiceNum}`;
+                            answerContentStr = options[choiceNum - 1];
+                            parsedAnswerData = choiceNum;
+                        } else {
+                            foundIndices.sort((a, b) => a - b);
+                            answerTitleStr = `Các lựa chọn: ${foundIndices.join(', ')}`;
+                            answerContentStr = foundIndices.map(idx => `${idx}: ${options[idx - 1]}`).join(' | ');
+                            parsedAnswerData = foundIndices;
+                        }
                     } else {
                         answerTitleStr = `Lựa chọn ?`;
                         answerContentStr = rawAns;
