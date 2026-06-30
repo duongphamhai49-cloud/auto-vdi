@@ -15,6 +15,7 @@ from PIL import ImageGrab, Image
 import pyautogui
 import pyperclip
 import ctypes
+import tkinter as tk
 
 # ==========================================
 # CẤU HÌNH THEO DÕI QUA DISCORD
@@ -34,6 +35,31 @@ def send_discord(content):
         requests.post(DISCORD_WEBHOOK_URL, json={"content": content}, timeout=5)
     except:
         pass  # Im lặng nếu lỗi mạng
+
+def draw_circle_overlay(x, y, radius=15, duration_sec=0.8, color="red"):
+    """Vẽ một vòng tròn đỏ tạm thời tại (x, y) để chỉ thị điểm nhấp chuột."""
+    def task():
+        try:
+            root = tk.Tk()
+            root.overrideredirect(True)
+            root.wm_attributes("-topmost", True)
+            root.wm_attributes("-transparentcolor", "white")
+            
+            size = radius * 2 + 10
+            pos_x = x - size // 2
+            pos_y = y - size // 2
+            root.geometry(f"{size}x{size}+{pos_x}+{pos_y}")
+            
+            canvas = tk.Canvas(root, width=size, height=size, bg="white", highlightthickness=0)
+            canvas.pack()
+            
+            canvas.create_oval(5, 5, size - 5, size - 5, outline=color, width=3)
+            root.after(int(duration_sec * 1000), root.destroy)
+            root.mainloop()
+        except:
+            pass
+
+    threading.Thread(target=task, daemon=True).start()
 
 # ==============================================================================
 # HỆ THỐNG LỚP HỖ TRỢ THEO NGUYÊN LÝ SOLID
@@ -67,6 +93,7 @@ class GUIHelper:
     def focus(cls, coords):
         """Lấy focus tại tọa độ chỉ định bằng một cú click chuột."""
         log(f"Lấy focus tại tọa độ: {coords}", "GUI")
+        draw_circle_overlay(coords[0], coords[1], radius=15, duration_sec=0.8, color="red")
         pyautogui.moveTo(coords[0], coords[1])
         pyautogui.click()
         time.sleep(0.3)
@@ -719,7 +746,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 # Bấm phím End lần 1
                 log("Nhấn phím End lần 1...", "ACTION")
                 pyautogui.press('end')
-                time.sleep(0.5) # Đợi đúng 0.5s
+                time.sleep(1.0) # Đợi đúng 1.0s
                 
                 # Tìm nút Copy Gemini lần 1
                 log("Tìm nút Copy Gemini (Lần 1)...", "SEARCH")
@@ -736,7 +763,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 if not copy_pos:
                     log("Không tìm thấy nút Copy lần 1. Nhấn phím End lần 2...", "WARN")
                     pyautogui.press('end')
-                    time.sleep(0.5) # Đợi tiếp 0.5s
+                    time.sleep(1.0) # Đợi tiếp 1.0s
                     
                     log("Tìm nút Copy Gemini (Lần 2)...", "SEARCH")
                     for _ in range(25): # Thử quét tiếp trong 2.5s
@@ -838,7 +865,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 # Bấm phím End lần 1
                 log("Nhấn phím End lần 1...", "ACTION")
                 pyautogui.press('end')
-                time.sleep(0.5) # Đợi đúng 0.5s
+                time.sleep(1.0) # Đợi đúng 1.0s
                 
                 # Tìm nút Copy NBLM lần 1
                 log("Tìm nút Copy NotebookLM (Lần 1)...", "SEARCH")
@@ -855,7 +882,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 if not nblm_copy_pos:
                     log("Không tìm thấy nút Copy NBLM lần 1. Nhấn phím End lần 2...", "WARN")
                     pyautogui.press('end')
-                    time.sleep(0.5) # Đợi tiếp 0.5s
+                    time.sleep(1.0) # Đợi tiếp 1.0s
                     
                     log("Tìm nút Copy NotebookLM (Lần 2)...", "SEARCH")
                     for _ in range(30):
