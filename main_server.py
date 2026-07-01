@@ -82,6 +82,7 @@ class GUIHelper:
     
     NBLM_CHATBOX = (530, 936)      # Tọa độ ô chat NotebookLM
     NBLM_SEND_BTN = (889, 922)     # Tọa độ nút gửi của NotebookLM
+    NBLM_CHECK_PIXEL = (850, 945)   # Tọa độ pixel kiểm tra của NotebookLM (850, 945)
     NBLM_IDLE_COLOR = (245, 245, 245) # Màu gốc của nút gửi NBLM khi đã phản hồi xong
     
     GEMINI_COPY_REGION = (1294, 107, 585, 320) # Vùng tìm ảnh copy Gemini
@@ -135,9 +136,10 @@ class GUIHelper:
         time.sleep(0.5)
 
     @classmethod
-    def check_nblm_done(cls):
-        """Kiểm tra xem NotebookLM đã phản hồi xong chưa dựa vào màu pixel nút Send."""
-        return pyautogui.pixelMatchesColor(cls.NBLM_SEND_BTN[0], cls.NBLM_SEND_BTN[1], cls.NBLM_IDLE_COLOR, tolerance=10)
+    def check_nblm_done(cls, target_color=None):
+        """Kiểm tra xem NotebookLM đã phản hồi xong chưa dựa vào màu pixel tại (850, 945)."""
+        color = target_color if target_color else cls.NBLM_IDLE_COLOR
+        return pyautogui.pixelMatchesColor(cls.NBLM_CHECK_PIXEL[0], cls.NBLM_CHECK_PIXEL[1], color, tolerance=10)
 
     @classmethod
     def cancel_modal(cls):
@@ -803,13 +805,14 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 GUIHelper.tab_swap(direction="forward")
                 CURRENT_TAB = 'NBLM'
                 
-                # Đợi NBLM load ổn định (nút Send hiện màu gốc)
-                log("Đang kiểm tra xem NotebookLM đã load xong chưa...", "STATUS")
-                for _ in range(10):
-                    if GUIHelper.check_nblm_done():
-                        log("NotebookLM đã sẵn sàng!", "STATUS")
-                        break
-                    time.sleep(0.5)
+                # Đợi 1.0 giây để render tab NotebookLM và lấy màu pixel rảnh rỗi động tại (850, 945)
+                time.sleep(1.0)
+                try:
+                    nblm_idle_color = pyautogui.pixel(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1])
+                    log(f"Đã lưu màu rảnh rỗi động của NotebookLM tại {GUIHelper.NBLM_CHECK_PIXEL}: {nblm_idle_color}", "OK")
+                except Exception as e:
+                    nblm_idle_color = GUIHelper.NBLM_IDLE_COLOR
+                    log(f"Không thể đọc màu rảnh rỗi động của NotebookLM: {e}. Sử dụng mặc định {GUIHelper.NBLM_IDLE_COLOR}", "WARN")
                 
                 # Click vào ô chat NotebookLM và dán gửi
                 pyautogui.click(GUIHelper.NBLM_CHATBOX[0], GUIHelper.NBLM_CHATBOX[1])
@@ -829,6 +832,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 time.sleep(10.0)
                 
                 nblm_done = False
+                nblm_copied = False
                 # Vòng lặp tối đa 10 chu kỳ đảo tab (Không lấy focus gì nữa trong suốt quá trình này)
                 for cycle in range(10):
                     if STOP_FLAG:
@@ -836,18 +840,79 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     
                     log(f"Kiểm tra trạng thái NotebookLM (Chu kỳ {cycle + 1}/10)...", "STATUS")
                     # Ở lại NBLM tối đa 60s để theo dõi pixel nút send
+                    # Cần khớp màu liên tục trong ít nhất 4 chu kỳ (2 giây) để đảm bảo ổn định thực sự
+                    stable_matches = 0
                     for _ in range(120): # 120 * 0.5s = 60s
-                        if GUIHelper.check_nblm_done():
-                            nblm_done = True
-                            log("NotebookLM đã hoàn tất xử lý!", "OK")
-                            break
+                        if STOP_FLAG:
+                            raise Exception("Bị dừng bởi người dùng!")
+                        
+                        if GUIHelper.check_nblm_done(nblm_idle_color):
+                            stable_matches += 1
+                            if stable_matches >= 4:
+                                nblm_done = True
+                                log("Màu nút Send của NotebookLM đã ổn định (Idle)!", "OK")
+                                break
+                        else:
+                            stable_matches = 0
                         time.sleep(0.5)
                     
                     if nblm_done:
-                        break
+                        # Thử lấy Output của NotebookLM ngay trong vòng lặp để tránh false positive
+                        log("Focus NotebookLM (FCS_ON_NBLM) trước khi nhấn End...", "ACTION")
+                        GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
+                        time.sleep(0.2)
+
+                        # Bấm phím End lần 1
+                        log("Nhấn phím End lần 1...", "ACTION")
+                        pyautogui.press('end')
+                        time.sleep(1.0) # Đợi đúng 1.0s
+                        
+                        # Tìm nút Copy NBLM lần 1
+                        log("Tìm nút Copy NotebookLM (Lần 1)...", "SEARCH")
+                        nblm_copy_pos = None
+                        for _ in range(30):
+                            try:
+                                nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                                if nblm_copy_pos:
+                                    break
+                            except Exception:
+                                pass
+                            time.sleep(0.1)
+                        
+                        if not nblm_copy_pos:
+                            log("Không tìm thấy nút Copy NBLM lần 1. Nhấn phím End lần 2...", "WARN")
+                            pyautogui.press('end')
+                            time.sleep(1.0) # Đợi tiếp 1.0s
+                            
+                            log("Tìm nút Copy NotebookLM (Lần 2)...", "SEARCH")
+                            for _ in range(30):
+                                try:
+                                    nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                                    if nblm_copy_pos:
+                                        break
+                                except Exception:
+                                    pass
+                                time.sleep(0.1)
+                        
+                        if nblm_copy_pos:
+                            pyautogui.click(nblm_copy_pos)
+                            log("Đã click Copy từ NotebookLM.", "OK")
+                            msg_extra += " | Đã Copy từ NBLM."
+                            nblm_copied = True
+                            time.sleep(0.5)
+                            
+                            # Chuyển tab về LMS ngay lập tức
+                            log("Quay lại tab LMS ngay sau khi copy (Ctrl + Shift + Tab)...", "ACTION")
+                            GUIHelper.tab_swap(direction="backward")
+                            CURRENT_TAB = 'LMS'
+                            time.sleep(0.5)
+                            break
+                        else:
+                            log("Nút Send báo Idle nhưng không tìm thấy nút Copy (có thể đang hiển thị dở dang). Tiếp tục chờ...", "WARN")
+                            nblm_done = False # Reset để tiếp tục chờ ở chu kỳ kế tiếp hoặc đảo tab
                     
-                    # Nếu hết 60s chưa xong, đảo sang tab LMS 3s chống timeout
-                    log("Chưa hoàn tất, đảo sang tab LMS 3s chống timeout...", "STATUS")
+                    # Nếu hết 60s chưa xong hoặc không tìm thấy nút Copy, đảo sang tab LMS 3s chống timeout
+                    log("Chưa hoàn tất hoặc không tìm thấy nút Copy, đảo sang tab LMS 3s chống timeout...", "STATUS")
                     GUIHelper.tab_swap(direction="backward")
                     CURRENT_TAB = 'LMS'
                     
@@ -862,59 +927,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     CURRENT_TAB = 'NBLM'
                     time.sleep(1.0) # Chờ render tab
                 
-                if not nblm_done:
-                    raise Exception("Chờ quá lâu mà NotebookLM không phản hồi (Timeout 10 chu kỳ)!")
-
-                # 9. Lấy Output của NotebookLM
-                log("Focus NotebookLM (FCS_ON_NBLM) trước khi nhấn End...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
-                time.sleep(0.1)
-
-                # Bấm phím End lần 1
-                log("Nhấn phím End lần 1...", "ACTION")
-                pyautogui.press('end')
-                time.sleep(1.0) # Đợi đúng 1.0s
-                
-                # Tìm nút Copy NBLM lần 1
-                log("Tìm nút Copy NotebookLM (Lần 1)...", "SEARCH")
-                nblm_copy_pos = None
-                for _ in range(30):
-                    try:
-                        nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
-                        if nblm_copy_pos:
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(0.1)
-                
-                if not nblm_copy_pos:
-                    log("Không tìm thấy nút Copy NBLM lần 1. Nhấn phím End lần 2...", "WARN")
-                    pyautogui.press('end')
-                    time.sleep(1.0) # Đợi tiếp 1.0s
-                    
-                    log("Tìm nút Copy NotebookLM (Lần 2)...", "SEARCH")
-                    for _ in range(30):
-                        try:
-                            nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
-                            if nblm_copy_pos:
-                                break
-                        except Exception:
-                            pass
-                        time.sleep(0.1)
-                
-                if nblm_copy_pos:
-                    pyautogui.click(nblm_copy_pos)
-                    log("Đã click Copy từ NotebookLM.", "OK")
-                    msg_extra += " | Đã Copy từ NBLM."
-                    time.sleep(0.5)
-                    
-                    # Chuyển tab về LMS ngay lập tức
-                    log("Quay lại tab LMS ngay sau khi copy (Ctrl + Shift + Tab)...", "ACTION")
-                    GUIHelper.tab_swap(direction="backward")
-                    CURRENT_TAB = 'LMS'
-                    time.sleep(0.5)
-                else:
-                    raise Exception("Không tìm thấy nút Copy của NotebookLM sau 2 lần bấm End!")
+                if not nblm_copied:
+                    raise Exception("Không tìm thấy nút Copy của NotebookLM sau các chu kỳ chờ!")
 
                 # Đọc kết quả từ Clipboard trả về cho index.html
                 copied_text = ClipboardHelper.paste_text()
