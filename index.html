@@ -285,6 +285,13 @@
             <textarea id="id_list_input" rows="4" placeholder="Dán danh sách ID vào đây (mỗi ID 1 dòng)..."
                 style="overflow-y: auto; resize: vertical; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease;"></textarea>
 
+            <!-- Ô nhập tên file history tùy chỉnh -->
+            <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                <label for="history_filename_input" style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">Tên file History (Tùy chọn):</label>
+                <input type="text" id="history_filename_input" placeholder="Ví dụ: history_buoi_chieu (để trống sẽ tự động đặt tên theo ngày giờ)"
+                    style="padding: 0.6rem 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease; outline: none; box-sizing: border-box;">
+            </div>
+
             <div style="display: flex; gap: 1rem; align-items: stretch; padding-top: 0.5rem;">
                 
                 <!-- NÚT CHẠY TỰ ĐỘNG (To nhất) -->
@@ -471,12 +478,14 @@
             progressWrapper.style.display = 'flex';
             progressBar.style.width = '0%';
 
+            const customFilename = document.getElementById('history_filename_input').value.trim();
+
             // 1. Gọi server tạo file history
             try {
                 await fetch('http://localhost:5050/batch_start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ total_ids: totalIds })
+                    body: JSON.stringify({ total_ids: totalIds, custom_filename: customFilename })
                 });
                 batchLog(`📁 Đã tạo file history cho ${totalIds} ID`);
             } catch (e) {
