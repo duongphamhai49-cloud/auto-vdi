@@ -323,13 +323,21 @@ def format_duration(seconds):
     parts.append(f"{secs} giây")
     return " ".join(parts)
 
-def create_history_file(total_ids):
+def create_history_file(total_ids, custom_filename=None):
     """Tạo file history mới và ghi header."""
     global current_history_file, current_batch_start_time, current_failed_items
     current_batch_start_time = time.time()
     current_failed_items = []
-    now = time.strftime('%d-%m-%Y_%Hh%Mm%Ss')
-    filename = f"{now}.txt"
+    
+    if custom_filename and custom_filename.strip():
+        filename = custom_filename.strip()
+        if not filename.endswith('.txt'):
+            filename += '.txt'
+        filename = os.path.basename(filename)
+    else:
+        now = time.strftime('%d-%m-%Y_%Hh%Mm%Ss')
+        filename = f"{now}.txt"
+        
     filepath = os.path.join(HISTORY_DIR, filename)
     current_history_file = filepath
     
@@ -988,8 +996,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 post_data = self.rfile.read(content_length)
                 data = json.loads(post_data.decode('utf-8'))
                 total_ids = data.get('total_ids', 0)
+                custom_filename = data.get('custom_filename')
                 
-                filepath = create_history_file(total_ids)
+                filepath = create_history_file(total_ids, custom_filename)
                 
                 # Gửi tin nhắn Discord: Bắt đầu phiên
                 discord_msg = (
