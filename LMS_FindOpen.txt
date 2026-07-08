@@ -306,29 +306,121 @@
         simulateFullClick(editBtn1.querySelector('svg'));
         if (editBtn1.parentElement) simulateFullClick(editBtn1.parentElement);
 
-        // Chờ modal chi tiết hiển thị
-        await sleep(2200);
+        // BƯỚC 2: Chờ và click cây bút chì thứ hai (Pencil 2) để mở modal soạn thảo (Edit)
+        let editBtn2 = null;
+        log("Đang chờ chi tiết câu hỏi hiển thị và tìm Pencil 2...");
 
-        // BƯỚC 2: Click cây bút chì thứ hai để mở modal soạn thảo (Edit)
-        let editBtn2 = document.querySelector('span.text-muted span.cursor-pointer i[aria-label="icon: edit"]');
-        if (!editBtn2) {
-            let pencils = document.querySelectorAll('i[aria-label="icon: edit"]');
-            for (let i = pencils.length - 1; i >= 0; i--) {
-                let p = pencils[i];
-                if (p !== editBtn1 && p.closest('.ant-alert-message, .whitebox, .question')) {
-                    editBtn2 = p;
-                    break;
+        function scoreElement(el, index, totalCount) {
+            if (!el) return -999;
+            let score = 0;
+            const html = el.innerHTML.toLowerCase();
+            const className = (typeof el.className === 'string' ? el.className : (el.className?.baseVal || '')).toLowerCase();
+            
+            // Lấy tất cả thuộc tính có khả năng chứa text tooltip
+            const titleAttr = (el.getAttribute('title') || el.title || '').toLowerCase();
+            const tooltipAttr = (el.getAttribute('data-original-title') || el.getAttribute('data-tooltip') || el.getAttribute('data-tip') || '').toLowerCase();
+            const ariaAttr = (el.getAttribute('aria-label') || '').toLowerCase();
+            const parentText = el.parentElement ? (el.parentElement.title || el.parentElement.getAttribute('aria-label') || el.parentElement.getAttribute('data-original-title') || '').toLowerCase() : '';
+            
+            const allText = `${titleAttr} ${tooltipAttr} ${ariaAttr} ${className} ${parentText}`.toLowerCase();
+            
+            // 1. Dấu hiệu văn bản edit/sửa cụ thể
+            if (allText.includes('chỉnh sửa câu hỏi') || allText.includes('sửa câu hỏi') || allText.includes('edit question')) {
+                score += 1000; // Thắng tuyệt đối nếu khớp tooltip cụ thể!
+            } else if (allText.includes('edit') || allText.includes('sửa')) {
+                score += 100;
+            }
+            
+            // 2. Dấu hiệu hình ảnh bút chì
+            if (html.includes('data-icon="edit"') || html.includes('anticon-edit') || html.includes('pencil') || html.includes('pen-to-square') || html.includes('edit-pencil')) {
+                score += 80;
+            }
+            
+            // 3. Vị trí: thứ 2 từ phải sang (kế cuối)
+            if (totalCount >= 2 && index === totalCount - 2) {
+                score += 50;
+            }
+            
+            // Trừ điểm các nút có dấu hiệu Copy
+            if (allText.includes('copy') || allText.includes('duplicate') || html.includes('copy') || html.includes('duplicate') || html.includes('copy-o')) {
+                score -= 60;
+            }
+            
+            // Trừ điểm các nút có dấu hiệu Xóa/Delete
+            if (allText.includes('delete') || allText.includes('xóa') || html.includes('delete') || html.includes('xóa') || html.includes('trash')) {
+                score -= 100;
+            }
+            
+            // Trừ điểm các nút đính kèm/attachment (Nút 4, 5 trong danh sách của user)
+            if (allText.includes('attach') || allText.includes('file') || html.includes('attach') || html.includes('dropzone')) {
+                score -= 80;
+            }
+            
+            return score;
+        }
+
+        for (let i = 0; i < 30; i++) { // Chờ tối đa 15 giây (30 * 500ms)
+            // Lấy vùng chi tiết đang mở (modal hoặc div.question)
+            const detailArea = document.querySelector('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
+            if (detailArea) {
+                // Ưu tiên tìm trong thanh header metadata chứa các tác vụ ở đầu
+                const header = detailArea.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1)');
+                if (header) {
+                    const candidates = Array.from(header.querySelectorAll('span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], svg'));
+                    const filteredCandidates = candidates.filter(el => el !== editBtn1 && el.offsetWidth > 0);
+                    
+                    let bestEl = null;
+                    let bestScore = -999;
+                    filteredCandidates.forEach((el, idx) => {
+                        const score = scoreElement(el, idx, filteredCandidates.length);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestEl = el;
+                        }
+                    });
+                    
+                    if (bestEl && bestScore >= 0) {
+                        editBtn2 = bestEl;
+                        break;
+                    }
+                } else {
+                    // Fallback nếu không tìm thấy header riêng biệt
+                    const candidates = Array.from(detailArea.querySelectorAll('span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], svg'));
+                    const filteredCandidates = candidates.filter(el => el !== editBtn1 && el.offsetWidth > 0);
+                    
+                    let bestEl = null;
+                    let bestScore = -999;
+                    filteredCandidates.forEach((el, idx) => {
+                        const score = scoreElement(el, idx, filteredCandidates.length);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestEl = el;
+                        }
+                    });
+                    
+                    if (bestEl && bestScore >= 40) {
+                        editBtn2 = bestEl;
+                        break;
+                    }
                 }
             }
+            if (editBtn2) break;
+            await sleep(500);
         }
 
         if (editBtn2) {
+            log("Tìm thấy Pencil 2 (chỉnh sửa tổng), tiến hành click...");
             highlightElement(editBtn2, 'red');
             simulateFullClick(editBtn2);
-            simulateFullClick(editBtn2.querySelector('svg'));
+            
+            // Bấm thêm SVG bên trong nếu có
+            const svg = editBtn2.querySelector('svg');
+            if (svg) simulateFullClick(svg);
+            
             if (editBtn2.parentElement) simulateFullClick(editBtn2.parentElement);
             await sleep(1500);
         } else {
+            log("Không tìm thấy Pencil 2 tiêu chuẩn, thực hiện click fallback tất cả các bút khác...");
             let pencils = document.querySelectorAll('i[aria-label="icon: edit"]');
             for (let p of pencils) {
                 if (p !== editBtn1 && p.offsetWidth > 0) {
@@ -339,10 +431,11 @@
             await sleep(1500);
         }
 
-        // Đợi modal soạn thảo hiển thị hoàn tất (.wrapper-quill)
+        // Đợi modal soạn thảo hiển thị hoàn tất (hỗ trợ .wrapper-quill, .ql-editor, .ql-container)
         let formFound = false;
-        for (let i = 0; i < 20; i++) {
-            if (document.querySelector('.wrapper-quill, div.form-button-groups button.btn-primary')) {
+        log("Đang chờ modal soạn thảo load xong...");
+        for (let i = 0; i < 30; i++) { // Chờ tối đa 15s (30 * 500ms)
+            if (document.querySelector('.wrapper-quill, .ql-editor, .ql-container, div.form-button-groups button.btn-primary')) {
                 formFound = true;
                 break;
             }
@@ -350,7 +443,7 @@
         }
 
         if (!formFound) {
-            throw new Error('Không mở được modal soạn thảo (Không tìm thấy .wrapper-quill sau 10s)');
+            throw new Error('Không mở được modal soạn thảo (Không tìm thấy .wrapper-quill, .ql-editor hoặc nút cập nhật sau 15s)');
         }
 
         // Báo cáo về server
