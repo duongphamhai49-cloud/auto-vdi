@@ -719,16 +719,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 pyautogui.press('enter')
                 log("Đã gửi ảnh lên Gemini.", "OK")
                 
-                # 5. Chờ Tampermonkey mở hoàn tất modal soạn thảo (Edit) trên LMS
-                log("Chờ Tampermonkey mở hoàn tất modal soạn thảo (Pencil 2)...", "STATUS")
-                res_edit = wait_for_lms_result(session_id_edit, timeout=30)
-                if not res_edit or res_edit.get('error'):
-                    err = res_edit.get('error') if res_edit else "Timeout mở modal soạn thảo"
-                    raise Exception(f"Lỗi mở modal Edit: {err}")
-                log("Tampermonkey đã mở modal soạn thảo thành công.", "OK")
-                msg_extra = "Đã tìm & mở Edit (DOM) | Đã gửi Gemini."
-
-                # 6. Đợi Gemini xử lý xong (5s sau khi nhấn Enter + check màu rảnh rỗi)
+                # 5. Đợi Gemini xử lý xong (5s sau khi nhấn Enter + check màu rảnh rỗi)
                 log("Chờ Gemini xử lý phản hồi (nghỉ 5s)...", "STATUS")
                 time.sleep(5.0)
                 
@@ -788,7 +779,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 if copy_pos:
                     pyautogui.click(copy_pos)
                     log("Đã click nút Copy của Gemini.", "OK")
-                    msg_extra += " | Đã Copy kết quả Gemini."
+                    msg_extra = "Đã gửi Gemini | Đã Copy kết quả Gemini."
                     
                     # Refresh Gemini
                     time.sleep(0.5)
@@ -796,6 +787,77 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log("Đã bấm F5 tải lại Gemini.", "ACTION")
                 else:
                     raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
+
+                # --- ĐÃ CÓ ĐỀ BÀI TỪ GEMINI TRONG CLIPBOARD ---
+                # Focus lại cửa sổ LMS và cuộn lên đầu để đảm bảo giao diện hiển thị đúng vị trí
+                log("Focus lại cửa sổ LMS (FCS_GEM_LMS) và cuộn trang lên đầu...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                time.sleep(0.2)
+                pyautogui.scroll(1000)  # Cuộn chuột lên trên cùng (1000 pixels)
+                time.sleep(0.5)
+
+                # 6. Bây giờ kiểm tra kết quả mở modal soạn thảo (Edit) trên LMS
+                log("Chờ Tampermonkey mở hoàn tất modal soạn thảo (Pencil 2)...", "STATUS")
+                lms_edit_failed = False
+                lms_edit_err_msg = ""
+                res_edit = wait_for_lms_result(session_id_edit, timeout=15)
+                
+                if not res_edit or res_edit.get('error'):
+                    lms_edit_err_msg = res_edit.get('error') if res_edit else "Timeout mở modal soạn thảo"
+                    log(f"Lỗi mở modal Edit (LMS) từ Tampermonkey: {lms_edit_err_msg}", "WARN")
+                    
+                    # CỨU HỘ KHẨN CẤP: Quét ảnh newpencil.png + fallback tọa độ (906, 256)
+                    log("Tampermonkey không click được. Bắt đầu cứu hộ bằng mắt thần...", "ACTION")
+                    
+                    # Focus lại cửa sổ LMS và cuộn lên đầu trang
+                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                    time.sleep(0.2)
+                    pyautogui.scroll(1000)  # Cuộn chuột lên trên cùng (1000 pixels)
+                    time.sleep(0.5)
+                    
+                    # Quét ảnh newpencil.png trong vùng mở rộng ±200px từ tọa độ gốc (906, 256)
+                    rescue_x, rescue_y = 906, 256
+                    scan_region = (
+                        max(0, rescue_x - 200),   # left
+                        max(0, rescue_y - 200),   # top
+                        400,                       # width (200 trái + 200 phải)
+                        400                        # height (200 trên + 200 dưới)
+                    )
+                    log(f"Quét newpencil.png trong vùng {scan_region}...", "SEARCH")
+                    pencil_pos = None
+                    for _ in range(10):  # Thử quét tối đa 1s (10 * 100ms)
+                        try:
+                            pencil_pos = pyautogui.locateCenterOnScreen('newpencil.png', region=scan_region, confidence=0.75)
+                            if pencil_pos:
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.1)
+                    
+                    if pencil_pos:
+                        log(f"Mắt thần phát hiện newpencil tại ({pencil_pos.x}, {pencil_pos.y}). Click!", "OK")
+                        pyautogui.click(pencil_pos.x, pencil_pos.y)
+                    else:
+                        log(f"Không quét thấy newpencil.png. Fallback click tọa độ cứu hộ ({rescue_x}, {rescue_y})...", "WARN")
+                        pyautogui.click(rescue_x, rescue_y)
+                    
+                    time.sleep(2.0) # Chờ 2s để modal/form mở ra
+                    
+                    # Gửi lệnh Tampermonkey kiểm tra xem form đã được mở chưa
+                    log("Yêu cầu Tampermonkey xác nhận trạng thái Form soạn thảo...", "STATUS")
+                    session_id_check, evt_check = enqueue_lms_command('check_form')
+                    res_check = wait_for_lms_result(session_id_check, timeout=5)
+                    
+                    if res_check and not res_check.get('error'):
+                        log("Cứu hộ bằng click tọa độ (906, 256) THÀNH CÔNG! Trình soạn thảo đã mở.", "OK")
+                        msg_extra = "Đã click cứu hộ (906,256) | " + msg_extra
+                    else:
+                        lms_edit_failed = True
+                        lms_edit_err_msg = "Không thể mở form soạn thảo kể cả khi click cứu hộ tọa độ (906, 256)"
+                        log(lms_edit_err_msg + ". Sẽ tiến hành chạy NotebookLM cứu hộ!", "ERROR")
+                else:
+                    log("Tampermonkey đã mở modal soạn thảo thành công.", "OK")
+                    msg_extra = "Đã tìm & mở Edit (DOM) | " + msg_extra
 
                 # 7. Chuyển sang NotebookLM để dán gửi
                 log("Focus lại cửa sổ chứa LMS & NBLM (Fcs_Gem_LMS)...", "ACTION")
@@ -822,11 +884,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 pyautogui.press('enter')
                 log("Đã dán và gửi nội dung vào NotebookLM.", "OK")
                 msg_extra += " | Đã gửi NBLM."
-
+ 
                 # Sau khi gửi xong, lập tức lấy focus tại FCS_ON_NBLM
                 log("Lập tức focus NotebookLM (FCS_ON_NBLM)...", "ACTION")
                 GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
-
+ 
                 # Sau đó đợi cứng 10s rồi mới bắt đầu quy trình đảo tab
                 log("Đợi cứng 10s sau khi gửi NotebookLM...", "STATUS")
                 time.sleep(10.0)
@@ -861,7 +923,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         log("Focus NotebookLM (FCS_ON_NBLM) trước khi nhấn End...", "ACTION")
                         GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
                         time.sleep(0.2)
-
+ 
                         # Bấm phím End lần 1
                         log("Nhấn phím End lần 1...", "ACTION")
                         pyautogui.press('end')
@@ -929,15 +991,27 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 
                 if not nblm_copied:
                     raise Exception("Không tìm thấy nút Copy của NotebookLM sau các chu kỳ chờ!")
-
+ 
                 # Đọc kết quả từ Clipboard trả về cho index.html
                 copied_text = ClipboardHelper.paste_text()
-                self.wfile.write(json.dumps({
-                    "status": "success",
-                    "message": f"ID: {question_id} - {msg_extra}",
-                    "notebook_output": copied_text
-                }).encode('utf-8'))
 
+                if lms_edit_failed:
+                    log("LMS Edit bị lỗi trước đó. Tiến hành đóng câu hỏi (fallback_cancel_routine)...", "ACTION")
+                    fallback_cancel_routine()
+                    self.wfile.write(json.dumps({
+                        "status": "success",
+                        "message": f"ID: {question_id} - LMS Edit lỗi nhưng đã cứu hộ NotebookLM thành công!",
+                        "notebook_output": copied_text,
+                        "skip_paste": True,
+                        "error_detail": f"Lỗi mở modal Edit: {lms_edit_err_msg}"
+                    }).encode('utf-8'))
+                else:
+                    self.wfile.write(json.dumps({
+                        "status": "success",
+                        "message": f"ID: {question_id} - {msg_extra}",
+                        "notebook_output": copied_text
+                    }).encode('utf-8'))
+ 
             except Exception as e:
                 log(f"LỖI HỆ THỐNG TẠI SEARCH_ID: {e}", "ERROR")
                 if not STOP_FLAG:

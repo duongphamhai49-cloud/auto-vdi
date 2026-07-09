@@ -131,6 +131,9 @@
                 case 'edit':
                     await doEdit();
                     break;
+                case 'check_form':
+                    await doCheckForm();
+                    break;
                 default:
                     isProcessing = false;
                     setBadge('🔵 LMS FindOpen Ready', '#3b82f6');
@@ -272,6 +275,14 @@
     async function doEdit() {
         setBadge('✏️ Đang mở Edit...', '#f59e0b');
 
+        // Cuộn toàn bộ về đầu trang/modal để hiển thị rõ ràng nút bấm và phục vụ tọa độ cứu hộ
+        window.scrollTo(0, 0);
+        const scrollable = document.querySelector('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
+        if (scrollable) {
+            try { scrollable.scrollTo(0, 0); } catch(e) {}
+        }
+        await sleep(200);
+
         function simulateFullClick(element) {
             if (!element) return;
             ['mousedown', 'pointerdown', 'mouseup', 'pointerup', 'click'].forEach(eventType => {
@@ -338,7 +349,7 @@
             
             // 3. Vị trí: thứ 2 từ phải sang (kế cuối)
             if (totalCount >= 2 && index === totalCount - 2) {
-                score += 50;
+                score += 500; // Nâng điểm cực mạnh để ưu tiên nút thứ 2 từ phải sang
             }
             
             // Trừ điểm các nút có dấu hiệu Copy
@@ -359,20 +370,70 @@
             return score;
         }
 
-        for (let i = 0; i < 30; i++) { // Chờ tối đa 15 giây (30 * 500ms)
-            // Lấy vùng chi tiết đang mở (modal hoặc div.question)
-            const detailArea = document.querySelector('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
+        // Bảng màu debug để khoanh viền từng ứng viên (mỗi nút 1 màu khác nhau)
+        const debugColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFAA00', '#00FFFF', '#FF6600', '#9900FF', '#00FF99', '#FF3366'];
+        
+        function highlightCandidate(el, idx, label) {
+            if (!el) return;
+            const color = debugColors[idx % debugColors.length];
+            el.style.outline = `3px solid ${color}`;
+            el.style.outlineOffset = '2px';
+            // Thêm nhãn số thứ tự
+            const badge = document.createElement('span');
+            badge.textContent = `${label}#${idx}`;
+            badge.style.cssText = `position:absolute;top:-18px;left:0;background:${color};color:#fff;font-size:10px;padding:1px 4px;border-radius:3px;z-index:99999;pointer-events:none;font-weight:bold;`;
+            el.style.position = el.style.position || 'relative';
+            el.appendChild(badge);
+            // Tự xóa sau 8 giây
+            setTimeout(() => {
+                el.style.outline = '';
+                el.style.outlineOffset = '';
+                try { badge.remove(); } catch(e) {}
+            }, 8000);
+        }
+        
+        function highlightChosen(el) {
+            if (!el) return;
+            el.style.outline = '4px solid #00FF00';
+            el.style.outlineOffset = '3px';
+            el.style.boxShadow = '0 0 12px #00FF00';
+            setTimeout(() => {
+                el.style.outline = '';
+                el.style.outlineOffset = '';
+                el.style.boxShadow = '';
+            }, 8000);
+        }
+
+        for (let i = 0; i < 25; i++) { // Chờ tối đa 5 giây (25 * 200ms)
+            // Lấy vùng chi tiết đang mở (chọn modal/khung chứa đề bài và các nút chức năng đang hiển thị thực tế)
+            const areas = Array.from(document.querySelectorAll('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question.mb-3, div.question.p-4, .whitebox'));
+            const detailArea = areas.find(el => {
+                if (el.offsetWidth === 0 && el.offsetHeight === 0) return false;
+                return el.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1), .flex.flex-wrap.items-center');
+            });
             if (detailArea) {
                 // Ưu tiên tìm trong thanh header metadata chứa các tác vụ ở đầu
                 const header = detailArea.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1)');
                 if (header) {
-                    const candidates = Array.from(header.querySelectorAll('span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], svg'));
-                    const filteredCandidates = candidates.filter(el => el !== editBtn1 && el.offsetWidth > 0);
+                    const rawCandidates = Array.from(header.querySelectorAll('span.text-muted-700, span.text-primary, span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], div.attachment-container, div.attachment-container-dropzone, div.flex.flex-wrap.items-center > span'));
+                    
+                    // Loại bỏ các thẻ đồ họa trực tiếp
+                    const filteredCandidates = rawCandidates.filter(el => {
+                        if (el === editBtn1 || el.offsetWidth === 0) return false;
+                        const tag = el.tagName.toLowerCase();
+                        return tag !== 'svg' && tag !== 'path' && tag !== 'i';
+                    });
+                    
+                    // Loại bỏ phần tử con trùng lặp để chỉ giữ lại phần tử cha ngoài cùng đại diện cho mỗi nút
+                    const finalCandidates = filteredCandidates.filter(el => {
+                        return !filteredCandidates.some(other => other !== el && other.contains(el));
+                    });
                     
                     let bestEl = null;
                     let bestScore = -999;
-                    filteredCandidates.forEach((el, idx) => {
-                        const score = scoreElement(el, idx, filteredCandidates.length);
+                    finalCandidates.forEach((el, idx) => {
+                        const score = scoreElement(el, idx, finalCandidates.length);
+                        log(`[Pencil 2 Scan] Candidate [${idx}/${finalCandidates.length}]: Tag = ${el.tagName}, Class = ${el.className}, Score = ${score}`);
                         if (score > bestScore) {
                             bestScore = score;
                             bestEl = el;
@@ -381,17 +442,28 @@
                     
                     if (bestEl && bestScore >= 0) {
                         editBtn2 = bestEl;
+                        highlightChosen(editBtn2);
+                        log(`[Pencil 2 Scan] Đã chọn nút có điểm cao nhất: ${bestScore} (Tag = ${editBtn2.tagName}, Class = ${editBtn2.className})`);
                         break;
                     }
                 } else {
                     // Fallback nếu không tìm thấy header riêng biệt
-                    const candidates = Array.from(detailArea.querySelectorAll('span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], svg'));
-                    const filteredCandidates = candidates.filter(el => el !== editBtn1 && el.offsetWidth > 0);
+                    const rawCandidates = Array.from(detailArea.querySelectorAll('span.text-muted-700, span.text-primary, span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], div.attachment-container, div.attachment-container-dropzone, div.flex.flex-wrap.items-center > span'));
+                    const filteredCandidates = rawCandidates.filter(el => {
+                        if (el === editBtn1 || el.offsetWidth === 0) return false;
+                        const tag = el.tagName.toLowerCase();
+                        return tag !== 'svg' && tag !== 'path' && tag !== 'i';
+                    });
+                    
+                    const finalCandidates = filteredCandidates.filter(el => {
+                        return !filteredCandidates.some(other => other !== el && other.contains(el));
+                    });
                     
                     let bestEl = null;
                     let bestScore = -999;
-                    filteredCandidates.forEach((el, idx) => {
-                        const score = scoreElement(el, idx, filteredCandidates.length);
+                    finalCandidates.forEach((el, idx) => {
+                        const score = scoreElement(el, idx, finalCandidates.length);
+                        log(`[Pencil 2 Fallback Scan] Candidate [${idx}/${finalCandidates.length}]: Tag = ${el.tagName}, Class = ${el.className}, Score = ${score}`);
                         if (score > bestScore) {
                             bestScore = score;
                             bestEl = el;
@@ -400,12 +472,14 @@
                     
                     if (bestEl && bestScore >= 40) {
                         editBtn2 = bestEl;
+                        highlightChosen(editBtn2);
+                        log(`[Pencil 2 Fallback Scan] Đã chọn nút có điểm cao nhất: ${bestScore} (Tag = ${editBtn2.tagName}, Class = ${editBtn2.className})`);
                         break;
                     }
                 }
             }
             if (editBtn2) break;
-            await sleep(500);
+            await sleep(200); // Tăng tốc quét từ 500ms xuống 200ms
         }
 
         if (editBtn2) {
@@ -418,7 +492,7 @@
             if (svg) simulateFullClick(svg);
             
             if (editBtn2.parentElement) simulateFullClick(editBtn2.parentElement);
-            await sleep(1500);
+            await sleep(200); // Giảm độ trễ cứng sau click từ 1.5s xuống 200ms
         } else {
             log("Không tìm thấy Pencil 2 tiêu chuẩn, thực hiện click fallback tất cả các bút khác...");
             let pencils = document.querySelectorAll('i[aria-label="icon: edit"]');
@@ -428,27 +502,38 @@
                     if (p.parentElement) simulateFullClick(p.parentElement);
                 }
             }
-            await sleep(1500);
+            await sleep(200); // Giảm độ trễ cứng xuống 200ms
         }
 
         // Đợi modal soạn thảo hiển thị hoàn tất (hỗ trợ .wrapper-quill, .ql-editor, .ql-container)
         let formFound = false;
         log("Đang chờ modal soạn thảo load xong...");
-        for (let i = 0; i < 30; i++) { // Chờ tối đa 15s (30 * 500ms)
+        for (let i = 0; i < 50; i++) { // Chờ tối đa 5s (50 * 100ms)
             if (document.querySelector('.wrapper-quill, .ql-editor, .ql-container, div.form-button-groups button.btn-primary')) {
                 formFound = true;
                 break;
             }
-            await sleep(500);
+            await sleep(100); // Tăng tần suất kiểm tra từ 500ms xuống 100ms để phản hồi ngay khi form xuất hiện
         }
 
         if (!formFound) {
-            throw new Error('Không mở được modal soạn thảo (Không tìm thấy .wrapper-quill, .ql-editor hoặc nút cập nhật sau 15s)');
+            throw new Error('Không mở được modal soạn thảo (Không tìm thấy .wrapper-quill, .ql-editor hoặc nút cập nhật sau 5s)');
         }
 
         // Báo cáo về server
         await postJSON(`${SERVER}/lms/done`, { event: 'lms_edit_done', session: currentSession });
         setBadge('✅ Đã mở Edit', '#10b981');
+    }
+
+    // --- DO CHECK FORM (Cứu hộ kiểm tra trạng thái form mở) ---
+    async function doCheckForm() {
+        const formFound = !!document.querySelector('.wrapper-quill, .ql-editor, .ql-container, div.form-button-groups button.btn-primary');
+        if (formFound) {
+            await postJSON(`${SERVER}/lms/done`, { event: 'lms_check_form_done', session: currentSession });
+            setBadge('✅ Đã mở Edit (Cứu hộ)', '#10b981');
+        } else {
+            throw new Error('Form soạn thảo vẫn chưa được mở');
+        }
     }
 
     // ==========================================
@@ -467,10 +552,214 @@
     }
 
     // ==========================================
+    // DEBUG: QUÉT VÀ KHOANH MÀU CÁC NÚT ỨNG VIÊN
+    // ==========================================
+    const debugColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFAA00', '#00FFFF', '#FF6600', '#9900FF', '#00FF99', '#FF3366'];
+    let debugBadges = []; // Lưu lại các badge để xóa khi test lại
+
+    function clearDebugHighlights() {
+        debugBadges.forEach(b => { try { b.badge.remove(); b.el.style.outline = ''; b.el.style.outlineOffset = ''; b.el.style.boxShadow = ''; } catch(e) {} });
+        debugBadges = [];
+    }
+
+    function highlightCandidateDebug(el, idx, label, score) {
+        if (!el) return;
+        const color = debugColors[idx % debugColors.length];
+        el.style.outline = `3px solid ${color}`;
+        el.style.outlineOffset = '2px';
+        const b = document.createElement('div');
+        b.textContent = `${label}#${idx} (${score}pt)`;
+        b.style.cssText = `position:fixed;z-index:99999999;background:${color};color:#fff;font-size:11px;padding:2px 6px;border-radius:4px;pointer-events:none;font-weight:bold;white-space:nowrap;`;
+        const rect = el.getBoundingClientRect();
+        b.style.top = (rect.top - 20) + 'px';
+        b.style.left = rect.left + 'px';
+        document.body.appendChild(b);
+        
+        const item = { badge: b, el: el };
+        debugBadges.push(item);
+        
+        // Tự động xóa sau 8 giây
+        setTimeout(() => {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+            try { b.remove(); } catch(e) {}
+            const index = debugBadges.indexOf(item);
+            if (index > -1) debugBadges.splice(index, 1);
+        }, 8000);
+    }
+
+    function highlightChosenDebug(el) {
+        if (!el) return;
+        el.style.outline = '4px solid #00FF00';
+        el.style.outlineOffset = '3px';
+        el.style.boxShadow = '0 0 15px #00FF00';
+        
+        setTimeout(() => {
+            el.style.outline = '';
+            el.style.outlineOffset = '';
+            el.style.boxShadow = '';
+        }, 8000);
+    }
+
+    function doTestScan() {
+        clearDebugHighlights();
+        
+        // Hàm chấm điểm (copy từ doEdit)
+        function scoreElement(el, idx, total) {
+            let score = 50;
+            const html = el.innerHTML || '';
+            const allText = (el.textContent || '').toLowerCase() + ' ' + (el.title || '').toLowerCase() + ' ' + (el.getAttribute('aria-label') || '').toLowerCase();
+            if (html.includes('edit') || html.includes('pencil') || html.includes('pen') || allText.includes('sửa') || allText.includes('chỉnh sửa') || allText.includes('edit')) score += 80;
+            if (el.querySelector('svg')) score += 15;
+            if (el.closest('div.flex.flex-wrap.items-center')) score += 10;
+            if (idx === total - 2 && total >= 3) score += 500; // Nâng điểm cực mạnh để ưu tiên nút thứ 2 từ phải sang
+            else if (idx === total - 1) score += 10;
+            if (allText.includes('copy') || allText.includes('duplicate') || html.includes('copy') || html.includes('duplicate') || html.includes('copy-o')) score -= 60;
+            if (allText.includes('delete') || allText.includes('xóa') || html.includes('delete') || html.includes('xóa') || html.includes('trash')) score -= 100;
+            if (allText.includes('attach') || allText.includes('file') || html.includes('attach') || html.includes('dropzone')) score -= 80;
+            return score;
+        }
+
+        const areas = Array.from(document.querySelectorAll('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question.mb-3, div.question.p-4, .whitebox'));
+        const detailArea = areas.find(el => {
+            if (el.offsetWidth === 0 && el.offsetHeight === 0) return false;
+            return el.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1), .flex.flex-wrap.items-center');
+        });
+        if (!detailArea) {
+            alert('[Test Scan] Không tìm thấy vùng chi tiết câu hỏi đang hiển thị trên trang!');
+            return;
+        }
+
+        const header = detailArea.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1)');
+        const searchArea = header || detailArea;
+        const label = header ? 'H' : 'F';
+
+        const rawCandidates = Array.from(searchArea.querySelectorAll('span.text-muted-700, span.text-primary, span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], div.attachment-container, div.attachment-container-dropzone, div.flex.flex-wrap.items-center > span'));
+        const filteredCandidates = rawCandidates.filter(el => {
+            if (el.offsetWidth === 0) return false;
+            const tag = el.tagName.toLowerCase();
+            return tag !== 'svg' && tag !== 'path' && tag !== 'i';
+        });
+
+        // Chỉ lấy phần tử ngoài cùng đại diện cho mỗi nút
+        const finalCandidates = filteredCandidates.filter(el => {
+            return !filteredCandidates.some(other => other !== el && other.contains(el));
+        });
+
+        if (finalCandidates.length === 0) {
+            alert('[Test Scan] Không tìm thấy ứng viên nào sau khi lọc!');
+            return;
+        }
+
+        let bestEl = null;
+        let bestScore = -999;
+        finalCandidates.forEach((el, idx) => {
+            const score = scoreElement(el, idx, finalCandidates.length);
+            console.log(`[Test Scan] ${label}#${idx}: Tag=${el.tagName}, Class=${el.className}, Score=${score}, HTML=${el.innerHTML.substring(0, 80)}`);
+            highlightCandidateDebug(el, idx, label, score);
+            if (score > bestScore) {
+                bestScore = score;
+                bestEl = el;
+            }
+        });
+
+        if (bestEl) {
+            highlightChosenDebug(bestEl);
+            console.log(`[Test Scan] ✅ NÚT ĐƯỢC CHỌN: Score=${bestScore}, Tag=${bestEl.tagName}, Class=${bestEl.className}`);
+        }
+
+        setBadge(`🔍 Scan: ${finalCandidates.length} nút, chọn ${bestScore}pt`, '#FFAA00');
+    }
+
+    async function doCopyDOM() {
+        const areas = Array.from(document.querySelectorAll('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox'));
+        const detailArea = areas.find(el => {
+            if (el.offsetWidth === 0 && el.offsetHeight === 0) return false;
+            return el.querySelector('div.question, div.rounded.px-3.py-2, .flex.flex-wrap.items-center') || el.classList.contains('question');
+        }) || document.querySelector('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
+
+        if (!detailArea) {
+            alert('Không tìm thấy vùng chi tiết câu hỏi đang hiển thị!');
+            return;
+        }
+
+        const header = detailArea.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1)') || detailArea;
+        const domString = header.outerHTML;
+
+        try {
+            await navigator.clipboard.writeText(domString);
+            alert('Đã copy DOM của vùng chức năng vào Clipboard thành công! Bạn hãy dán cho AI phân tích.');
+        } catch (err) {
+            // Hiển thị khung văn bản cho phép copy thủ công
+            const container = document.createElement('div');
+            container.id = 'aet-dom-copy-overlay';
+            container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999999;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+            
+            const title = document.createElement('h3');
+            title.textContent = 'Trình duyệt chặn ghi Clipboard. Hãy bấm Ctrl + C để copy đoạn mã dưới đây:';
+            title.style.cssText = 'color:#fff;margin-bottom:15px;font-family:sans-serif;';
+            
+            const txt = document.createElement('textarea');
+            txt.value = domString;
+            txt.style.cssText = 'width:80%;height:60%;background:#1e1e1e;color:#00ff00;padding:15px;font-family:monospace;border:2px solid #00ff00;border-radius:6px;font-size:12px;resize:none;';
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Đóng Lại';
+            closeBtn.style.cssText = 'margin-top:20px;padding:10px 30px;background:#ef4444;color:#fff;border:none;border-radius:4px;font-weight:bold;cursor:pointer;';
+            closeBtn.onclick = () => { container.remove(); };
+            
+            container.appendChild(title);
+            container.appendChild(txt);
+            container.appendChild(closeBtn);
+            document.body.appendChild(container);
+            
+            txt.select();
+            txt.focus();
+        }
+    }
+
+    // ==========================================
     // KHỞI CHẠY
     // ==========================================
     function init() {
         createBadge();
+
+        // Tạo nút Test Scan (chỉ là icon 🔍)
+        const testBtn = document.createElement('div');
+        testBtn.id = 'aet-test-scan-btn';
+        testBtn.textContent = '🔍';
+        testBtn.title = 'Chạy thử quét ứng viên nút Sửa (Test Scan)';
+        testBtn.style.cssText = `
+            position: fixed; top: 8px; right: 320px; z-index: 9999999;
+            background: rgba(255,170,0,0.95); color: #000; width: 32px; height: 32px;
+            border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center;
+            border: 1px solid #FF6600; cursor: pointer;
+            backdrop-filter: blur(8px); transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        `;
+        testBtn.addEventListener('click', doTestScan);
+        testBtn.addEventListener('mouseenter', () => { testBtn.style.background = '#FF6600'; testBtn.style.color = '#fff'; });
+        testBtn.addEventListener('mouseleave', () => { testBtn.style.background = 'rgba(255,170,0,0.95)'; testBtn.style.color = '#000'; });
+        document.body.appendChild(testBtn);
+
+        // Tạo nút Copy DOM (chỉ là icon 📋)
+        const copyDomBtn = document.createElement('div');
+        copyDomBtn.id = 'aet-copy-dom-btn';
+        copyDomBtn.textContent = '📋';
+        copyDomBtn.title = 'Sao chép cấu trúc HTML của thanh công cụ (Copy DOM)';
+        copyDomBtn.style.cssText = `
+            position: fixed; top: 8px; right: 360px; z-index: 9999999;
+            background: rgba(59,130,246,0.95); color: #fff; width: 32px; height: 32px;
+            border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center;
+            border: 1px solid #2563eb; cursor: pointer;
+            backdrop-filter: blur(8px); transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        `;
+        copyDomBtn.addEventListener('click', doCopyDOM);
+        copyDomBtn.addEventListener('mouseenter', () => { copyDomBtn.style.background = '#2563eb'; });
+        copyDomBtn.addEventListener('mouseleave', () => { copyDomBtn.style.background = 'rgba(59,130,246,0.95)'; });
+        document.body.appendChild(copyDomBtn);
+
         setInterval(pollServer, POLL_INTERVAL);
         setTimeout(pollServer, 1000);
     }

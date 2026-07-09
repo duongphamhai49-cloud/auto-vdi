@@ -539,30 +539,34 @@
                     if (searchData.status === 'success' && searchData.notebook_output) {
                         notebookContent = searchData.notebook_output;
 
-                        // Buoc 2: Parse noi dung (dung lai logic co san)
-                        const notebookInput = document.getElementById('notebook_input');
-                        notebookInput.value = searchData.notebook_output;
-                        parseNotebookOutput();
-
-                        if (window.currentParsedData) {
-                            typeCode = window.currentParsedData.typeCode || 'N/A';
-
-                            // Buoc 3: Goi /paste_lms
-                            const pasteRes = await fetch('http://localhost:5050/paste_lms', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ parsed_data: window.currentParsedData })
-                            });
-                            const pasteData = await pasteRes.json();
-
-                            if (pasteData.status === 'success') {
-                                idStatus = 'Thành công';
-                                successCount++;
-                            } else {
-                                errorDetail = `Loi dan LMS: ${pasteData.message}`;
-                            }
+                        if (searchData.skip_paste) {
+                            errorDetail = searchData.error_detail || 'Bỏ qua dán do lỗi mở Edit trên LMS';
                         } else {
-                            errorDetail = 'Khong parse duoc noi dung NBLM';
+                            // Buoc 2: Parse noi dung (dung lai logic co san)
+                            const notebookInput = document.getElementById('notebook_input');
+                            notebookInput.value = searchData.notebook_output;
+                            parseNotebookOutput();
+
+                            if (window.currentParsedData) {
+                                typeCode = window.currentParsedData.typeCode || 'N/A';
+
+                                // Buoc 3: Goi /paste_lms
+                                const pasteRes = await fetch('http://localhost:5050/paste_lms', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ parsed_data: window.currentParsedData })
+                                });
+                                const pasteData = await pasteRes.json();
+
+                                if (pasteData.status === 'success') {
+                                    idStatus = 'Thành công';
+                                    successCount++;
+                                } else {
+                                    errorDetail = `Loi dan LMS: ${pasteData.message}`;
+                                }
+                            } else {
+                                errorDetail = 'Khong parse duoc noi dung NBLM';
+                            }
                         }
                     } else {
                         errorDetail = `Loi search_id: ${searchData.message || 'Khong co noi dung'}`;
@@ -703,26 +707,31 @@
                         textarea.value = data.notebook_output;
                         parseNotebookOutput(); // Tự động tách trường dữ liệu
 
-                        status.innerText = `Đang chuyển dữ liệu JSON lên LMS...`;
+                        if (data.skip_paste) {
+                            status.style.color = 'var(--error)';
+                            status.innerText = `Lỗi mở Edit LMS: ${data.error_detail || 'Bỏ qua dán'}`;
+                        } else {
+                            status.innerText = `Đang chuyển dữ liệu JSON lên LMS...`;
 
-                        if (window.currentParsedData) {
-                            try {
-                                const pasteRes = await fetch('http://localhost:5050/paste_lms', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ parsed_data: window.currentParsedData })
-                                });
-                                const pasteData = await pasteRes.json();
-                                if (pasteData.status === 'success') {
-                                    status.innerText = `Hoàn tất 100%: ${currentId} đã dán xong vào LMS!`;
-                                } else {
+                            if (window.currentParsedData) {
+                                try {
+                                    const pasteRes = await fetch('http://localhost:5050/paste_lms', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ parsed_data: window.currentParsedData })
+                                    });
+                                    const pasteData = await pasteRes.json();
+                                    if (pasteData.status === 'success') {
+                                        status.innerText = `Hoàn tất 100%: ${currentId} đã dán xong vào LMS!`;
+                                    } else {
+                                        status.style.color = 'var(--error)';
+                                        status.innerText = `Lỗi dán LMS: ${pasteData.message}`;
+                                    }
+                                } catch (e) {
+                                    console.error("Lỗi gọi /paste_lms:", e);
                                     status.style.color = 'var(--error)';
-                                    status.innerText = `Lỗi dán LMS: ${pasteData.message}`;
+                                    status.innerText = `Lỗi kết nối /paste_lms!`;
                                 }
-                            } catch (e) {
-                                console.error("Lỗi gọi /paste_lms:", e);
-                                status.style.color = 'var(--error)';
-                                status.innerText = `Lỗi kết nối /paste_lms!`;
                             }
                         }
                     }
