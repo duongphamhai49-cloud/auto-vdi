@@ -249,11 +249,20 @@
         highlightElement(target, 'red');
         await sleep(300);
 
+        // Tránh trùng lặp, đè chữ công thức toán (KaTeX/MathJax) khi html2canvas vẽ
+        try {
+            const hiddenMath = target.querySelectorAll('.katex-mathml, .MathJax_Preview, .MathJax_MathML, script[type^="math/tex"]');
+            hiddenMath.forEach(el => el.setAttribute('data-html2canvas-ignore', 'true'));
+        } catch (e) {
+            console.error('[LMS_FindOpen] Lỗi bỏ qua công thức ẩn:', e);
+        }
+
         try {
             const canvas = await html2canvas(target, {
                 useCORS: true,
                 allowTaint: true,
-                scale: 1.2, // Tăng nhẹ độ phân giải ảnh chụp
+                scale: 1.0, // Chụp tỉ lệ 1-1 tăng tốc độ vẽ
+                imageTimeout: 1500, // Timeout tải ảnh ngoài 1.5s tránh treo
                 logging: false,
                 backgroundColor: '#ffffff',
             });

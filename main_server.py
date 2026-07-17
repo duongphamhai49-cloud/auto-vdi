@@ -61,6 +61,58 @@ def draw_circle_overlay(x, y, radius=15, duration_sec=0.8, color="red"):
 
     threading.Thread(target=task, daemon=True).start()
 
+# ==========================================
+# CẤU HÌNH TỌA ĐỘ CHUỘT HỆ THỐNG
+# Bạn hãy dùng công cụ check_mouse_position.py hoặc các công cụ chụp ảnh màn hình
+# để xem tọa độ (X, Y) và màu sắc trên màn hình thật của bạn nhé.
+# ==========================================
+
+# 1. Tọa độ các điểm focus giao diện chính
+FCS_GEM_LMS = (134, 957)      # Tọa độ focus trình duyệt chứa LMS và NBLM (Trái)
+FCS_ON_NBLM = (895, 401)       # Tọa độ focus NotebookLM
+FCS_ON_EDIT_LMS = (989, 544)   # Tọa độ focus giữa Modal Edit câu hỏi trên LMS
+FCS_LMS_CANCEL = (24, 702)     # Tọa độ focus an toàn để đóng modal bằng nút Cancel
+FCS_ON_GEM = (1607, 297)       # Tọa độ focus Gemini
+
+# 2. Cấu hình Gemini (Phải Trên)
+GEMINI_CHATBOX_X = 1526
+GEMINI_CHATBOX_Y = 445
+GEMINI_CHATBOX = (GEMINI_CHATBOX_X, GEMINI_CHATBOX_Y)   # Tọa độ ô chat Gemini
+
+GEMINI_SEND_BTN_X = 1872
+GEMINI_SEND_BTN_Y = 455
+GEMINI_SEND_BTN = (GEMINI_SEND_BTN_X, GEMINI_SEND_BTN_Y)  # Tọa độ nút gửi của Gemini
+
+GEMINI_SEND_PIXEL_X = 1862
+GEMINI_SEND_PIXEL_Y = 469
+GEMINI_SEND_PIXEL = (GEMINI_SEND_PIXEL_X, GEMINI_SEND_PIXEL_Y) # Tọa độ pixel kiểm tra nút Send của Gemini
+
+GEMINI_COPY_REGION = (1294, 107, 585, 320) # Vùng tìm ảnh copy Gemini
+GEMINI_COPY_FALLBACK = (1482, 335)
+
+# 3. Cấu hình NotebookLM
+NBLM_CHATBOX = (530, 936)      # Tọa độ ô chat NotebookLM
+NBLM_SEND_BTN_X = 889
+NBLM_SEND_BTN_Y = 922
+NBLM_SEND_BTN = (NBLM_SEND_BTN_X, NBLM_SEND_BTN_Y)     # Tọa độ nút gửi của NotebookLM
+
+NBLM_CHECK_PIXEL = (850, 945)   # Tọa độ pixel kiểm tra của NotebookLM
+NBLM_IDLE_COLOR = (245, 245, 245) # Màu gốc của nút gửi NBLM khi đã phản hồi xong
+NBLM_COPY_REGION = (354, 447, 598, 455)    # Vùng tìm ảnh copy NotebookLM mới
+
+# 4. Các cấu hình phụ và tìm kiếm
+SEARCH_BOX_REGION = (328, 334, 247, 59) # Từ (328,334) đến (575,393)
+SEARCH_BOX_FALLBACK = (410, 375)
+
+SEARCH_BTN_X = 886
+SEARCH_BTN_Y = 476
+
+CAPTURE_BBOX = (7, 117, 1252, 1013) # Tọa độ vùng muốn chụp lại (Khung câu hỏi)
+
+PENCIL1_REGION = (1009, 181, 92, 802) # Vùng bút 1
+PENCIL2_REGION = (792, 232, 143, 48)  # Vùng bút 2
+PENCIL2_FALLBACK = (893, 252)
+
 # ==============================================================================
 # HỆ THỐNG LỚP HỖ TRỢ THEO NGUYÊN LÝ SOLID
 # ==============================================================================
@@ -70,25 +122,25 @@ class GUIHelper:
     Lớp hỗ trợ toàn bộ các thao tác giao diện người dùng (PyAutoGUI).
     Tuân thủ nguyên tắc Single Responsibility (SRP): Chỉ chịu trách nhiệm về tương tác GUI.
     """
-    FCS_GEM_LMS = (1183, 603)      # Tọa độ focus trình duyệt chứa LMS và NBLM (Trái)
-    FCS_ON_NBLM = (895, 401)       # Tọa độ focus NotebookLM
-    FCS_ON_EDIT_LMS = (989, 544)   # Tọa độ focus giữa Modal Edit câu hỏi trên LMS
-    FCS_LMS_CANCEL = (24, 702)     # Tọa độ focus an toàn để đóng modal bằng nút Cancel
-    FCS_ON_GEM = (1607, 297)       # Tọa độ focus Gemini
+    FCS_GEM_LMS = FCS_GEM_LMS
+    FCS_ON_NBLM = FCS_ON_NBLM
+    FCS_ON_EDIT_LMS = FCS_ON_EDIT_LMS
+    FCS_LMS_CANCEL = FCS_LMS_CANCEL
+    FCS_ON_GEM = FCS_ON_GEM
     
-    GEMINI_CHATBOX = (1526, 445)   # Tọa độ ô chat Gemini (Phải trên)
-    GEMINI_SEND_BTN = (1872, 455)  # Tọa độ nút gửi của Gemini
-    GEMINI_SEND_PIXEL = (1862, 469) # Tọa độ pixel kiểm tra nút Send của Gemini
+    GEMINI_CHATBOX = GEMINI_CHATBOX
+    GEMINI_SEND_BTN = GEMINI_SEND_BTN
+    GEMINI_SEND_PIXEL = GEMINI_SEND_PIXEL
     
-    NBLM_CHATBOX = (530, 936)      # Tọa độ ô chat NotebookLM
-    NBLM_SEND_BTN = (889, 922)     # Tọa độ nút gửi của NotebookLM
-    NBLM_CHECK_PIXEL = (850, 945)   # Tọa độ pixel kiểm tra của NotebookLM (850, 945)
-    NBLM_IDLE_COLOR = (245, 245, 245) # Màu gốc của nút gửi NBLM khi đã phản hồi xong
+    NBLM_CHATBOX = NBLM_CHATBOX
+    NBLM_SEND_BTN = NBLM_SEND_BTN
+    NBLM_CHECK_PIXEL = NBLM_CHECK_PIXEL
+    NBLM_IDLE_COLOR = NBLM_IDLE_COLOR
     
-    GEMINI_COPY_REGION = (1294, 107, 585, 320) # Vùng tìm ảnh copy Gemini
-    GEMINI_COPY_FALLBACK = (1482, 335)
+    GEMINI_COPY_REGION = GEMINI_COPY_REGION
+    GEMINI_COPY_FALLBACK = GEMINI_COPY_FALLBACK
     
-    NBLM_COPY_REGION = (354, 447, 598, 455)    # Vùng tìm ảnh copy NotebookLM mới
+    NBLM_COPY_REGION = NBLM_COPY_REGION
 
     @classmethod
     def focus(cls, coords):
@@ -133,6 +185,13 @@ class GUIHelper:
         else:
             log("Chuyển tab phía trước (Ctrl + Shift + Tab)...", "GUI")
             pyautogui.hotkey('ctrl', 'shift', 'tab')
+        time.sleep(0.5)
+
+    @classmethod
+    def switch_to_tab(cls, tab_number):
+        """Chuyển sang tab cụ thể bằng Ctrl + số (1-9)."""
+        log(f"Chuyển sang tab số {tab_number} (Ctrl + {tab_number})...", "GUI")
+        pyautogui.hotkey('ctrl', str(tab_number))
         time.sleep(0.5)
 
     @classmethod
@@ -515,46 +574,7 @@ pyautogui.moveTo = logged_moveTo
 
 time.sleep = safe_sleep
 
-# ==========================================
-# CẤU HÌNH TỌA ĐỘ CHUỘT
-# Bạn hãy dùng 1 tool chụp ảnh màn hình (như Lightshot, Snipping Tool) 
-# để xem tọa độ (X, Y) của các ô trên màn hình thật của bạn nhé.
-# ==========================================
-# 1. Vùng tìm kiếm và toạ độ dự phòng của ô "Nhập nội dung muốn tìm kiếm"
-SEARCH_BOX_REGION = (328, 334, 247, 59) # Từ (328,334) đến (575,393)
-SEARCH_BOX_FALLBACK = (410, 375)
-
-# 2. Tọa độ nút "Tìm kiếm" (Hiện tại đang dùng phím Enter thay thế)
-SEARCH_BTN_X = 886
-SEARCH_BTN_Y = 476
-
-# 3. Tọa độ vùng muốn chụp lại (Khung câu hỏi)
-# Trái, Trên, Phải, Dưới
-CAPTURE_BBOX = (7, 117, 1252, 1013)
-
-# 4. Tọa độ ô nhập chat của Gemini (Góc phải trên)
-GEMINI_CHATBOX_X = 1526
-GEMINI_CHATBOX_Y = 445
-
-# 5. Tọa độ nút Send của Gemini (Dùng để check màu xanh)
-GEMINI_SEND_BTN_X = 1872
-GEMINI_SEND_BTN_Y = 455
-GEMINI_SEND_PIXEL_X = 1862
-GEMINI_SEND_PIXEL_Y = 469
-
-# 6. Vùng tìm kiếm nhanh cho nút Bút (Left, Top, Width, Height)
-PENCIL1_REGION = (1009, 181, 92, 802) # Từ (1009,181) đến (1101, 983)
-PENCIL2_REGION = (792, 232, 143, 48)  # Từ (792,232) đến (935, 280)
-PENCIL2_FALLBACK = (893, 252)
-
-# 7. Vùng tìm kiếm nút Copy của Gemini
-GEMINI_COPY_REGION = (1294, 107, 585, 320)
-GEMINI_COPY_FALLBACK = (1482, 335)
-
-# 8. Tọa độ và Vùng tìm kiếm của NotebookLM
-NBLM_SEND_BTN_X = 889
-NBLM_SEND_BTN_Y = 922
-NBLM_COPY_REGION = (354, 447, 598, 455) # Vùng tìm ảnh copy NotebookLM mới
+# CẤU HÌNH TỌA ĐỘ CHUỘT đã được di chuyển lên đầu file (trước class GUIHelper) để đảm bảo đồng bộ hệ thống.
 
 # ==========================================
 
@@ -664,6 +684,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
                     raise Exception(f"Lỗi tìm kiếm ID: {err}")
                 log("Đã tìm thấy câu hỏi trên LMS.", "OK")
+                
+                # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
+                log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                pyautogui.press('end')
+                time.sleep(0.5)
                 
                 # 2. Gọi Tampermonkey qua DOM để chụp ảnh câu hỏi dạng base64
                 log("Đang chụp ảnh câu hỏi bằng Tampermonkey...", "STATUS")
@@ -1018,6 +1044,416 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     fallback_cancel_routine()
                 self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
 
+        elif path == '/start_nblm_job':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                question_id = data.get('id', '')
+                nblm_tab = int(data.get('nblm_tab', 3))
+                lms_tab = int(data.get('lms_tab', 2))
+            except:
+                question_id = ''
+                nblm_tab = 3
+                lms_tab = 2
+            
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            if not question_id:
+                self.wfile.write(json.dumps({"status": "error", "message": "Thiếu ID câu hỏi"}).encode('utf-8'))
+                return
+            
+            try:
+                log(f"=== BẮT ĐẦU NẠP ID SONG SONG: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
+                
+                # 1. Chuyển sang tab LMS và tìm kiếm
+                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                GUIHelper.switch_to_tab(lms_tab)
+                
+                log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
+                res_search = LMSBroker.search(question_id)
+                if not res_search or res_search.get('error'):
+                    err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
+                    raise Exception(f"Lỗi tìm kiếm ID: {err}")
+                log("Đã tìm thấy câu hỏi trên LMS.", "OK")
+                
+                # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
+                log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                pyautogui.press('end')
+                time.sleep(0.5)
+                
+                # 2. Chụp ảnh câu hỏi (đợi tối đa 5s ở server cho lệnh capture)
+                log("Đang chụp ảnh câu hỏi bằng Tampermonkey (đợi tối đa 5s)...", "STATUS")
+                session_id_cap, evt_cap = enqueue_lms_command('capture')
+                res_capture = wait_for_lms_result(session_id_cap, timeout=5)
+                
+                img_ok = False
+                if res_capture and not res_capture.get('error') and 'image' in res_capture:
+                    img_b64 = res_capture['image']
+                    if ClipboardHelper.write_base64_image(img_b64):
+                        img_ok = True
+                        log("Đã lưu ảnh chụp html2canvas của Tampermonkey vào Clipboard.", "OK")
+                
+                if not img_ok:
+                    # Fallback sang ImageGrab của Python trực tiếp
+                    log("Tampermonkey capture lỗi hoặc timeout quá 5s. Kích hoạt Fallback bằng Python ImageGrab...", "WARN")
+                    try:
+                        img = ImageGrab.grab(bbox=CAPTURE_BBOX)
+                        output = io.BytesIO()
+                        img.convert("RGB").save(output, "BMP")
+                        data_bmp = output.getvalue()[14:]
+                        
+                        win32clipboard.OpenClipboard()
+                        win32clipboard.EmptyClipboard()
+                        win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data_bmp)
+                        win32clipboard.CloseClipboard()
+                        log("Chụp ảnh Fallback bằng Python thành công và lưu vào Clipboard.", "OK")
+                    except Exception as ex:
+                        raise Exception(f"Lỗi chụp ảnh cả html2canvas và Fallback Python: {str(ex)}")
+
+                # 3. Gửi Gemini
+                # Lưu màu rảnh rỗi động của Gemini trước khi dán ảnh
+                try:
+                    gemini_idle_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
+                    log(f"Đã lưu màu rảnh rỗi của Gemini: {gemini_idle_color}", "OK")
+                except Exception as e:
+                    gemini_idle_color = None
+                    log(f"Không thể đọc màu rảnh rỗi động của Gemini: {e}", "WARN")
+
+                log("Tranh thủ chuyển sang dán ảnh vào Gemini...", "STATUS")
+                GUIHelper.focus(GUIHelper.GEMINI_CHATBOX)
+                pyautogui.hotkey('ctrl', 'v')
+                
+                log("Chờ đúng 3s để Gemini load ảnh...", "STATUS")
+                time.sleep(3.0)
+                
+                log("Kiểm tra trạng thái load ảnh bằng pixel check...", "STATUS")
+                load_ok = False
+                if gemini_idle_color:
+                    for _ in range(14): # Poll tối đa 7s
+                        try:
+                            if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_idle_color, tolerance=15):
+                                load_ok = True
+                                log("Phát hiện Gemini đã load ảnh xong!", "OK")
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.5)
+                
+                pyautogui.press('enter')
+                log("Đã gửi ảnh lên Gemini.", "OK")
+                
+                # Chờ Gemini phản hồi
+                log("Chờ Gemini xử lý phản hồi (nghỉ 5s)...", "STATUS")
+                time.sleep(5.0)
+                
+                gemini_done = False
+                if gemini_idle_color:
+                    for _ in range(20): # Poll tối đa 10s
+                        try:
+                            if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_idle_color, tolerance=15):
+                                gemini_done = True
+                                log("Phát hiện Gemini đã phản hồi xong!", "OK")
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.5)
+                
+                log("Focus vào vùng Gemini để chuẩn bị copy...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_ON_GEM)
+                time.sleep(0.1)
+                
+                pyautogui.press('end')
+                time.sleep(1.0)
+                
+                copy_pos = None
+                for _ in range(25):
+                    try:
+                        copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
+                        if copy_pos:
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(0.1)
+                
+                if not copy_pos:
+                    log("Không tìm thấy nút Copy lần 1. Nhấn phím End lần 2...", "WARN")
+                    pyautogui.press('end')
+                    time.sleep(1.0)
+                    for _ in range(25):
+                        try:
+                            copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
+                            if copy_pos:
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.1)
+                
+                if copy_pos:
+                    pyautogui.click(copy_pos)
+                    log("Đã click nút Copy của Gemini.", "OK")
+                    time.sleep(0.5)
+                    pyautogui.press('f5')
+                    log("Đã F5 làm sạch Gemini.", "ACTION")
+                else:
+                    raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
+
+                # 4. Gửi vào NotebookLM tương ứng
+                log("Quay lại cửa sổ LMS & NBLM...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                GUIHelper.switch_to_tab(nblm_tab)
+                time.sleep(0.5)
+                
+                pyautogui.click(GUIHelper.NBLM_CHATBOX[0], GUIHelper.NBLM_CHATBOX[1])
+                time.sleep(0.3)
+                pyautogui.hotkey('ctrl', 'v')
+                time.sleep(0.3)
+                pyautogui.press('enter')
+                log(f"Đã dán và gửi nội dung vào NotebookLM Tab {nblm_tab}.", "OK")
+                
+                # BẤM GỬI XONG CHỜ 3 GIÂY THEO YÊU CẦU CỦA USER
+                log("Chờ 3 giây để NotebookLM bắt đầu chạy...", "STATUS")
+                time.sleep(3.0)
+                
+                self.wfile.write(json.dumps({"status": "success", "message": f"Đã nạp xong câu {question_id} vào NotebookLM Tab {nblm_tab}"}).encode('utf-8'))
+                
+            except Exception as e:
+                log(f"LỖI HỆ THỐNG TẠI START_NBLM_JOB: {e}", "ERROR")
+                # Hủy khẩn cấp trên LMS tab
+                try:
+                    GUIHelper.switch_to_tab(lms_tab)
+                    GUIHelper.cancel_modal()
+                except:
+                    pass
+                self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
+
+        elif path == '/retrieve_nblm_job':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                question_id = data.get('id', '')
+                nblm_tab = int(data.get('nblm_tab', 3))
+                wait_seconds = int(data.get('wait_seconds', 10))
+            except:
+                question_id = ''
+                nblm_tab = 3
+                wait_seconds = 10
+                
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            try:
+                log(f"=== KIỂM TRA PHẢN HỒI NBLM Tab {nblm_tab} (Chờ tối đa {wait_seconds}s) ===", "STATUS")
+                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                GUIHelper.switch_to_tab(nblm_tab)
+                time.sleep(0.5)
+                
+                try:
+                    nblm_idle_color = pyautogui.pixel(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1])
+                except Exception as e:
+                    nblm_idle_color = GUIHelper.NBLM_IDLE_COLOR
+                    
+                # Quét nút Send trong khoảng thời gian chỉ định
+                nblm_done = False
+                stable_matches = 0
+                total_attempts = max(1, wait_seconds * 2)
+                
+                for attempt in range(total_attempts):
+                    if STOP_FLAG:
+                        raise Exception("Bị dừng bởi người dùng!")
+                        
+                    if GUIHelper.check_nblm_done(nblm_idle_color):
+                        stable_matches += 1
+                        if stable_matches >= 3: # khớp liên tục 1.5s
+                            nblm_done = True
+                            log(f"Màu nút Send của NBLM Tab {nblm_tab} đã ổn định!", "OK")
+                            break
+                    else:
+                        stable_matches = 0
+                    time.sleep(0.5)
+                
+                if not nblm_done:
+                    # Nếu chưa xong, trả về trạng thái bận
+                    self.wfile.write(json.dumps({"status": "waiting", "message": f"NBLM Tab {nblm_tab} vẫn đang xử lý..."}).encode('utf-8'))
+                    return
+                
+                # Nếu đã xong, tiến hành copy kết quả
+                log(f"Focus NBLM Tab {nblm_tab} (FCS_ON_NBLM) trước khi nhấn End...", "ACTION")
+                GUIHelper.focus(GUIHelper.FCS_ON_NBLM)
+                time.sleep(0.2)
+                
+                # Bấm phím End lần 1
+                log("Nhấn phím End lần 1...", "ACTION")
+                pyautogui.press('end')
+                time.sleep(1.0)
+                
+                # Tìm nút Copy NBLM lần 1
+                log(f"Tìm nút Copy NotebookLM Tab {nblm_tab} (Lần 1)...", "SEARCH")
+                nblm_copy_pos = None
+                for _ in range(30):
+                    try:
+                        nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                        if nblm_copy_pos:
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(0.1)
+                
+                if not nblm_copy_pos:
+                    log("Không tìm thấy nút Copy NBLM lần 1. Nhấn phím End lần 2...", "WARN")
+                    pyautogui.press('end')
+                    time.sleep(1.0)
+                    
+                    log(f"Tìm nút Copy NotebookLM Tab {nblm_tab} (Lần 2)...", "SEARCH")
+                    for _ in range(30):
+                        try:
+                            nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                            if nblm_copy_pos:
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.1)
+                
+                if nblm_copy_pos:
+                    pyautogui.click(nblm_copy_pos)
+                    log(f"Đã click Copy thành công từ NotebookLM Tab {nblm_tab}.", "OK")
+                    time.sleep(0.3)
+                    copied_text = ClipboardHelper.paste_text()
+                    self.wfile.write(json.dumps({
+                        "status": "success",
+                        "message": f"Đã lấy kết quả từ NotebookLM Tab {nblm_tab}",
+                        "notebook_output": copied_text
+                    }).encode('utf-8'))
+                else:
+                    raise Exception(f"Không tìm thấy nút Copy của NotebookLM Tab {nblm_tab} sau 2 lần bấm End!")
+                    
+            except Exception as e:
+                log(f"LỖI TẠI RETRIEVE_NBLM_JOB: {e}", "ERROR")
+                self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
+
+        elif path == '/fill_lms_job':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                question_id = data.get('id', '')
+                lms_tab = int(data.get('lms_tab', 2))
+                parsed_data = data.get('parsed_data', {})
+                type_code = parsed_data.get('typeCode', 'UNKNOWN')
+            except:
+                question_id = ''
+                lms_tab = 2
+                parsed_data = {}
+                type_code = 'UNKNOWN'
+                
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            if not question_id:
+                self.wfile.write(json.dumps({"status": "error", "message": "Thiếu ID câu hỏi"}).encode('utf-8'))
+                return
+                
+            try:
+                log(f"=== ĐIỀN KẾT QUẢ CHO ID: {question_id} TRÊN LMS Tab {lms_tab} ===", "STATUS")
+                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                GUIHelper.switch_to_tab(lms_tab)
+                time.sleep(0.5)
+                
+                # 1. Tìm lại ID trên LMS (để chắc chắn bảng hiển thị đúng dòng câu hỏi đó)
+                log(f"Tìm lại ID {question_id} trên LMS...", "STATUS")
+                res_search = LMSBroker.search(question_id)
+                if not res_search or res_search.get('error'):
+                    err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
+                    raise Exception(f"Lỗi tìm kiếm ID khi chuẩn bị điền: {err}")
+                log("Đã tìm thấy câu hỏi trên LMS.", "OK")
+                
+                # 2. Mở chế độ Edit (Bút chì 1 & 2)
+                log("Mở chế độ Edit...", "STATUS")
+                session_id_edit, evt_edit = enqueue_lms_command('edit')
+                
+                lms_edit_failed = False
+                lms_edit_err_msg = ""
+                res_edit = wait_for_lms_result(session_id_edit, timeout=15)
+                
+                if not res_edit or res_edit.get('error'):
+                    lms_edit_err_msg = res_edit.get('error') if res_edit else "Timeout mở modal soạn thảo"
+                    log(f"Lỗi mở modal Edit (LMS) từ Tampermonkey: {lms_edit_err_msg}", "WARN")
+                    
+                    # Cứu hộ click bút chì bằng mắt thần
+                    log("Chạy cứu hộ tìm nút Edit...", "ACTION")
+                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                    pyautogui.scroll(1000)
+                    time.sleep(0.5)
+                    
+                    rescue_x, rescue_y = 906, 256
+                    scan_region = (max(0, rescue_x - 200), max(0, rescue_y - 200), 400, 400)
+                    pencil_pos = None
+                    for _ in range(10):
+                        try:
+                            pencil_pos = pyautogui.locateCenterOnScreen('newpencil.png', region=scan_region, confidence=0.75)
+                            if pencil_pos:
+                                break
+                        except Exception:
+                            pass
+                        time.sleep(0.1)
+                    
+                    if pencil_pos:
+                        pyautogui.click(pencil_pos.x, pencil_pos.y)
+                    else:
+                        pyautogui.click(rescue_x, rescue_y)
+                    time.sleep(2.0)
+                    
+                    # Kiểm tra lại form
+                    session_id_check, evt_check = enqueue_lms_command('check_form')
+                    res_check = wait_for_lms_result(session_id_check, timeout=5)
+                    if not (res_check and not res_check.get('error')):
+                        lms_edit_failed = True
+                        raise Exception("Không thể mở form soạn thảo kể cả khi click cứu hộ!")
+                else:
+                    log("Mở modal soạn thảo thành công.", "OK")
+                
+                # 3. Tiến hành dán và điền dữ liệu
+                log(f"Bắt đầu điền dữ liệu dạng câu: {type_code}...", "ACTION")
+                json_str = json.dumps(parsed_data, ensure_ascii=False)
+                ClipboardHelper.copy_text(json_str)
+                
+                # Click nút dán tại tọa độ (649, 147)
+                pyautogui.click(x=649, y=147)
+                
+                # Đợi Tampermonkey điền xong
+                if type_code == 'DIEN_DAPAN':
+                    wait_time = 7.0
+                else:
+                    wait_time = 14.0
+                log(f"Chờ {wait_time}s để Tampermonkey điền và lưu dữ liệu...", "STATUS")
+                time.sleep(wait_time)
+                
+                # Đóng modal (cancel/save modal)
+                GUIHelper.cancel_modal()
+                log(f"Đã hoàn thành điền dữ liệu câu {question_id}!", "OK")
+                
+                self.wfile.write(json.dumps({"status": "success", "message": f"Đã điền thành công câu {question_id}"}).encode('utf-8'))
+                
+            except Exception as e:
+                log(f"LỖI TẠI FILL_LMS_JOB: {e}", "ERROR")
+                try:
+                    GUIHelper.cancel_modal()
+                except:
+                    pass
+                self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
+
         elif path == '/paste_lms':
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1319,7 +1755,7 @@ if __name__ == '__main__':
     log("Vui long giu trinh duyet mo tren man hinh (khong bi che day).", "INFO")
     log("He thong da duoc thiet lap de CHONG NGU (Anti-Sleep) trong luc chay.", "INFO")
     log("Da kich hoat THEO DOI QUA DISCORD", "OK")
-    log("Bạn có thể sửa tọa độ chuột trong file capture_server.py", "INFO")
+    log("Bạn có thể sửa tọa độ chuột ở phần cấu hình đầu file main_server.py", "INFO")
     log("=" * 60, "INFO")
     try:
         server.serve_forever()

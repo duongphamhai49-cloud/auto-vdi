@@ -11,8 +11,8 @@ start chrome --new-window --window-position=0,0 --window-size=500,500 --profile-
  "https://docs.google.com/spreadsheets/d/11qQUShH6VodnRmDTRX3k0y2hutwvAgPJcq89us1qkzQ/edit?gid=0#gid=0" ^
  "https://aeglobal.lotuslms.com/admin/content-manager/folder/690173da0de3cd4f2808c80e" ^
  "https://notebooklm.google.com/notebook/6b86d189-b723-44cb-81b8-e9fca8bcfcb3" ^
- "https://docs.google.com/document/d/1Tyn1XIZmPLJHfS1NHtfikOIx23V9RFAl_bigTn5l-V4/edit?tab=t.0" ^
- "https://latexeditor.lagrida.com/"
+ "https://notebooklm.google.com/notebook/6b86d189-b723-44cb-81b8-e9fca8bcfcb3" ^
+ "https://notebooklm.google.com/notebook/6b86d189-b723-44cb-81b8-e9fca8bcfcb3"
 timeout /t 1 >nul
 
 echo Dang mo Gemini (Goc phai tren)...
