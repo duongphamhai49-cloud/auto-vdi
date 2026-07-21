@@ -357,6 +357,20 @@
                     <div id="batch_progress_bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #3b82f6); border-radius: 4px; transition: width 0.5s ease;"></div>
                 </div>
             </div>
+
+            <!-- KHU VỰC NHẬT KÝ CONSOLE LOGS -->
+            <div style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.85rem; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                        Nhật ký hoạt động (Realtime Logs)
+                    </span>
+                    <button onclick="clearConsoleLogs()" style="background: transparent; border: none; color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 0;">Xóa log</button>
+                </div>
+                <div id="log_console" style="height: 180px; overflow-y: auto; background: rgba(0,0,0,0.45); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.5rem; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.72rem; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth;">
+                    <div style="color: var(--text-secondary);">Hệ thống sẵn sàng. Bắt đầu phiên chạy để ghi nhận nhật ký...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1580,6 +1594,61 @@
             btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> CHẠY TỰ ĐỘNG`;
             searchBtn.disabled = false;
             searchBtn.style.opacity = '1';
+        }
+
+        let lastLogId = 0;
+        async function pollConsoleLogs() {
+            try {
+                const res = await fetch(`http://localhost:5050/logs?after=${lastLogId}`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const consoleEl = document.getElementById('log_console');
+                    
+                    if (lastLogId === 0 && consoleEl.innerHTML.includes('Hệ thống sẵn sàng')) {
+                        consoleEl.innerHTML = '';
+                    }
+
+                    data.forEach(log => {
+                        if (log.id > lastLogId) {
+                            lastLogId = log.id;
+                        }
+                        
+                        const logRow = document.createElement('div');
+                        logRow.style.wordBreak = 'break-all';
+                        
+                        let levelColor = '#94a3b8';
+                        let msgColor = '#e2e8f0';
+                        if (log.level === 'OK' || log.level === 'SUCCESS') levelColor = '#10b981';
+                        else if (log.level === 'WARN') levelColor = '#f59e0b';
+                        else if (log.level === 'ERROR') levelColor = '#ef4444';
+                        else if (log.level === 'STATUS' || log.level === 'ACTION') levelColor = '#3b82f6';
+                        else if (log.level === 'LMS') levelColor = '#a855f7';
+
+                        logRow.innerHTML = `
+                            <span style="color: #64748b;">[${log.time}]</span>
+                            <span style="color: ${levelColor}; font-weight: bold;">[${log.level}]</span>
+                            <span style="color: ${msgColor};">${log.msg}</span>
+                        `;
+                        consoleEl.appendChild(logRow);
+                    });
+                    
+                    consoleEl.scrollTop = consoleEl.scrollHeight;
+
+                    // Giới hạn tối đa 20 dòng để tránh nặng trang / tốn bộ nhớ RAM
+                    while (consoleEl.children.length > 20) {
+                        consoleEl.removeChild(consoleEl.firstChild);
+                    }
+                }
+            } catch (e) {
+                console.error("Lỗi poll logs:", e);
+            }
+        }
+
+        // Poll logs mỗi 1 giây
+        setInterval(pollConsoleLogs, 1000);
+
+        function clearConsoleLogs() {
+            document.getElementById('log_console').innerHTML = '<div style="color: var(--text-secondary);">Nhật ký đã được làm sạch. Đang đợi log mới...</div>';
         }
 
     </script>

@@ -70,7 +70,7 @@ def draw_circle_overlay(x, y, radius=15, duration_sec=0.8, color="red"):
 # 1. Tọa độ các điểm focus giao diện chính
 FCS_GEM_LMS = (134, 957)      # Tọa độ focus trình duyệt chứa LMS và NBLM (Trái)
 FCS_ON_NBLM = (895, 401)       # Tọa độ focus NotebookLM
-FCS_ON_EDIT_LMS = (989, 544)   # Tọa độ focus giữa Modal Edit câu hỏi trên LMS
+FCS_ON_EDIT_LMS = (1030, 544)   # Tọa độ focus giữa Modal Edit câu hỏi trên LMS
 FCS_LMS_CANCEL = (24, 702)     # Tọa độ focus an toàn để đóng modal bằng nút Cancel
 FCS_ON_GEM = (1607, 297)       # Tọa độ focus Gemini
 
@@ -96,8 +96,10 @@ NBLM_SEND_BTN_X = 889
 NBLM_SEND_BTN_Y = 922
 NBLM_SEND_BTN = (NBLM_SEND_BTN_X, NBLM_SEND_BTN_Y)     # Tọa độ nút gửi của NotebookLM
 
-NBLM_CHECK_PIXEL = (850, 945)   # Tọa độ pixel kiểm tra của NotebookLM
-NBLM_IDLE_COLOR = (245, 245, 245) # Màu gốc của nút gửi NBLM khi đã phản hồi xong
+NBLM_CHECK_PIXEL = (887, 956)   # Tọa độ pixel kiểm tra của NotebookLM
+NBLM_IDLE_COLOR = (235, 235, 235) # Màu gốc của nút gửi NBLM khi đã phản hồi xong
+NBLM_INPUT_LOADED_COLOR = (66, 88, 241) # Màu nút gửi khi nạp input xong
+NBLM_PROCESSING_COLOR = (207, 57, 47)  # Màu nút gửi khi đang xử lý
 NBLM_COPY_REGION = (354, 447, 598, 455)    # Vùng tìm ảnh copy NotebookLM mới
 
 # 4. Các cấu hình phụ và tìm kiếm
@@ -136,6 +138,8 @@ class GUIHelper:
     NBLM_SEND_BTN = NBLM_SEND_BTN
     NBLM_CHECK_PIXEL = NBLM_CHECK_PIXEL
     NBLM_IDLE_COLOR = NBLM_IDLE_COLOR
+    NBLM_INPUT_LOADED_COLOR = NBLM_INPUT_LOADED_COLOR
+    NBLM_PROCESSING_COLOR = NBLM_PROCESSING_COLOR
     
     GEMINI_COPY_REGION = GEMINI_COPY_REGION
     GEMINI_COPY_FALLBACK = GEMINI_COPY_FALLBACK
@@ -644,6 +648,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
             try:
                 res_data = json.loads(post_data.decode('utf-8'))
                 session_id = res_data.get('session')
+                
+                # NẾU CÓ ẢNH, GHI THẲNG VÀO CLIPBOARD ĐỂ HỖ TRỢ PHÍM TẮT TEST THỦ CÔNG
+                if 'image' in res_data:
+                    ClipboardHelper.write_base64_image(res_data['image'])
+                    log("Đã lưu ảnh chụp thử nghiệm của Trình duyệt vào Clipboard.", "OK")
+                
                 with lms_lock:
                     if session_id in lms_event_map:
                         lms_event_map[session_id]['result'] = res_data
@@ -1087,10 +1097,10 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 pyautogui.press('end')
                 time.sleep(0.5)
                 
-                # 2. Chụp ảnh câu hỏi (đợi tối đa 5s ở server cho lệnh capture)
-                log("Đang chụp ảnh câu hỏi bằng Tampermonkey (đợi tối đa 5s)...", "STATUS")
+                # 2. Chụp ảnh câu hỏi (đợi tối đa 20s ở server cho lệnh capture)
+                log("Đang chụp ảnh câu hỏi bằng Tampermonkey (đợi tối đa 20s)...", "STATUS")
                 session_id_cap, evt_cap = enqueue_lms_command('capture')
-                res_capture = wait_for_lms_result(session_id_cap, timeout=5)
+                res_capture = wait_for_lms_result(session_id_cap, timeout=20)
                 
                 img_ok = False
                 if res_capture and not res_capture.get('error') and 'image' in res_capture:
@@ -1101,7 +1111,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 
                 if not img_ok:
                     # Fallback sang ImageGrab của Python trực tiếp
-                    log("Tampermonkey capture lỗi hoặc timeout quá 5s. Kích hoạt Fallback bằng Python ImageGrab...", "WARN")
+                    log("Tampermonkey capture lỗi hoặc timeout quá 20s. Kích hoạt Fallback bằng Python ImageGrab...", "WARN")
                     try:
                         img = ImageGrab.grab(bbox=CAPTURE_BBOX)
                         output = io.BytesIO()
@@ -1257,10 +1267,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 GUIHelper.switch_to_tab(nblm_tab)
                 time.sleep(0.5)
                 
-                try:
-                    nblm_idle_color = pyautogui.pixel(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1])
-                except Exception as e:
-                    nblm_idle_color = GUIHelper.NBLM_IDLE_COLOR
+                nblm_idle_color = GUIHelper.NBLM_IDLE_COLOR
                     
                 # Quét nút Send trong khoảng thời gian chỉ định
                 nblm_done = False
@@ -1271,14 +1278,26 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     if STOP_FLAG:
                         raise Exception("Bị dừng bởi người dùng!")
                         
-                    if GUIHelper.check_nblm_done(nblm_idle_color):
+                    is_idle = GUIHelper.check_nblm_done(GUIHelper.NBLM_IDLE_COLOR)
+                    is_processing = pyautogui.pixelMatchesColor(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1], GUIHelper.NBLM_PROCESSING_COLOR, tolerance=15)
+                    is_input_loaded = pyautogui.pixelMatchesColor(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1], GUIHelper.NBLM_INPUT_LOADED_COLOR, tolerance=15)
+                        
+                    if is_idle:
                         stable_matches += 1
                         if stable_matches >= 3: # khớp liên tục 1.5s
                             nblm_done = True
-                            log(f"Màu nút Send của NBLM Tab {nblm_tab} đã ổn định!", "OK")
+                            log(f"NotebookLM Tab {nblm_tab} đã PHẢN HỒI XONG (Khớp màu Rảnh {GUIHelper.NBLM_IDLE_COLOR})!", "OK")
                             break
                     else:
                         stable_matches = 0
+                        # Log trạng thái mỗi 1 giây (2 lượt kiểm tra) để console gọn gàng
+                        if attempt % 2 == 0:
+                            if is_processing:
+                                log(f"NotebookLM Tab {nblm_tab} đang ĐANG XỬ LÝ (Màu đỏ {GUIHelper.NBLM_PROCESSING_COLOR})...", "STATUS")
+                            elif is_input_loaded:
+                                log(f"NotebookLM Tab {nblm_tab} ĐÃ NHẬN INPUT (Màu xanh {GUIHelper.NBLM_INPUT_LOADED_COLOR})...", "STATUS")
+                            else:
+                                log(f"NotebookLM Tab {nblm_tab} đang bận hoặc đổi màu...", "STATUS")
                     time.sleep(0.5)
                 
                 if not nblm_done:
@@ -1511,6 +1530,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
         elif path == '/batch_start':
             # Endpoint: Bắt đầu phiên batch mới, tạo file history
+            STOP_FLAG = False
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')

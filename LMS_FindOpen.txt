@@ -234,7 +234,7 @@
 
     // --- DO CAPTURE (DOM html2canvas -> base64) ---
     async function doCapture() {
-        setBadge('📷 Chụp ảnh...', '#8b5cf6');
+        setBadge('📷 Chụp ảnh (Chuẩn bị)...', '#8b5cf6');
         let target = document.querySelector('tr.ant-table-row');
         if (!target) {
             target = document.querySelector('.question-content, .question-detail, .content-detail, .ql-editor, [class*="question"]');
@@ -246,26 +246,111 @@
             target = document.body;
         }
 
+        if (!currentSession) {
+            currentSession = Date.now();
+        }
+
         highlightElement(target, 'red');
+        
+        // 1. Cuộn phần tử vào giữa màn hình để hiển thị rõ ràng nhất (cả dọc và ngang)
+        target.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' });
         await sleep(300);
 
         // Tránh trùng lặp, đè chữ công thức toán (KaTeX/MathJax) khi html2canvas vẽ
         try {
-            const hiddenMath = target.querySelectorAll('.katex-mathml, .MathJax_Preview, .MathJax_MathML, script[type^="math/tex"]');
-            hiddenMath.forEach(el => el.setAttribute('data-html2canvas-ignore', 'true'));
+            const allElements = target.querySelectorAll('*');
+            allElements.forEach(el => {
+                try {
+                    const style = window.getComputedStyle(el);
+                    const fontSize = parseFloat(style.fontSize);
+                    const isHidden = (
+                        style.display === 'none' ||
+                        style.visibility === 'hidden' ||
+                        style.opacity === '0' ||
+                        fontSize === 0 ||
+                        style.fontSize === '0px' ||
+                        el.classList.contains('sr-only') ||
+                        el.classList.contains('visually-hidden') ||
+                        el.classList.contains('katex-mathml') ||
+                        el.classList.contains('MathJax_Preview') ||
+                        el.classList.contains('MathJax_MathML')
+                    );
+                    const isClippingHidden = (
+                        style.position === 'absolute' &&
+                        (style.width === '1px' || style.width === '0px') &&
+                        (style.height === '1px' || style.height === '0px') &&
+                        style.overflow === 'hidden'
+                    );
+                    const isClipRect = style.clip && (style.clip.includes('1px') || style.clip.includes('0px'));
+
+                    if (isHidden || isClippingHidden || isClipRect) {
+                        el.setAttribute('data-html2canvas-ignore', 'true');
+                    }
+                } catch (e) {}
+            });
         } catch (e) {
-            console.error('[LMS_FindOpen] Lỗi bỏ qua công thức ẩn:', e);
+            console.error('[LMS_FindOpen] Lỗi ẩn công thức trùng lặp:', e);
+        }
+
+        // Tạm thời giãn nở các khung cuộn để hiển thị trọn vẹn câu hỏi không bị khuyết
+        const modifiedElements = [];
+        try {
+            let current = target;
+            while (current && current !== document.body) {
+                const style = window.getComputedStyle(current);
+                if (style.overflowX === 'hidden' || style.overflowX === 'auto' || style.overflowX === 'scroll' ||
+                    style.overflow === 'hidden' || style.overflow === 'auto' || style.overflow === 'scroll') {
+                    modifiedElements.push({
+                        element: current,
+                        overflow: current.style.overflow,
+                        overflowX: current.style.overflowX,
+                        width: current.style.width
+                    });
+                    current.style.setProperty('overflow', 'visible', 'important');
+                    current.style.setProperty('overflow-x', 'visible', 'important');
+                    current.style.setProperty('width', 'auto', 'important');
+                }
+                current = current.parentElement;
+            }
+
+            const children = target.querySelectorAll('*');
+            children.forEach(el => {
+                const style = window.getComputedStyle(el);
+                if (el.scrollWidth > el.clientWidth || style.overflowX === 'auto' || style.overflowX === 'scroll') {
+                    modifiedElements.push({
+                        element: el,
+                        overflow: el.style.overflow,
+                        overflowX: el.style.overflowX,
+                        width: el.style.width
+                    });
+                    el.style.setProperty('overflow', 'visible', 'important');
+                    el.style.setProperty('overflow-x', 'visible', 'important');
+                    el.style.setProperty('width', 'auto', 'important');
+                }
+            });
+        } catch (e) {
+            console.error('[LMS_FindOpen] Lỗi giãn nở khung cuộn:', e);
         }
 
         try {
-            const canvas = await html2canvas(target, {
+            setBadge('📷 Chụp ảnh (Đang vẽ)...', '#8b5cf6');
+            const capturePromise = html2canvas(target, {
                 useCORS: true,
                 allowTaint: true,
                 scale: 1.0, // Chụp tỉ lệ 1-1 tăng tốc độ vẽ
-                imageTimeout: 1500, // Timeout tải ảnh ngoài 1.5s tránh treo
+                imageTimeout: 15000, // Chờ tải ảnh ngoài tối đa 15s
                 logging: false,
                 backgroundColor: '#ffffff',
             });
+
+            // Giới hạn thời gian chạy html2canvas trong 18 giây, tránh treo trình duyệt
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('HTML2Canvas Timeout')), 18000);
+            });
+
+            const canvas = await Promise.race([capturePromise, timeoutPromise]);
+            
+            setBadge('📷 Chụp ảnh (Gửi Server)...', '#8b5cf6');
 
             const base64 = canvas.toDataURL('image/png');
             await postJSON(`${SERVER}/lms/done`, {
@@ -275,8 +360,28 @@
             });
             setBadge('✅ Đã chụp', '#10b981');
         } catch (err) {
-            warn("Lỗi html2canvas: " + err.message);
-            throw err;
+            warn("Lỗi doCapture: " + err.message);
+            // Gửi báo lỗi về server để kích hoạt fallback ngay lập tức
+            await postJSON(`${SERVER}/lms/done`, {
+                event: 'lms_capture_done',
+                session: currentSession,
+                error: err.message,
+            });
+            setBadge(`❌ Lỗi chụp: ${err.message}`, '#ef4444');
+        } finally {
+            // Khôi phục lại overflow ban đầu
+            modifiedElements.forEach(item => {
+                try {
+                    if (item.overflow) item.element.style.setProperty('overflow', item.overflow);
+                    else item.element.style.removeProperty('overflow');
+
+                    if (item.overflowX) item.element.style.setProperty('overflow-x', item.overflowX);
+                    else item.element.style.removeProperty('overflow-x');
+
+                    if (item.width) item.element.style.setProperty('width', item.width);
+                    else item.element.style.removeProperty('width');
+                } catch (e) {}
+            });
         }
     }
 
