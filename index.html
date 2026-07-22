@@ -1359,8 +1359,9 @@
 
             const customFilename = document.getElementById('history_filename_input').value.trim();
 
-            function log(msg) {
+            function log(msg, level = 'STATUS') {
                 console.log(`[Parallel] ${msg}`);
+                addConsoleLog(msg, level);
             }
 
             // 1. Tạo file history
@@ -1605,51 +1606,60 @@
             searchBtn.style.opacity = '1';
         }
 
+        function addConsoleLog(msg, level = 'INFO', timeStr = null) {
+            const consoleEl = document.getElementById('log_console');
+            if (!consoleEl) return;
+            
+            if (consoleEl.innerHTML.includes('Hệ thống sẵn sàng') || consoleEl.innerHTML.includes('Nhật ký đã được làm sạch')) {
+                consoleEl.innerHTML = '';
+            }
+
+            const timestamp = timeStr || new Date().toLocaleTimeString('vi-VN');
+            const logRow = document.createElement('div');
+            logRow.style.wordBreak = 'break-all';
+            
+            let levelColor = '#94a3b8';
+            let msgColor = '#e2e8f0';
+            if (level === 'OK' || level === 'SUCCESS') levelColor = '#10b981';
+            else if (level === 'WARN') levelColor = '#f59e0b';
+            else if (level === 'ERROR') levelColor = '#ef4444';
+            else if (level === 'STATUS' || level === 'ACTION') levelColor = '#3b82f6';
+            else if (level === 'LMS') levelColor = '#a855f7';
+
+            logRow.innerHTML = `
+                <span style="color: #64748b;">[${timestamp}]</span>
+                <span style="color: ${levelColor}; font-weight: bold;">[${level}]</span>
+                <span style="color: ${msgColor};">${msg}</span>
+            `;
+            consoleEl.appendChild(logRow);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+
+            while (consoleEl.children.length > 20) {
+                consoleEl.removeChild(consoleEl.firstChild);
+            }
+        }
+
+        function batchLog(msg, level = 'INFO') {
+            addConsoleLog(msg, level);
+        }
+
         let lastLogId = 0;
         async function pollConsoleLogs() {
             try {
                 const res = await fetch(`http://localhost:5050/logs?after=${lastLogId}`);
                 const data = await res.json();
-                if (data && data.length > 0) {
-                    const consoleEl = document.getElementById('log_console');
-                    
-                    if (lastLogId === 0 && consoleEl.innerHTML.includes('Hệ thống sẵn sàng')) {
-                        consoleEl.innerHTML = '';
-                    }
-
-                    data.forEach(log => {
+                const logs = Array.isArray(data) ? data : (data && data.logs ? data.logs : []);
+                
+                if (logs && logs.length > 0) {
+                    logs.forEach(log => {
                         if (log.id > lastLogId) {
                             lastLogId = log.id;
+                            addConsoleLog(log.msg, log.level, log.time);
                         }
-                        
-                        const logRow = document.createElement('div');
-                        logRow.style.wordBreak = 'break-all';
-                        
-                        let levelColor = '#94a3b8';
-                        let msgColor = '#e2e8f0';
-                        if (log.level === 'OK' || log.level === 'SUCCESS') levelColor = '#10b981';
-                        else if (log.level === 'WARN') levelColor = '#f59e0b';
-                        else if (log.level === 'ERROR') levelColor = '#ef4444';
-                        else if (log.level === 'STATUS' || log.level === 'ACTION') levelColor = '#3b82f6';
-                        else if (log.level === 'LMS') levelColor = '#a855f7';
-
-                        logRow.innerHTML = `
-                            <span style="color: #64748b;">[${log.time}]</span>
-                            <span style="color: ${levelColor}; font-weight: bold;">[${log.level}]</span>
-                            <span style="color: ${msgColor};">${log.msg}</span>
-                        `;
-                        consoleEl.appendChild(logRow);
                     });
-                    
-                    consoleEl.scrollTop = consoleEl.scrollHeight;
-
-                    // Giới hạn tối đa 20 dòng để tránh nặng trang / tốn bộ nhớ RAM
-                    while (consoleEl.children.length > 20) {
-                        consoleEl.removeChild(consoleEl.firstChild);
-                    }
                 }
             } catch (e) {
-                console.error("Lỗi poll logs:", e);
+                // Thờ ơ với lỗi kết nối khi chưa bật server
             }
         }
 
