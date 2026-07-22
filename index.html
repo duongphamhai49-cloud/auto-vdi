@@ -1382,17 +1382,18 @@
 
             // Khởi tạo các slot
             let slots = [
-                { index: 1, tab: tab_nblm1, state: 'idle', currentId: null, stt: 0, startTime: null },
-                { index: 2, tab: tab_nblm2, state: 'idle', currentId: null, stt: 0, startTime: null }
+                { index: 1, tab: tab_nblm1, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0 },
+                { index: 2, tab: tab_nblm2, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0 }
             ];
             
             if (nblmCount === 3) {
                 const tab_nblm3 = 5;
-                slots.push({ index: 3, tab: tab_nblm3, state: 'idle', currentId: null, stt: 0, startTime: null });
+                slots.push({ index: 3, tab: tab_nblm3, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0 });
             }
 
             let nextStt = 1;
             let wasStopped = false;
+            let checksSinceLms = 0;
 
             // Vòng lặp điều phối chính
             while (batchRunning && (ids.length > 0 || slots.some(s => s.state !== 'idle'))) {
@@ -1441,6 +1442,7 @@
                         if (startData.status === 'success') {
                             idleSlot.state = 'generating';
                             idleSlot.generateStartTime = Date.now();
+                            idleSlot.lastCheckTime = 0; // Đặt bằng 0 để đảm bảo slot mới nạp vẫn sẽ được quét kiểm tra theo thứ tự luân phiên
                             log(`[Slot ${idleSlot.index}] Đã nạp thành công ${currentId}. NBLM đang sinh câu trả lời...`);
                         } else {
                             throw new Error(startData.message || "Lỗi nạp câu");
@@ -1464,12 +1466,15 @@
                     continue; // Quay lại nạp tiếp nếu còn slot rảnh
                 }
 
-                // 2. Kiểm tra các slot bận
+                // 2. Kiểm tra các slot bận (Tuần hoàn luân phiên - Round Robin)
                 let busySlots = slots.filter(s => s.state === 'generating');
                 if (busySlots.length > 0) {
-                    busySlots.sort((a, b) => a.generateStartTime - b.generateStartTime);
+                    // Sắp xếp theo lần kiểm tra gần nhất (thời gian kiểm tra cũ nhất / chưa kiểm tra sẽ đứng đầu)
+                    busySlots.sort((a, b) => (a.lastCheckTime || 0) - (b.lastCheckTime || 0));
                     
                     let targetSlot = busySlots[0];
+                    targetSlot.lastCheckTime = Date.now(); // Cập nhật thời điểm vừa kiểm tra
+                    
                     status.style.color = 'var(--warning)';
                     status.innerText = `Kiểm tra Slot ${targetSlot.index} (${targetSlot.currentId})...`;
                     
@@ -1486,6 +1491,7 @@
                         const checkData = await checkRes.json();
                         
                         if (checkData.status === 'success') {
+                            checksSinceLms = 0; // Reset đếm lượt LMS
                             const outputText = checkData.notebook_output;
                             log(`[Slot ${targetSlot.index}] 💎 Đã nhận lời giải cho ${targetSlot.currentId}. Tiến hành điền LMS...`);
                             
@@ -1533,9 +1539,11 @@
                             
                         } else if (checkData.status === 'waiting') {
                             log(`[Slot ${targetSlot.index}] NBLM vẫn đang sinh kết quả cho ${targetSlot.currentId}.`);
+                            checksSinceLms++;
                             
-                            // Chuyển sang LMS 3 giây chống timeout nếu đây là slot bận cuối cùng trong chu kỳ quét
-                            if (busySlots.length === 1 || targetSlot === busySlots[busySlots.length - 1]) {
+                            // Chuyển sang LMS 3 giây chống timeout nếu đã xoay vòng kiểm tra hết lượt các slot bận
+                            if (checksSinceLms >= busySlots.length) {
+                                checksSinceLms = 0;
                                 log("Về tab LMS 3 giây để chống timeout session...");
                                 status.innerText = "Tương tác LMS để tránh bị logout...";
                                 await fetch('http://localhost:5050/retrieve_nblm_job', {
@@ -1548,6 +1556,7 @@
                             throw new Error(checkData.message || "Lỗi kiểm tra");
                         }
                     } catch (err) {
+                        checksSinceLms = 0;
                         log(`[Slot ${targetSlot.index}] ❌ Lỗi xử lý kết quả câu ${targetSlot.currentId}: ${err.message}`);
                         await logBatchItem(targetSlot.stt, targetSlot.currentId, 'Thất bại', '', 'N/A', `Lỗi thu hoạch: ${err.message}`, targetSlot.startTime);
                         targetSlot.state = 'idle';
