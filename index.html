@@ -367,8 +367,8 @@
                     </span>
                     <button onclick="clearConsoleLogs()" style="background: transparent; border: none; color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 0;">Xóa log</button>
                 </div>
-                <div id="log_console" style="height: 180px; overflow-y: auto; background: rgba(0,0,0,0.45); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.5rem; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.72rem; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth;">
-                    <div style="color: var(--text-secondary);">Hệ thống sẵn sàng. Bắt đầu phiên chạy để ghi nhận nhật ký...</div>
+                <div id="log_console" style="height: 180px; overflow-y: auto; background: #ffffff; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.5rem; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.75rem; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth; color: #0f172a; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="color: #64748b;">Hệ thống sẵn sàng. Bắt đầu phiên chạy để ghi nhận nhật ký...</div>
                 </div>
             </div>
         </div>
@@ -1607,6 +1607,9 @@
         }
 
         function addConsoleLog(msg, level = 'INFO', timeStr = null) {
+            // Không hiển thị các log thuộc cấp độ ACTION theo yêu cầu
+            if (level === 'ACTION') return;
+
             const consoleEl = document.getElementById('log_console');
             if (!consoleEl) return;
             
@@ -1618,18 +1621,18 @@
             const logRow = document.createElement('div');
             logRow.style.wordBreak = 'break-all';
             
-            let levelColor = '#94a3b8';
-            let msgColor = '#e2e8f0';
-            if (level === 'OK' || level === 'SUCCESS') levelColor = '#10b981';
-            else if (level === 'WARN') levelColor = '#f59e0b';
-            else if (level === 'ERROR') levelColor = '#ef4444';
-            else if (level === 'STATUS' || level === 'ACTION') levelColor = '#3b82f6';
-            else if (level === 'LMS') levelColor = '#a855f7';
+            let levelColor = '#475569';
+            let msgColor = '#0f172a';
+            if (level === 'OK' || level === 'SUCCESS') levelColor = '#059669';
+            else if (level === 'WARN') levelColor = '#d97706';
+            else if (level === 'ERROR') levelColor = '#dc2626';
+            else if (level === 'STATUS') levelColor = '#2563eb';
+            else if (level === 'LMS') levelColor = '#7c3aed';
 
             logRow.innerHTML = `
                 <span style="color: #64748b;">[${timestamp}]</span>
                 <span style="color: ${levelColor}; font-weight: bold;">[${level}]</span>
-                <span style="color: ${msgColor};">${msg}</span>
+                <span style="color: ${msgColor}; font-weight: 500;">${msg}</span>
             `;
             consoleEl.appendChild(logRow);
             consoleEl.scrollTop = consoleEl.scrollHeight;
@@ -1667,7 +1670,7 @@
         setInterval(pollConsoleLogs, 1000);
 
         function clearConsoleLogs() {
-            document.getElementById('log_console').innerHTML = '<div style="color: var(--text-secondary);">Nhật ký đã được làm sạch. Đang đợi log mới...</div>';
+            document.getElementById('log_console').innerHTML = '<div style="color: #64748b;">Nhật ký đã được làm sạch. Đang đợi log mới...</div>';
         }
 
     </script>

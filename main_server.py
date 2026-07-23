@@ -182,21 +182,73 @@ class GUIHelper:
 
     @classmethod
     def tab_swap(cls, direction="forward"):
-        """Đảo tab trình duyệt bằng phím tắt."""
-        if direction == "forward":
-            log("Chuyển tab kế tiếp (Ctrl + Tab)...", "GUI")
-            pyautogui.hotkey('ctrl', 'tab')
-        else:
-            log("Chuyển tab phía trước (Ctrl + Shift + Tab)...", "GUI")
-            pyautogui.hotkey('ctrl', 'shift', 'tab')
-        time.sleep(0.5)
+        """Đảo tab trình duyệt bằng phím tắt chuẩn Windows API."""
+        try:
+            import ctypes
+            VK_CONTROL = 0x11
+            VK_SHIFT = 0x10
+            VK_TAB = 0x09
+            
+            ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 2, 0)
+            time.sleep(0.02)
+            
+            if direction == "forward":
+                log("Chuyển tab kế tiếp (Ctrl + Tab)...", "GUI")
+                ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 0, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(VK_TAB, 0, 0, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(VK_TAB, 0, 2, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 2, 0)
+            else:
+                log("Chuyển tab phía trước (Ctrl + Shift + Tab)...", "GUI")
+                ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 0, 0)
+                ctypes.windll.user32.keybd_event(VK_SHIFT, 0, 0, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(VK_TAB, 0, 0, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(VK_TAB, 0, 2, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(VK_SHIFT, 0, 2, 0)
+                ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 2, 0)
+            time.sleep(0.4)
+        except Exception as e:
+            if direction == "forward":
+                pyautogui.hotkey('ctrl', 'tab')
+            else:
+                pyautogui.hotkey('ctrl', 'shift', 'tab')
+            time.sleep(0.4)
 
     @classmethod
     def switch_to_tab(cls, tab_number):
-        """Chuyển sang tab cụ thể bằng Ctrl + số (1-9)."""
+        """Chuyển sang tab cụ thể bằng Ctrl + số (1-9) sử dụng Windows Native API."""
         log(f"Chuyển sang tab số {tab_number} (Ctrl + {tab_number})...", "GUI")
-        pyautogui.hotkey('ctrl', str(tab_number))
-        time.sleep(0.5)
+        try:
+            import ctypes
+            VK_CONTROL = 0x11
+            vk_num = 0x30 + int(tab_number) # 0x31='1', 0x32='2', 0x33='3', 0x34='4', 0x35='5'
+            
+            # Giải phóng phím Ctrl trước phòng trường hợp bị dính phím
+            ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 2, 0)
+            time.sleep(0.02)
+            
+            # Gửi tín hiệu phần cứng: Giữ Ctrl -> Nhấn Số -> Thả Số -> Thả Ctrl
+            ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 0, 0)
+            time.sleep(0.05)
+            ctypes.windll.user32.keybd_event(vk_num, 0, 0, 0)
+            time.sleep(0.05)
+            ctypes.windll.user32.keybd_event(vk_num, 0, 2, 0)
+            time.sleep(0.05)
+            ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 2, 0)
+            time.sleep(0.4)
+        except Exception as e:
+            pyautogui.keyDown('ctrl')
+            time.sleep(0.05)
+            pyautogui.press(str(tab_number))
+            time.sleep(0.05)
+            pyautogui.keyUp('ctrl')
+            time.sleep(0.4)
 
     @classmethod
     def check_nblm_done(cls, target_color=None):
