@@ -570,8 +570,26 @@ def safe_sleep(seconds):
         original_sleep(remainder)
 
 # ==========================================
-# WRAPPER PYAUTOGUI ĐỂ TỰ ĐỘNG GHI LOG MỌI THAO TÁC
+# WRAPPER PYAUTOGUI ĐỂ TỰ ĐỘNG GHI LOG & TÌM ĐƯỜNG DẪN ANH THÔNG MINH
 # ==========================================
+IMAGES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'images')
+
+def resolve_image_path(img):
+    """
+    Tự động xử lý đường dẫn ảnh thông minh:
+    - Nếu img đã là đường dẫn tồn tại (tuyệt đối hoặc tương đối) -> giữ nguyên.
+    - Nếu không tìm thấy, kiểm tra xem file có nằm trong thư mục images/ hay không -> trả về đường dẫn trong images/.
+    """
+    if not isinstance(img, str):
+        return img
+    if os.path.exists(img):
+        return img
+    img_name = os.path.basename(img)
+    in_images = os.path.join(IMAGES_DIR, img_name)
+    if os.path.exists(in_images):
+        return in_images
+    return img
+
 original_locateCenterOnScreen = pyautogui.locateCenterOnScreen
 original_locateOnScreen = pyautogui.locateOnScreen
 original_click = pyautogui.click
@@ -581,6 +599,11 @@ original_hotkey = pyautogui.hotkey
 original_moveTo = pyautogui.moveTo
 
 def logged_locateCenterOnScreen(*args, **kwargs):
+    if args:
+        resolved_img = resolve_image_path(args[0])
+        args = (resolved_img,) + args[1:]
+    elif 'image' in kwargs:
+        kwargs['image'] = resolve_image_path(kwargs['image'])
     img = args[0] if len(args) > 0 else kwargs.get('image', 'unknown')
     conf = kwargs.get('confidence', 'default')
     log(f"Đang quét tìm TÂM ảnh: {img} (confidence={conf})...", "SEARCH")
@@ -592,6 +615,11 @@ def logged_locateCenterOnScreen(*args, **kwargs):
     return res
 
 def logged_locateOnScreen(*args, **kwargs):
+    if args:
+        resolved_img = resolve_image_path(args[0])
+        args = (resolved_img,) + args[1:]
+    elif 'image' in kwargs:
+        kwargs['image'] = resolve_image_path(kwargs['image'])
     img = args[0] if len(args) > 0 else kwargs.get('image', 'unknown')
     conf = kwargs.get('confidence', 'default')
     log(f"Đang quét tìm VÙNG ảnh: {img} (confidence={conf})...", "SEARCH")
@@ -849,7 +877,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 copy_pos = None
                 for _ in range(25): # Thử quét trong 2.5s
                     try:
-                        copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
+                        copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
                         if copy_pos:
                             break
                     except Exception:
@@ -864,7 +892,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log("Tìm nút Copy Gemini (Lần 2)...", "SEARCH")
                     for _ in range(25): # Thử quét tiếp trong 2.5s
                         try:
-                            copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
+                            copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
                             if copy_pos:
                                 break
                         except Exception:
@@ -922,7 +950,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     pencil_pos = None
                     for _ in range(10):  # Thử quét tối đa 1s (10 * 100ms)
                         try:
-                            pencil_pos = pyautogui.locateCenterOnScreen('newpencil.png', region=scan_region, confidence=0.75)
+                            pencil_pos = pyautogui.locateCenterOnScreen('images/newpencil.png', region=scan_region, confidence=0.75)
                             if pencil_pos:
                                 break
                         except Exception:
@@ -1029,7 +1057,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         nblm_copy_pos = None
                         for _ in range(30):
                             try:
-                                nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                                nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
                                 if nblm_copy_pos:
                                     break
                             except Exception:
@@ -1044,7 +1072,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             log("Tìm nút Copy NotebookLM (Lần 2)...", "SEARCH")
                             for _ in range(30):
                                 try:
-                                    nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                                    nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
                                     if nblm_copy_pos:
                                         break
                                 except Exception:
@@ -1254,7 +1282,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 copy_pos = None
                 for _ in range(25):
                     try:
-                        copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
+                        copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
                         if copy_pos:
                             break
                     except Exception:
@@ -1267,7 +1295,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(1.0)
                     for _ in range(25):
                         try:
-                            copy_pos = pyautogui.locateCenterOnScreen('gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
+                            copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
                             if copy_pos:
                                 break
                         except Exception:
@@ -1390,7 +1418,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 nblm_copy_pos = None
                 for _ in range(30):
                     try:
-                        nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                        nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
                         if nblm_copy_pos:
                             break
                     except Exception:
@@ -1405,7 +1433,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log(f"Tìm nút Copy NotebookLM Tab {nblm_tab} (Lần 2)...", "SEARCH")
                     for _ in range(30):
                         try:
-                            nblm_copy_pos = pyautogui.locateCenterOnScreen('notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
+                            nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
                             if nblm_copy_pos:
                                 break
                         except Exception:
@@ -1491,7 +1519,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     pencil_pos = None
                     for _ in range(10):
                         try:
-                            pencil_pos = pyautogui.locateCenterOnScreen('newpencil.png', region=scan_region, confidence=0.75)
+                            pencil_pos = pyautogui.locateCenterOnScreen('images/newpencil.png', region=scan_region, confidence=0.75)
                             if pencil_pos:
                                 break
                         except Exception:
