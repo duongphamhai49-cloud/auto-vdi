@@ -1443,7 +1443,7 @@
                         if (startData.status === 'success') {
                             idleSlot.state = 'generating';
                             idleSlot.generateStartTime = Date.now();
-                            idleSlot.lastCheckTime = 0; // Đặt bằng 0 để đảm bảo slot mới nạp vẫn sẽ được quét kiểm tra theo thứ tự luân phiên
+                            idleSlot.lastCheckTime = Date.now(); // Đánh dấu vừa tương tác nạp xong, đẩy slot này xuống cuối hàng đợi kiểm tra
                             log(`[Slot ${idleSlot.index}] Đã nạp thành công ${currentId}. NBLM đang sinh câu trả lời...`);
                         } else {
                             throw new Error(startData.message || "Lỗi nạp câu");
@@ -1486,7 +1486,7 @@
                             body: JSON.stringify({
                                 id: targetSlot.currentId,
                                 nblm_tab: targetSlot.tab,
-                                wait_seconds: 10
+                                wait_seconds: 5
                             })
                         });
                         const checkData = await checkRes.json();
