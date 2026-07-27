@@ -74,19 +74,38 @@
         element.dispatchEvent(new MouseEvent('click', { ...baseInit, detail: 1 }));
     }
 
-    /** Xử lý formatting text (giữ nguyên logic v1) */
+    /** Xử lý formatting text: Xóa rác markdown, đổi Khẳng định A/B/C/D -> 1/2/3/4, in nghiêng câu chỉ dẫn, chỉ in đậm tên khẳng định */
     function processFormatting(text) {
+        if (!text) return '';
         let safeStr = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-        safeStr = safeStr.replace(/(Điền số.*?thích hợp vào chỗ trống.*?:)/gi, '<i>$1</i>');
-        safeStr = safeStr.replace(/(Xét tính đúng sai của các khẳng định sau:?)/gi, '<i>$1</i>');
-        safeStr = safeStr.replace(/(Khẳng định\s+[A-D1-4]\s+(?:đúng|sai)[^\.\n]*\.?)/gi, '<b>$1</b>');
+        // 1. Chuyển đổi "Khẳng định A/B/C/D" hoặc "khẳng định a/b/c/d" thành "Khẳng định 1/2/3/4" (viết hoa chữ K)
+        const mapLetterToNum = { 'A': '1', 'a': '1', 'B': '2', 'b': '2', 'C': '3', 'c': '3', 'D': '4', 'd': '4' };
+        safeStr = safeStr.replace(/\b(?:Khẳng|khẳng) định\s+([A-Da-d])\b/gi, (match, letter) => {
+            const num = mapLetterToNum[letter] || letter;
+            return `Khẳng định ${num}`;
+        });
 
-        // Hỗ trợ in đậm cho chữ "những" / "Những" định dạng markdown
+        // 2. Bóc sạch các ký tự markdown rác (*, _, **) dính ở đầu/cuối của các cụm tiêu đề hoặc câu chỉ dẫn
+        safeStr = safeStr.replace(/[\*_]*(Xét tính đúng sai của các khẳng định sau:?)[\*_]*/gi, '$1');
+        safeStr = safeStr.replace(/[\*_]*(Điền số.*?thích hợp vào chỗ trống.*?:?)[\*_]*/gi, '$1');
+        safeStr = safeStr.replace(/[\*_]*(Khẳng định\s+[1-4]\s+(?:đúng|sai)[\.:]?)[\*_]*/gi, '$1');
+
+        // 3. Tự động bọc thẻ in nghiêng <i> cho các câu chỉ dẫn
+        safeStr = safeStr.replace(/(Điền số.*?thích hợp vào chỗ trống.*?:?)/gi, '<i>$1</i>');
+        safeStr = safeStr.replace(/(Xét tính đúng sai của các khẳng định sau:?)/gi, '<i>$1</i>');
+
+        // 4. CHỈ in đậm đúng duy nhất cụm tiêu đề "Khẳng định 1/2/3/4 đúng/sai" (tuyệt đối KHÔNG ăn lan sang lời giải)
+        safeStr = safeStr.replace(/(Khẳng định\s+[1-4]\s+(?:đúng|sai)[\.:]?)/gi, '<b>$1</b>');
+
+        // 5. In đậm chữ "những" nếu có định dạng markdown **những**
         safeStr = safeStr.replace(/\*\*(những)\*\*?/gi, '<b>$1</b>');
 
-        safeStr = safeStr.replace(/\*\*(<b>.*?<\/b>)\*\*/gi, '$1');
-        safeStr = safeStr.replace(/\*(<i>.*?<\/i>)\*/gi, '$1');
+        // 6. Dọn dẹp thẻ lặp trùng và chuẩn hóa dấu câu
+        safeStr = safeStr.replace(/<i>\s*<i>/gi, '<i>').replace(/<\/i>\s*<\/i>/gi, '</i>');
+        safeStr = safeStr.replace(/<b>\s*<b>/gi, '<b>').replace(/<\/b>\s*<\/b>/gi, '<b>');
+        safeStr = safeStr.replace(/<i>(Xét tính đúng sai của các khẳng định sau):?<\/i>:?/gi, '<i>$1:</i>');
+        safeStr = safeStr.replace(/<i>(Điền số.*?thích hợp vào chỗ trống.*?):?<\/i>:?/gi, '<i>$1:</i>');
 
         return safeStr;
     }
