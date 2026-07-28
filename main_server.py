@@ -425,10 +425,12 @@ def log(msg, level="INFO"):
 HISTORY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'history')
 os.makedirs(HISTORY_DIR, exist_ok=True)
 
-# Biến toàn cục lưu đường dẫn file history hiện tại
+# Biến toàn cục lưu đường dẫn file history và backup hiện tại
 current_history_file = None
+current_backup_dir = None
 current_batch_start_time = 0
 current_failed_items = []
+id_stt_map = {}
 
 def format_duration(seconds):
     hours = int(seconds // 3600)
@@ -443,10 +445,11 @@ def format_duration(seconds):
     return " ".join(parts)
 
 def create_history_file(total_ids, custom_filename=None):
-    """Tạo file history mới và ghi header."""
-    global current_history_file, current_batch_start_time, current_failed_items
+    """Tạo file history mới và ghi header, đồng thời tạo thư mục backup tương ứng."""
+    global current_history_file, current_backup_dir, current_batch_start_time, current_failed_items, id_stt_map
     current_batch_start_time = time.time()
     current_failed_items = []
+    id_stt_map = {}
     
     if custom_filename and custom_filename.strip():
         filename = custom_filename.strip()
@@ -460,6 +463,12 @@ def create_history_file(total_ids, custom_filename=None):
     filepath = os.path.join(HISTORY_DIR, filename)
     current_history_file = filepath
     
+    # Tạo thư mục backup tương ứng: history/<filename_without_ext>_backups
+    base_name = os.path.splitext(filename)[0]
+    current_backup_dir = os.path.join(HISTORY_DIR, f"{base_name}_backups")
+    os.makedirs(current_backup_dir, exist_ok=True)
+    log(f"Đã khởi tạo thư mục backup ảnh: {current_backup_dir}", "INFO")
+    
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write("=" * 30 + "\n")
         f.write(f"PHIẾU TỰ ĐỘNG - {time.strftime('%d/%m/%Y %H:%M:%S')}\n")
@@ -468,6 +477,40 @@ def create_history_file(total_ids, custom_filename=None):
     
     log(f"Đã tạo file history: {filepath}", "INFO")
     return filepath
+
+def save_backup_image(stt, question_id, img_data):
+    """
+    Lưu ảnh chụp đề bài gốc bằng html2canvas hoặc ImageGrab vào thư mục backup hiện tại.
+    Format tên file: <stt>_<question_id>.png (hoặc <question_id>.png nếu stt không có)
+    Bọc trong try-except tuyệt đối để không bao giờ ảnh hưởng đến luồng chính.
+    """
+    global current_backup_dir, id_stt_map
+    if not question_id:
+        return
+    try:
+        if (stt is None or str(stt).strip() == "") and question_id in id_stt_map:
+            stt = id_stt_map[question_id]
+            
+        target_dir = current_backup_dir
+        if not target_dir:
+            target_dir = os.path.join(HISTORY_DIR, "default_backups")
+            os.makedirs(target_dir, exist_ok=True)
+
+        stt_prefix = f"{stt}_" if stt is not None and str(stt).strip() != "" else ""
+        filename = f"{stt_prefix}{question_id}.png"
+        filepath = os.path.join(target_dir, filename)
+
+        if isinstance(img_data, str):
+            clean_b64 = img_data.split(',')[1] if ',' in img_data else img_data
+            raw_bytes = base64.b64decode(clean_b64)
+            img = Image.open(io.BytesIO(raw_bytes))
+            img.save(filepath, "PNG")
+        elif hasattr(img_data, 'save'):
+            img_data.save(filepath, "PNG")
+
+        log(f"📸 Đã lưu ảnh backup đề gốc: {filename}", "OK")
+    except Exception as e:
+        log(f"Không thể lưu ảnh backup cho ID {question_id}: {e}", "WARN")
 
 def append_history_entry(stt, question_id, status, content):
     """Ghi kết quả 1 ID vào file history."""
@@ -754,8 +797,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(post_data.decode('utf-8'))
                 question_id = data.get('id', '')
+                stt = data.get('stt', None)
+                if question_id and stt:
+                    id_stt_map[question_id] = stt
             except:
                 question_id = ''
+                stt = None
             
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -793,6 +840,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 img_b64 = res_capture['image']
                 if not ClipboardHelper.write_base64_image(img_b64):
                     raise Exception("Không thể lưu ảnh chụp vào Clipboard!")
+                
+                # Lưu ảnh backup đề bài gốc (<stt>_<question_id>.png)
+                save_backup_image(stt, question_id, img_b64)
                 
                 # 3. Gọi Tampermonkey qua DOM để mở chế độ sửa (Click 2 lần cây bút)
                 # Bắt đầu bất đồng bộ, Python không chờ mà tiến hành dán Gemini ngay
@@ -1148,10 +1198,14 @@ class CaptureHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(post_data.decode('utf-8'))
                 question_id = data.get('id', '')
+                stt = data.get('stt', None)
                 nblm_tab = int(data.get('nblm_tab', 3))
                 lms_tab = int(data.get('lms_tab', 2))
+                if question_id and stt:
+                    id_stt_map[question_id] = stt
             except:
                 question_id = ''
+                stt = None
                 nblm_tab = 3
                 lms_tab = 2
             
@@ -1195,6 +1249,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     if ClipboardHelper.write_base64_image(img_b64):
                         img_ok = True
                         log("Đã lưu ảnh chụp html2canvas của Tampermonkey vào Clipboard.", "OK")
+                        save_backup_image(stt, question_id, img_b64)
                 
                 if not img_ok:
                     # Fallback sang ImageGrab của Python trực tiếp
@@ -1210,6 +1265,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data_bmp)
                         win32clipboard.CloseClipboard()
                         log("Chụp ảnh Fallback bằng Python thành công và lưu vào Clipboard.", "OK")
+                        save_backup_image(stt, question_id, img)
                     except Exception as ex:
                         raise Exception(f"Lỗi chụp ảnh cả html2canvas và Fallback Python: {str(ex)}")
 
@@ -1673,6 +1729,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 stt = data.get('stt', 0)
                 question_id = data.get('id', '')
                 total = data.get('total', 0)
+                
+                if question_id and stt:
+                    id_stt_map[question_id] = stt
                 
                 discord_msg = f"**[{stt}/{total}] Dang xu li cau {stt} - {question_id}** ({time.strftime('%H:%M:%S')})"
                 send_discord(discord_msg)

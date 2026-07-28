@@ -571,7 +571,7 @@
                     const searchRes = await fetch('http://localhost:5050/search_id', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: currentId })
+                        body: JSON.stringify({ id: currentId, stt: stt })
                     });
                     const searchData = await searchRes.json();
 
@@ -1434,6 +1434,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 id: currentId,
+                                stt: stt,
                                 lms_tab: lms_tab,
                                 nblm_tab: idleSlot.tab
                             })
