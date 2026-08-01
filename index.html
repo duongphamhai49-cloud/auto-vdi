@@ -292,6 +292,21 @@
                     style="padding: 0.6rem 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease; outline: none; box-sizing: border-box;">
             </div>
 
+            <!-- Cấu hình ReEdit (Nạp từ Ảnh Backup) -->
+            <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(8px);">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem; font-weight: bold; color: #3b82f6; cursor: pointer; margin: 0; user-select: none; font-size: 0.85rem;">
+                        <input type="checkbox" id="reedit_mode_checkbox" onchange="toggleReEditConfig()" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;">
+                        ReEdit
+                    </label>
+                </div>
+                <div id="reedit_folder_container" style="display: none; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">
+                    <label for="reedit_folder_input" style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">Tên folder backups:</label>
+                    <input type="text" id="reedit_folder_input" placeholder="Ví dụ: ĐS Hình học Oxyz_backups"
+                        style="padding: 0.6rem 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease; outline: none; box-sizing: border-box;">
+                </div>
+            </div>
+
             <!-- Cấu hình chạy song song LMS + NotebookLM -->
             <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(8px);">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
@@ -440,6 +455,7 @@
 
         function stopProcess(btn) {
             batchRunning = false; // Dừng ngay lập tức ở frontend
+            setReEditLock(false);
             const originalBg = btn.style.background;
             btn.style.background = '#7f1d1d'; // Đỏ sậm khi bấm
             document.getElementById('search_status').innerText = 'Đang huỷ quy trình...';
@@ -488,6 +504,14 @@
                 return;
             }
 
+            const isReEdit = document.getElementById('reedit_mode_checkbox').checked;
+            const backupFolder = document.getElementById('reedit_folder_input').value.trim();
+
+            if (isReEdit && !backupFolder) {
+                alert('Vui lòng nhập Tên folder backups!');
+                return;
+            }
+
             // Kiểm tra chế độ song song 1 LMS + 3 NBLM
             const isParallel = document.getElementById('parallel_mode_checkbox').checked;
             if (isParallel) {
@@ -495,6 +519,7 @@
                 return;
             }
 
+            setReEditLock(true);
             batchRunning = true;
             let successCount = 0;
             let processedCount = 0;
@@ -524,7 +549,12 @@
                 await fetch('http://localhost:5050/batch_start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ total_ids: totalIds, custom_filename: customFilename })
+                    body: JSON.stringify({
+                        total_ids: totalIds,
+                        custom_filename: customFilename,
+                        is_reedit: isReEdit,
+                        backup_folder: backupFolder
+                    })
                 });
                 batchLog(`📁 Đã tạo file history cho ${totalIds} ID`);
             } catch (e) {
@@ -571,11 +601,19 @@
                     const searchRes = await fetch('http://localhost:5050/search_id', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: currentId, stt: stt })
+                        body: JSON.stringify({
+                            id: currentId,
+                            stt: stt,
+                            is_reedit: isReEdit,
+                            backup_folder: backupFolder
+                        })
                     });
                     const searchData = await searchRes.json();
 
-                    if (searchData.status === 'success' && searchData.notebook_output) {
+                    if (searchData.status === 'skipped') {
+                        idStatus = 'Thất bại - Không thấy ảnh backup';
+                        errorDetail = searchData.message || 'Không tìm thấy ảnh backup';
+                    } else if (searchData.status === 'success' && searchData.notebook_output) {
                         notebookContent = searchData.notebook_output;
 
                         if (searchData.skip_paste) {
@@ -696,6 +734,7 @@
 
             // Mở khóa nút
             batchRunning = false;
+            setReEditLock(false);
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> CHẠY TỰ ĐỘNG`;
@@ -1300,6 +1339,18 @@
             }
         }
 
+        function toggleReEditConfig() {
+            const isChecked = document.getElementById('reedit_mode_checkbox').checked;
+            document.getElementById('reedit_folder_container').style.display = isChecked ? 'flex' : 'none';
+        }
+
+        function setReEditLock(locked) {
+            const cb = document.getElementById('reedit_mode_checkbox');
+            const inp = document.getElementById('reedit_folder_input');
+            if (cb) cb.disabled = locked;
+            if (inp) inp.disabled = locked;
+        }
+
         async function logBatchItem(stt, id, itemStatus, content, typeCode, errorDetail, startTime) {
             const endTime = new Date();
             const startStr = startTime.toLocaleTimeString('vi-VN');
@@ -1337,6 +1388,15 @@
             let ids = textarea.value.split('\n').map(id => id.trim()).filter(id => id !== '');
             const totalIds = ids.length;
 
+            const isReEdit = document.getElementById('reedit_mode_checkbox').checked;
+            const backupFolder = document.getElementById('reedit_folder_input').value.trim();
+
+            if (isReEdit && !backupFolder) {
+                alert('Vui lòng nhập Tên folder backups!');
+                return;
+            }
+
+            setReEditLock(true);
             batchRunning = true;
             let successCount = 0;
             let processedCount = 0;
@@ -1369,7 +1429,12 @@
                 await fetch('http://localhost:5050/batch_start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ total_ids: totalIds, custom_filename: customFilename })
+                    body: JSON.stringify({
+                        total_ids: totalIds,
+                        custom_filename: customFilename,
+                        is_reedit: isReEdit,
+                        backup_folder: backupFolder
+                    })
                 });
             } catch (e) {
                 console.error("Lỗi tạo file history:", e);
@@ -1436,12 +1501,23 @@
                                 id: currentId,
                                 stt: stt,
                                 lms_tab: lms_tab,
-                                nblm_tab: idleSlot.tab
+                                nblm_tab: idleSlot.tab,
+                                is_reedit: isReEdit,
+                                backup_folder: backupFolder
                             })
                         });
                         const startData = await startRes.json();
                         
-                        if (startData.status === 'success') {
+                        if (startData.status === 'skipped') {
+                            log(`[Slot ${idleSlot.index}] ⚠️ SKIP câu ${stt} - ${currentId}: ${startData.message}`, 'WARN');
+                            await logBatchItem(stt, currentId, 'Thất bại - Không thấy ảnh backup', '', 'N/A', startData.message, idleSlot.startTime);
+                            idleSlot.state = 'idle';
+                            idleSlot.currentId = null;
+                            textarea.value = ids.join('\n');
+                            document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                            progressBar.style.width = Math.round((nextStt - 1) / totalIds * 100) + '%';
+                            continue;
+                        } else if (startData.status === 'success') {
                             idleSlot.state = 'generating';
                             idleSlot.generateStartTime = Date.now();
                             idleSlot.lastCheckTime = Date.now(); // Đánh dấu vừa tương tác nạp xong, đẩy slot này xuống cuối hàng đợi kiểm tra
@@ -1600,6 +1676,7 @@
             }
 
             batchRunning = false;
+            setReEditLock(false);
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> CHẠY TỰ ĐỘNG`;

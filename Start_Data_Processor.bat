@@ -14,7 +14,8 @@ start chrome --new-window --window-position=0,0 --window-size=500,500 --profile-
 timeout /t 1 >nul
 
 echo Dang mo Gemini (Goc phai tren)...
-start chrome --new-window --window-position=500,0 --window-size=500,500 --profile-directory="Profile 5" "https://gemini.google.com/gem/507de5d07544"
+start chrome --new-window --window-position=500,0 --window-size=500,500 --profile-directory="Profile 5" "https://gemini.google.com/gem/507de5d07544" ^
+"https://gemini.google.com/gem/d004f534e329"
 timeout /t 1 >nul
 
 echo Dang mo Auto Edit Tool (Goc phai duoi)...

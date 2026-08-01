@@ -444,8 +444,8 @@ def format_duration(seconds):
     parts.append(f"{secs} giây")
     return " ".join(parts)
 
-def create_history_file(total_ids, custom_filename=None):
-    """Tạo file history mới và ghi header, đồng thời tạo thư mục backup tương ứng."""
+def create_history_file(total_ids, custom_filename=None, is_reedit=False):
+    """Tạo file history mới và ghi header, đồng thời tạo thư mục backup tương ứng (nếu không phải ReEdit)."""
     global current_history_file, current_backup_dir, current_batch_start_time, current_failed_items, id_stt_map
     current_batch_start_time = time.time()
     current_failed_items = []
@@ -463,11 +463,15 @@ def create_history_file(total_ids, custom_filename=None):
     filepath = os.path.join(HISTORY_DIR, filename)
     current_history_file = filepath
     
-    # Tạo thư mục backup tương ứng: history/<filename_without_ext>_backups
-    base_name = os.path.splitext(filename)[0]
-    current_backup_dir = os.path.join(HISTORY_DIR, f"{base_name}_backups")
-    os.makedirs(current_backup_dir, exist_ok=True)
-    log(f"Đã khởi tạo thư mục backup ảnh: {current_backup_dir}", "INFO")
+    if not is_reedit:
+        # Tạo thư mục backup tương ứng: history/<filename_without_ext>_backups
+        base_name = os.path.splitext(filename)[0]
+        current_backup_dir = os.path.join(HISTORY_DIR, f"{base_name}_backups")
+        os.makedirs(current_backup_dir, exist_ok=True)
+        log(f"Đã khởi tạo thư mục backup ảnh: {current_backup_dir}", "INFO")
+    else:
+        current_backup_dir = None
+        log("Chế độ ReEdit: Không tạo thư mục backup mới.", "INFO")
     
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write("=" * 30 + "\n")
@@ -477,6 +481,50 @@ def create_history_file(total_ids, custom_filename=None):
     
     log(f"Đã tạo file history: {filepath}", "INFO")
     return filepath
+
+def find_and_load_backup_image(backup_folder, question_id):
+    """
+    Tìm file ảnh trong thư mục history/<backup_folder>/ chứa question_id duy nhất.
+    Đọc ảnh và nạp trực tiếp vào Windows Clipboard (CF_DIB).
+    Trả về True nếu nạp thành công, False nếu không tìm thấy.
+    """
+    if not backup_folder or not question_id:
+        return False
+    try:
+        folder_path = os.path.join(HISTORY_DIR, backup_folder.strip())
+        if not os.path.exists(folder_path):
+            if not backup_folder.endswith('_backups'):
+                folder_path = os.path.join(HISTORY_DIR, f"{backup_folder.strip()}_backups")
+        
+        if not os.path.exists(folder_path):
+            log(f"Thư mục backup nguồn không tồn tại: {folder_path}", "WARN")
+            return False
+            
+        matched_file = None
+        for filename in os.listdir(folder_path):
+            if filename.lower().endswith('.png') and question_id in filename:
+                matched_file = os.path.join(folder_path, filename)
+                break
+                
+        if not matched_file:
+            log(f"Không tìm thấy ảnh backup nào chứa ID {question_id} trong {folder_path}", "WARN")
+            return False
+            
+        img = Image.open(matched_file)
+        output = io.BytesIO()
+        img.convert("RGB").save(output, "BMP")
+        data_bmp = output.getvalue()[14:]
+        
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data_bmp)
+        win32clipboard.CloseClipboard()
+        
+        log(f"📸 [ReEdit] Đã nạp ảnh backup {os.path.basename(matched_file)} vào Clipboard!", "OK")
+        return True
+    except Exception as e:
+        log(f"Lỗi nạp ảnh backup cho ID {question_id}: {e}", "ERROR")
+        return False
 
 def save_backup_image(stt, question_id, img_data):
     """
@@ -798,11 +846,15 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 question_id = data.get('id', '')
                 stt = data.get('stt', None)
+                is_reedit = data.get('is_reedit', False)
+                backup_folder = data.get('backup_folder', '')
                 if question_id and stt:
                     id_stt_map[question_id] = stt
             except:
                 question_id = ''
                 stt = None
+                is_reedit = False
+                backup_folder = ''
             
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -814,40 +866,54 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 return
             
             try:
-                log(f"=== BẮT ĐẦU XỬ LÝ ID: {question_id} ===", "STATUS")
-                
-                # 1. Gọi Tampermonkey qua DOM để tìm kiếm ID (Không scroll, click thẳng input)
-                log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
-                res_search = LMSBroker.search(question_id)
-                if not res_search or res_search.get('error'):
-                    err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
-                    raise Exception(f"Lỗi tìm kiếm ID: {err}")
-                log("Đã tìm thấy câu hỏi trên LMS.", "OK")
-                
-                # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
-                log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
-                pyautogui.press('end')
-                time.sleep(0.5)
-                
-                # 2. Gọi Tampermonkey qua DOM để chụp ảnh câu hỏi dạng base64
-                log("Đang chụp ảnh câu hỏi bằng Tampermonkey...", "STATUS")
-                res_capture = LMSBroker.capture()
-                if not res_capture or res_capture.get('error') or 'image' not in res_capture:
-                    err = res_capture.get('error') if res_capture else "Timeout chụp ảnh"
-                    raise Exception(f"Lỗi chụp ảnh: {err}")
-                
-                img_b64 = res_capture['image']
-                if not ClipboardHelper.write_base64_image(img_b64):
-                    raise Exception("Không thể lưu ảnh chụp vào Clipboard!")
-                
-                # Lưu ảnh backup đề bài gốc (<stt>_<question_id>.png)
-                save_backup_image(stt, question_id, img_b64)
-                
-                # 3. Gọi Tampermonkey qua DOM để mở chế độ sửa (Click 2 lần cây bút)
-                # Bắt đầu bất đồng bộ, Python không chờ mà tiến hành dán Gemini ngay
-                log("Gửi lệnh mở Edit (2 bút chì) cho Tampermonkey...", "STATUS")
-                session_id_edit, evt_edit = enqueue_lms_command('edit')
+                if is_reedit:
+                    log(f"=== [ReEdit Mode] BẮT ĐẦU NẠP ẢNH BACKUP ID: {question_id} ===", "STATUS")
+                    img_ok = find_and_load_backup_image(backup_folder, question_id)
+                    if not img_ok:
+                        log(f"⚠️ KHÔNG TÌM THẤY ẢNH BACKUP CHO ID {question_id} -> BỎ QUA (SKIP)", "WARN")
+                        self.wfile.write(json.dumps({
+                            "status": "skipped",
+                            "message": f"Không tìm thấy ảnh backup cho ID {question_id} trong {backup_folder}"
+                        }).encode('utf-8'))
+                        return
+                    
+                    log("Gửi lệnh mở Edit (2 bút chì) cho Tampermonkey...", "STATUS")
+                    session_id_edit, evt_edit = enqueue_lms_command('edit')
+                else:
+                    log(f"=== BẮT ĐẦU XỬ LÝ ID: {question_id} ===", "STATUS")
+                    
+                    # 1. Gọi Tampermonkey qua DOM để tìm kiếm ID (Không scroll, click thẳng input)
+                    log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
+                    res_search = LMSBroker.search(question_id)
+                    if not res_search or res_search.get('error'):
+                        err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
+                        raise Exception(f"Lỗi tìm kiếm ID: {err}")
+                    log("Đã tìm thấy câu hỏi trên LMS.", "OK")
+                    
+                    # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
+                    log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
+                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                    pyautogui.press('end')
+                    time.sleep(0.5)
+                    
+                    # 2. Gọi Tampermonkey qua DOM để chụp ảnh câu hỏi dạng base64
+                    log("Đang chụp ảnh câu hỏi bằng Tampermonkey...", "STATUS")
+                    res_capture = LMSBroker.capture()
+                    if not res_capture or res_capture.get('error') or 'image' not in res_capture:
+                        err = res_capture.get('error') if res_capture else "Timeout chụp ảnh"
+                        raise Exception(f"Lỗi chụp ảnh: {err}")
+                    
+                    img_b64 = res_capture['image']
+                    if not ClipboardHelper.write_base64_image(img_b64):
+                        raise Exception("Không thể lưu ảnh chụp vào Clipboard!")
+                    
+                    # Lưu ảnh backup đề bài gốc (<stt>_<question_id>.png)
+                    save_backup_image(stt, question_id, img_b64)
+                    
+                    # 3. Gọi Tampermonkey qua DOM để mở chế độ sửa (Click 2 lần cây bút)
+                    # Bắt đầu bất đồng bộ, Python không chờ mà tiến hành dán Gemini ngay
+                    log("Gửi lệnh mở Edit (2 bút chì) cho Tampermonkey...", "STATUS")
+                    session_id_edit, evt_edit = enqueue_lms_command('edit')
 
                 # Lấy màu rảnh rỗi động của Gemini trước khi dán ảnh
                 gemini_dynamic_idle_color = None
@@ -1201,6 +1267,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 stt = data.get('stt', None)
                 nblm_tab = int(data.get('nblm_tab', 3))
                 lms_tab = int(data.get('lms_tab', 2))
+                is_reedit = data.get('is_reedit', False)
+                backup_folder = data.get('backup_folder', '')
                 if question_id and stt:
                     id_stt_map[question_id] = stt
             except:
@@ -1208,6 +1276,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 stt = None
                 nblm_tab = 3
                 lms_tab = 2
+                is_reedit = False
+                backup_folder = ''
             
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1219,55 +1289,66 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 return
             
             try:
-                log(f"=== BẮT ĐẦU NẠP ID SONG SONG: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
-                
-                # 1. Chuyển sang tab LMS và tìm kiếm
-                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
-                GUIHelper.switch_to_tab(lms_tab)
-                
-                log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
-                res_search = LMSBroker.search(question_id)
-                if not res_search or res_search.get('error'):
-                    err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
-                    raise Exception(f"Lỗi tìm kiếm ID: {err}")
-                log("Đã tìm thấy câu hỏi trên LMS.", "OK")
-                
-                # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
-                log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
-                pyautogui.press('end')
-                time.sleep(0.5)
-                
-                # 2. Chụp ảnh câu hỏi (đợi tối đa 20s ở server cho lệnh capture)
-                log("Đang chụp ảnh câu hỏi bằng Tampermonkey (đợi tối đa 20s)...", "STATUS")
-                session_id_cap, evt_cap = enqueue_lms_command('capture')
-                res_capture = wait_for_lms_result(session_id_cap, timeout=20)
-                
-                img_ok = False
-                if res_capture and not res_capture.get('error') and 'image' in res_capture:
-                    img_b64 = res_capture['image']
-                    if ClipboardHelper.write_base64_image(img_b64):
-                        img_ok = True
-                        log("Đã lưu ảnh chụp html2canvas của Tampermonkey vào Clipboard.", "OK")
-                        save_backup_image(stt, question_id, img_b64)
-                
-                if not img_ok:
-                    # Fallback sang ImageGrab của Python trực tiếp
-                    log("Tampermonkey capture lỗi hoặc timeout quá 20s. Kích hoạt Fallback bằng Python ImageGrab...", "WARN")
-                    try:
-                        img = ImageGrab.grab(bbox=CAPTURE_BBOX)
-                        output = io.BytesIO()
-                        img.convert("RGB").save(output, "BMP")
-                        data_bmp = output.getvalue()[14:]
-                        
-                        win32clipboard.OpenClipboard()
-                        win32clipboard.EmptyClipboard()
-                        win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data_bmp)
-                        win32clipboard.CloseClipboard()
-                        log("Chụp ảnh Fallback bằng Python thành công và lưu vào Clipboard.", "OK")
-                        save_backup_image(stt, question_id, img)
-                    except Exception as ex:
-                        raise Exception(f"Lỗi chụp ảnh cả html2canvas và Fallback Python: {str(ex)}")
+                if is_reedit:
+                    log(f"=== [ReEdit Mode] BẮT ĐẦU NẠP ID SONG SONG TỪ BACKUP: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
+                    img_ok = find_and_load_backup_image(backup_folder, question_id)
+                    if not img_ok:
+                        log(f"⚠️ KHÔNG TÌM THẤY ẢNH BACKUP CHO ID {question_id} -> BỎ QUA (SKIP)", "WARN")
+                        self.wfile.write(json.dumps({
+                            "status": "skipped",
+                            "message": f"Không tìm thấy ảnh backup cho ID {question_id} trong {backup_folder}"
+                        }).encode('utf-8'))
+                        return
+                else:
+                    log(f"=== BẮT ĐẦU NẠP ID SONG SONG: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
+                    
+                    # 1. Chuyển sang tab LMS và tìm kiếm
+                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                    GUIHelper.switch_to_tab(lms_tab)
+                    
+                    log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
+                    res_search = LMSBroker.search(question_id)
+                    if not res_search or res_search.get('error'):
+                        err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
+                        raise Exception(f"Lỗi tìm kiếm ID: {err}")
+                    log("Đã tìm thấy câu hỏi trên LMS.", "OK")
+                    
+                    # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
+                    log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
+                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                    pyautogui.press('end')
+                    time.sleep(0.5)
+                    
+                    # 2. Chụp ảnh câu hỏi (đợi tối đa 20s ở server cho lệnh capture)
+                    log("Đang chụp ảnh câu hỏi bằng Tampermonkey (đợi tối đa 20s)...", "STATUS")
+                    session_id_cap, evt_cap = enqueue_lms_command('capture')
+                    res_capture = wait_for_lms_result(session_id_cap, timeout=20)
+                    
+                    img_ok = False
+                    if res_capture and not res_capture.get('error') and 'image' in res_capture:
+                        img_b64 = res_capture['image']
+                        if ClipboardHelper.write_base64_image(img_b64):
+                            img_ok = True
+                            log("Đã lưu ảnh chụp html2canvas của Tampermonkey vào Clipboard.", "OK")
+                            save_backup_image(stt, question_id, img_b64)
+                    
+                    if not img_ok:
+                        # Fallback sang ImageGrab của Python trực tiếp
+                        log("Tampermonkey capture lỗi hoặc timeout quá 20s. Kích hoạt Fallback bằng Python ImageGrab...", "WARN")
+                        try:
+                            img = ImageGrab.grab(bbox=CAPTURE_BBOX)
+                            output = io.BytesIO()
+                            img.convert("RGB").save(output, "BMP")
+                            data_bmp = output.getvalue()[14:]
+                            
+                            win32clipboard.OpenClipboard()
+                            win32clipboard.EmptyClipboard()
+                            win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data_bmp)
+                            win32clipboard.CloseClipboard()
+                            log("Chụp ảnh Fallback bằng Python thành công và lưu vào Clipboard.", "OK")
+                            save_backup_image(stt, question_id, img)
+                        except Exception as ex:
+                            raise Exception(f"Lỗi chụp ảnh cả html2canvas và Fallback Python: {str(ex)}")
 
                 # 3. Gửi Gemini
                 # Lấy màu rảnh rỗi động của Gemini trước khi dán ảnh
@@ -1695,8 +1776,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 total_ids = data.get('total_ids', 0)
                 custom_filename = data.get('custom_filename')
+                is_reedit = data.get('is_reedit', False)
                 
-                filepath = create_history_file(total_ids, custom_filename)
+                filepath = create_history_file(total_ids, custom_filename, is_reedit=is_reedit)
                 
                 # Gửi tin nhắn Discord: Bắt đầu phiên
                 discord_msg = (
