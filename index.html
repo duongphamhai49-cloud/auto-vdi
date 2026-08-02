@@ -1063,14 +1063,88 @@
             }
 
             // Regex patterns
-            const qMatch = rawText.match(/### 1\..*?\n```(?:latex)?\n([\s\S]*?)\n```/i);
-            const ansMatch = rawText.match(/_Đáp án:\s*(.*?)_/i);
-            const hintMatch = rawText.match(/### 2\..*?\n```(?:latex)?\n([\s\S]*?)\n```/i);
-            const solMatch = rawText.match(/### 3\..*?\n```(?:latex)?\n([\s\S]*?)\n```/i);
+            const qMatch = rawText.match(/### 1\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
+            
+            // Xác định vùng tìm kiếm đáp án (Ưu tiên vùng giữa mục 1 và mục 2, lấy đáp án ở vị trí cuối cùng trước mục 2)
+            let targetText = rawText;
+            const sec1Idx = rawText.search(/###\s*(?:mục|câu)?\s*1\b/i);
+            const sec2Idx = rawText.search(/###\s*(?:mục|câu)?\s*2\b/i);
 
+            if (sec1Idx !== -1) {
+                if (sec2Idx !== -1 && sec2Idx > sec1Idx) {
+                    targetText = rawText.substring(sec1Idx, sec2Idx);
+                } else {
+                    targetText = rawText.substring(sec1Idx);
+                }
+            } else if (sec2Idx !== -1) {
+                targetText = rawText.substring(0, sec2Idx);
+            }
+
+            let allAnsMatches = [];
+            const ansRegex = /(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*(.*?)(?:\n|$)/gi;
+            let m;
+            while ((m = ansRegex.exec(targetText)) !== null) {
+                let val = m[1].replace(/^[_\*]+|[_\*]+$/g, '').trim();
+                if (val.endsWith('.')) {
+                    val = val.slice(0, -1).trim();
+                }
+                if (val) {
+                    allAnsMatches.push([m[0], val]);
+                }
+            }
+
+            let ansMatch = allAnsMatches.length > 0 ? allAnsMatches[allAnsMatches.length - 1] : null;
+
+            if (!ansMatch) {
+                let fallbackMatches = [];
+                const fallbackRegex = /(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*(.*?)(?:\n|$)/gi;
+                let fm;
+                while ((fm = fallbackRegex.exec(rawText)) !== null) {
+                    let val = fm[1].replace(/^[_\*]+|[_\*]+$/g, '').trim();
+                    if (val.endsWith('.')) {
+                        val = val.slice(0, -1).trim();
+                    }
+                    if (val) {
+                        fallbackMatches.push([fm[0], val]);
+                    }
+                }
+                if (fallbackMatches.length > 0) {
+                    ansMatch = fallbackMatches[fallbackMatches.length - 1];
+                }
+            }
+
+            function extractSectionContent(text, startRegex, endRegex) {
+                if (!text) return '';
+                const startIdx = text.search(startRegex);
+                if (startIdx === -1) return '';
+
+                let sub = text.substring(startIdx);
+                const firstLineEnd = sub.indexOf('\n');
+                if (firstLineEnd !== -1) {
+                    sub = sub.substring(firstLineEnd + 1);
+                }
+
+                if (endRegex) {
+                    const endIdx = sub.search(endRegex);
+                    if (endIdx !== -1) {
+                        sub = sub.substring(0, endIdx);
+                    }
+                }
+
+                const codeBlockMatch = sub.match(/```(?:latex)?\s*\n?([\s\S]*?)\n?```/i);
+                if (codeBlockMatch) {
+                    return codeBlockMatch[1].trim();
+                }
+
+                sub = sub.replace(/(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*.*?(?:\n|$)/gi, '');
+                return sub.trim();
+            }
+
+            const questionText = extractSectionContent(rawText, /###\s*(?:mục|câu)?\s*1\b/i, /###\s*(?:mục|câu)?\s*2\b/i);
+            const hintText = extractSectionContent(rawText, /###\s*(?:mục|câu)?\s*2\b/i, /###\s*(?:mục|câu)?\s*3\b/i);
+            const solText = extractSectionContent(rawText, /###\s*(?:mục|câu)?\s*3\b/i, /###\s*(?:mục|câu)?\s*4\b|\*\s*\*\*Độ khó|\n---\n/i);
             const diffMatch = rawText.match(/\*\s*\*\*Độ khó:\*\*\s*(.*)/i);
 
-            let questionText = qMatch ? qMatch[1].trim() : '';
             let options = [];
             let deBai = questionText;
 
@@ -1244,8 +1318,8 @@
                 typeCode: typeCode,
                 difficulty: diffMatch ? diffMatch[1].trim() : '',
                 debai: deBai,
-                goiy: hintMatch ? hintMatch[1].trim() : '',
-                loigiai: solMatch ? solMatch[1].trim() : '',
+                goiy: hintText,
+                loigiai: solText,
                 options: options,
                 correct_answer: parsedAnswerData
             };
@@ -1293,8 +1367,8 @@
                 });
             }
 
-            if (hintMatch) addField('Gợi ý', hintMatch[1].trim(), '--btn-goiy', 'GỢI Ý', 'goiy');
-            if (solMatch) addField('Lời giải chi tiết', solMatch[1].trim(), '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
+            if (hintText) addField('Gợi ý', hintText, '--btn-goiy', 'GỢI Ý', 'goiy');
+            if (solText) addField('Lời giải chi tiết', solText, '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
 
             // Chèn Đề bài đầy đủ lên TOP LIST của phần Xem chi tiết
             const fullPromptVal = formatFullPrompt({ typeCode, debai: deBai, options });
