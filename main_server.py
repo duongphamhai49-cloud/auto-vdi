@@ -150,12 +150,10 @@ class GUIHelper:
 
     @classmethod
     def focus(cls, coords):
-        """Lấy focus tại tọa độ chỉ định bằng một cú click chuột."""
+        """Lấy focus siêu tốc tại tọa độ chỉ định."""
         log(f"Lấy focus tại tọa độ: {coords}", "GUI")
-        draw_circle_overlay(coords[0], coords[1], radius=15, duration_sec=0.8, color="red")
-        pyautogui.moveTo(coords[0], coords[1])
-        pyautogui.click()
-        time.sleep(0.3)
+        pyautogui.click(coords[0], coords[1])
+        time.sleep(0.05)
 
     @classmethod
     def focus_gem_lms(cls):
@@ -243,14 +241,14 @@ class GUIHelper:
             ctypes.windll.user32.keybd_event(vk_num, 0, 2, 0)
             time.sleep(0.05)
             ctypes.windll.user32.keybd_event(VK_CONTROL, 0, 2, 0)
-            time.sleep(0.4)
+            time.sleep(0.1)
         except Exception as e:
             pyautogui.keyDown('ctrl')
             time.sleep(0.05)
             pyautogui.press(str(tab_number))
             time.sleep(0.05)
             pyautogui.keyUp('ctrl')
-            time.sleep(0.4)
+            time.sleep(0.1)
 
     @classmethod
     def check_nblm_done(cls, target_color=None):
@@ -263,10 +261,8 @@ class GUIHelper:
         """Quy trình hủy/đóng modal soạn thảo LMS an toàn bằng phím ESC."""
         log("Bắt đầu quy trình đóng modal hủy bỏ (Cancel)...", "ACTION")
         try:
-            cls.focus_on_edit_lms()
             pyautogui.press('esc')
-            time.sleep(0.5)
-            cls.focus_lms_cancel()
+            time.sleep(0.2)
             pyautogui.press('esc')
             log("Đã đóng modal hủy bỏ thành công bằng ESC.", "OK")
         except Exception as e:
@@ -759,18 +755,13 @@ CURRENT_TAB = 'LMS'
 
 def fallback_cancel_routine():
     global CURRENT_TAB
-    log(f"CHẠY QUY TRÌNH HỦY KHẨN CẤP (FALLBACK CANCEL) - ĐANG Ở TAB: {CURRENT_TAB}", "ACTION")
+    log("QUY TRÌNH PHỤC HỒI: QUAY VỀ TAB LMS...", "ACTION")
     try:
-        if CURRENT_TAB == 'NBLM':
-            log("Đang ở NBLM, quay lại tab LMS...", "ACTION")
-            pyautogui.hotkey('ctrl', 'shift', 'tab')
-            time.sleep(0.5)
-            CURRENT_TAB = 'LMS'
-            
-        GUIHelper.cancel_modal()
-        log("Đã hoàn tất quy trình hủy khẩn cấp, sẵn sàng cho ID tiếp theo!", "OK")
+        GUIHelper.switch_to_tab(2)
+        CURRENT_TAB = 'LMS'
+        log("Đã chuyển về tab LMS sẵn sàng cho câu tiếp theo!", "OK")
     except Exception as e:
-        log(f"Lỗi trong quy trình hủy khẩn cấp: {e}", "ERROR")
+        log(f"Lỗi khi chuyển về tab LMS: {e}", "ERROR")
 
 class CaptureHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -889,12 +880,6 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
                         raise Exception(f"Lỗi tìm kiếm ID: {err}")
                     log("Đã tìm thấy câu hỏi trên LMS.", "OK")
-                    
-                    # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
-                    log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
-                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
-                    pyautogui.press('end')
-                    time.sleep(0.5)
                     
                     # 2. Gọi Tampermonkey qua DOM để chụp ảnh câu hỏi dạng base64
                     log("Đang chụp ảnh câu hỏi bằng Tampermonkey...", "STATUS")
@@ -1289,8 +1274,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 return
             
             try:
+                active_location = 'LMS'
                 if is_reedit:
-                    log(f"=== [ReEdit Mode] BẮT ĐẦU NẠP ID SONG SONG TỪ BACKUP: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
+                    log(f"=== [ReEdit Mode] BẮT ĐẦU NẠP ẢNH BACKUP ID: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
                     img_ok = find_and_load_backup_image(backup_folder, question_id)
                     if not img_ok:
                         log(f"⚠️ KHÔNG TÌM THẤY ẢNH BACKUP CHO ID {question_id} -> BỎ QUA (SKIP)", "WARN")
@@ -1303,7 +1289,6 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log(f"=== BẮT ĐẦU NẠP ID SONG SONG: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
                     
                     # 1. Chuyển sang tab LMS và tìm kiếm
-                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
                     GUIHelper.switch_to_tab(lms_tab)
                     
                     log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
@@ -1312,12 +1297,6 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
                         raise Exception(f"Lỗi tìm kiếm ID: {err}")
                     log("Đã tìm thấy câu hỏi trên LMS.", "OK")
-                    
-                    # Cuộn LMS xuống cuối trang (nhấn End) trước khi chụp ảnh
-                    log("Cuộn LMS xuống cuối trang (nhấn End)...", "ACTION")
-                    GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
-                    pyautogui.press('end')
-                    time.sleep(0.5)
                     
                     # 2. Chụp ảnh câu hỏi (đợi tối đa 20s ở server cho lệnh capture)
                     log("Đang chụp ảnh câu hỏi bằng Tampermonkey (đợi tối đa 20s)...", "STATUS")
@@ -1351,6 +1330,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             raise Exception(f"Lỗi chụp ảnh cả html2canvas và Fallback Python: {str(ex)}")
 
                 # 3. Gửi Gemini
+                active_location = 'GEMINI'
                 # Lấy màu rảnh rỗi động của Gemini trước khi dán ảnh
                 gemini_dynamic_idle_color = None
                 try:
@@ -1452,29 +1432,68 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log("Quay lại cửa sổ LMS & NBLM...", "ACTION")
                 GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
                 GUIHelper.switch_to_tab(nblm_tab)
+                active_location = 'NBLM'
                 time.sleep(0.5)
                 
-                pyautogui.click(GUIHelper.NBLM_CHATBOX[0], GUIHelper.NBLM_CHATBOX[1])
-                time.sleep(0.3)
-                pyautogui.hotkey('ctrl', 'v')
-                time.sleep(0.3)
-                pyautogui.press('enter')
-                log(f"Đã dán và gửi nội dung vào NotebookLM Tab {nblm_tab}.", "OK")
+                # Vòng lặp Nạp Input vào NotebookLM (Thử lại tối đa 5 lần)
+                input_success = False
+                for retry in range(5):
+                    if STOP_FLAG:
+                        raise Exception("Bị dừng bởi người dùng!")
+                        
+                    log(f"[NBLM INPUT RETRY {retry+1}/5] Click chatbox và dán nội dung...", "ACTION")
+                    pyautogui.click(GUIHelper.NBLM_CHATBOX[0], GUIHelper.NBLM_CHATBOX[1])
+                    time.sleep(0.3)
+                    pyautogui.hotkey('ctrl', 'v')
+                    time.sleep(0.3)
+                    
+                    # Kiểm tra màu 3 lần (mỗi lần 0.15s)
+                    ready_to_send = False
+                    for chk in range(3):
+                        time.sleep(0.15)
+                        curr_color = pyautogui.pixel(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1])
+                        is_idle = GUIHelper.check_nblm_done(GUIHelper.NBLM_IDLE_COLOR)
+                        is_input_loaded = pyautogui.pixelMatchesColor(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1], GUIHelper.NBLM_INPUT_LOADED_COLOR, tolerance=15)
+                        
+                        log(f"[NBLM SEND CHECK {chk+1}/3] Màu pixel tại {GUIHelper.NBLM_CHECK_PIXEL}: {curr_color} | Xám Rảnh: {is_idle} | Sáng Xanh: {is_input_loaded}", "STATUS")
+
+                        # Điều kiện: Chuyển màu Xanh HOẶC không còn là màu Xám rảnh rỗi
+                        if is_input_loaded or not is_idle:
+                            ready_to_send = True
+                            log(f"✅ Nút Send đã SẴN SÀNG GỬI ở lượt check {chk+1}/3! Tiến hành nhấn Enter...", "OK")
+                            break
+                    
+                    if ready_to_send:
+                        pyautogui.press('enter')
+                        log(f"Đã dán và gửi nội dung vào NotebookLM Tab {nblm_tab}.", "OK")
+                        time.sleep(0.8)
+                        input_success = True
+                        break
+                    else:
+                        log(f"⚠️ Nạp input thất bại ở lần thử {retry+1}/5 (Nút Send vẫn là màu xám). Thử nạp lại...", "WARN")
                 
-                # BẤM GỬI XONG CHỜ 3 GIÂY THEO YÊU CẦU CỦA USER
-                log("Chờ 3 giây để NotebookLM bắt đầu chạy...", "STATUS")
-                time.sleep(3.0)
+                if not input_success:
+                    raise Exception(f"Không thể nạp input vào NotebookLM Tab {nblm_tab} sau 5 lần thử lại!")
                 
                 self.wfile.write(json.dumps({"status": "success", "message": f"Đã nạp xong câu {question_id} vào NotebookLM Tab {nblm_tab}"}).encode('utf-8'))
                 
             except Exception as e:
-                log(f"LỖI HỆ THỐNG TẠI START_NBLM_JOB: {e}", "ERROR")
-                # Hủy khẩn cấp trên LMS tab
+                log(f"LỖI HỆ THỐNG TẠI START_NBLM_JOB (Vị trí: {active_location}): {e}", "ERROR")
                 try:
-                    GUIHelper.switch_to_tab(lms_tab)
-                    GUIHelper.cancel_modal()
-                except:
-                    pass
+                    if active_location == 'GEMINI':
+                        # Lỗi ở Gemini: Lấy focus (134, 957) trước, xem tab bên trái có phải NBLM ko -> nếu có bấm Ctrl+2
+                        GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
+                        if CURRENT_TAB != 'LMS':
+                            GUIHelper.switch_to_tab(lms_tab)
+                            CURRENT_TAB = 'LMS'
+                    elif active_location == 'NBLM':
+                        # Lỗi ở NBLM: Ctrl+2 về LMS là đủ
+                        if CURRENT_TAB != 'LMS':
+                            GUIHelper.switch_to_tab(lms_tab)
+                            CURRENT_TAB = 'LMS'
+                    # Lỗi ở LMS: Đã ở LMS rồi, không cần làm gì cả!
+                except Exception as ex:
+                    log(f"Lỗi phục hồi vị trí: {ex}", "WARN")
                 self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
 
         elif path == '/retrieve_nblm_job':
@@ -1485,11 +1504,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 question_id = data.get('id', '')
                 nblm_tab = int(data.get('nblm_tab', 3))
-                wait_seconds = int(data.get('wait_seconds', 10))
+                wait_seconds = int(data.get('wait_seconds', 2))
             except:
                 question_id = ''
                 nblm_tab = 3
-                wait_seconds = 10
+                wait_seconds = 2
                 
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1498,16 +1517,15 @@ class CaptureHandler(BaseHTTPRequestHandler):
             
             try:
                 log(f"=== KIỂM TRA PHẢN HỒI NBLM Tab {nblm_tab} (Chờ tối đa {wait_seconds}s) ===", "STATUS")
-                GUIHelper.focus(GUIHelper.FCS_GEM_LMS)
                 GUIHelper.switch_to_tab(nblm_tab)
-                time.sleep(0.5)
+                time.sleep(0.3)
                 
                 nblm_idle_color = GUIHelper.NBLM_IDLE_COLOR
                     
-                # Quét nút Send trong khoảng thời gian chỉ định
+                # Quét nút Send siêu tốc mỗi 0.2s trong khoảng thời gian chỉ định
                 nblm_done = False
                 stable_matches = 0
-                total_attempts = max(1, wait_seconds * 2)
+                total_attempts = max(1, int(wait_seconds * 5)) # 2 giây = 10 lượt kiểm tra
                 
                 for attempt in range(total_attempts):
                     if STOP_FLAG:
@@ -1519,21 +1537,21 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         
                     if is_idle:
                         stable_matches += 1
-                        if stable_matches >= 3: # khớp liên tục 1.5s
+                        if stable_matches >= 3: # khớp liên tục 0.6s
                             nblm_done = True
-                            log(f"NotebookLM Tab {nblm_tab} đã PHẢN HỒI XONG (Khớp màu Rảnh {GUIHelper.NBLM_IDLE_COLOR})!", "OK")
+                            log(f"NotebookLM Tab {nblm_tab} đã PHẢN HỒI XONG (Khớp màu Xám Rảnh {GUIHelper.NBLM_IDLE_COLOR})!", "OK")
                             break
                     else:
                         stable_matches = 0
-                        # Log trạng thái mỗi 1 giây (2 lượt kiểm tra) để console gọn gàng
-                        if attempt % 2 == 0:
+                        # Log trạng thái mỗi 1 giây (5 lượt kiểm tra) để console gọn gàng
+                        if attempt % 5 == 0:
                             if is_processing:
-                                log(f"NotebookLM Tab {nblm_tab} đang ĐANG XỬ LÝ (Màu đỏ {GUIHelper.NBLM_PROCESSING_COLOR})...", "STATUS")
+                                log(f"NotebookLM Tab {nblm_tab} đang ĐANG XỬ LÝ (Màu Đỏ {GUIHelper.NBLM_PROCESSING_COLOR})...", "STATUS")
                             elif is_input_loaded:
-                                log(f"NotebookLM Tab {nblm_tab} ĐÃ NHẬN INPUT (Màu xanh {GUIHelper.NBLM_INPUT_LOADED_COLOR})...", "STATUS")
+                                log(f"NotebookLM Tab {nblm_tab} ĐÃ NHẬN INPUT (Màu Xanh {GUIHelper.NBLM_INPUT_LOADED_COLOR})...", "STATUS")
                             else:
                                 log(f"NotebookLM Tab {nblm_tab} đang bận hoặc đổi màu...", "STATUS")
-                    time.sleep(0.5)
+                    time.sleep(0.2)
                 
                 if not nblm_done:
                     # Nếu chưa xong, trả về trạng thái bận
@@ -1591,7 +1609,14 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     raise Exception(f"Không tìm thấy nút Copy của NotebookLM Tab {nblm_tab} sau 2 lần bấm End!")
                     
             except Exception as e:
-                log(f"LỖI TẠI RETRIEVE_NBLM_JOB: {e}", "ERROR")
+                log(f"LỖI TẠI RETRIEVE_NBLM_JOB (NBLM): {e}", "ERROR")
+                try:
+                    # Lỗi ở NBLM: Ctrl+2 là đủ (vừa ở cửa sổ bên trái rồi)
+                    if CURRENT_TAB != 'LMS':
+                        GUIHelper.switch_to_tab(2)
+                        CURRENT_TAB = 'LMS'
+                except:
+                    pass
                 self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
 
         elif path == '/fill_lms_job':
@@ -1694,18 +1719,13 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log(f"Chờ {wait_time}s để Tampermonkey điền và lưu dữ liệu...", "STATUS")
                 time.sleep(wait_time)
                 
-                # Đóng modal (cancel/save modal)
-                GUIHelper.cancel_modal()
                 log(f"Đã hoàn thành điền dữ liệu câu {question_id}!", "OK")
                 
                 self.wfile.write(json.dumps({"status": "success", "message": f"Đã điền thành công câu {question_id}"}).encode('utf-8'))
                 
             except Exception as e:
-                log(f"LỖI TẠI FILL_LMS_JOB: {e}", "ERROR")
-                try:
-                    GUIHelper.cancel_modal()
-                except:
-                    pass
+                log(f"LỖI TẠI FILL_LMS_JOB (LMS): {e}", "ERROR")
+                # Lỗi ở LMS: Đã ở Tab LMS rồi, KHÔNG CẦN LÀM GÌ CẢ, nhảy sang ID tiếp theo luôn!
                 self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
 
         elif path == '/paste_lms':
@@ -1749,6 +1769,48 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log(f"LỖI TẠI PASTE_LMS: {e}", "ERROR")
                 fallback_cancel_routine()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+                
+        elif path == '/quick_edit':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                question_id = data.get('id', '')
+                if not question_id:
+                    raise Exception("Thiếu ID câu hỏi!")
+                
+                log(f"=== [QUICK EDIT] TÌM & MỞ EDIT ID: {question_id} ===", "STATUS")
+                
+                # 1. Gửi lệnh tìm kiếm ID cho Tampermonkey
+                log(f"Gửi lệnh tìm kiếm ID {question_id}...", "LMS")
+                res_search = LMSBroker.search(question_id)
+                if not res_search or res_search.get('error'):
+                    err = res_search.get('error') if res_search else "Timeout tìm kiếm ID"
+                    raise Exception(f"Lỗi tìm kiếm: {err}")
+                log("Đã tìm thấy câu hỏi trên LMS.", "OK")
+                
+                # 2. Gửi lệnh mở Edit (Bút chì 1 & 2)
+                log("Gửi lệnh mở chế độ Edit...", "STATUS")
+                session_id_edit, evt_edit = enqueue_lms_command('edit')
+                res_edit = wait_for_lms_result(session_id_edit, timeout=15)
+                if not res_edit or res_edit.get('error'):
+                    err = res_edit.get('error') if res_edit else "Timeout mở edit"
+                    raise Exception(f"Lỗi mở edit: {err}")
+                
+                log(f"✅ ĐÃ MỞ EDIT THÀNH CÔNG CHO ID {question_id}!", "OK")
+                self.wfile.write(json.dumps({"status": "success", "message": f"Đã mở Edit thành công cho ID: {question_id}"}).encode('utf-8'))
+                
+            except Exception as e:
+                log(f"LỖI TẠI QUICK_EDIT: {e}", "ERROR")
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+
+
         elif path == '/test_search_id':
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')

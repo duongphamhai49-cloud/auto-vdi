@@ -149,6 +149,36 @@
             box-shadow: 0px 0px 0px #000;
         }
 
+        .btn-search-header {
+            background: #2563eb;
+            color: #ffffff;
+            border: 1px solid #000;
+            padding: 0.2rem 0.35rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            border-radius: 0.25rem;
+            margin-left: 0.25rem;
+            box-shadow: 1px 1px 0px #000;
+            transition: all 0.1s;
+            position: relative;
+        }
+        .btn-search-header:hover {
+            background: #3b82f6;
+        }
+        .btn-search-header:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px #000;
+        }
+
+        .error-mark-btn:hover {
+            opacity: 0.8 !important;
+            transform: scale(1.15);
+        }
+        .error-mark-btn:active {
+            transform: scale(0.95) !important;
+        }
+
         .answer-title {
             font-size: 1.25rem;
             font-weight: bold;
@@ -314,10 +344,16 @@
             <span id="sw_q_count">0</span>
         </div>
         
-        <!-- Stats: Flagged count -->
-        <div id="sw_stats_f" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" title="Số câu chưa check">
-            <span id="sw_f_icon" style="opacity: 0.6;">🚩</span>
+        <!-- Stats: Flagged count 😻 -->
+        <div id="sw_stats_f" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" title="Số câu đã đánh dấu">
+            <span id="sw_f_icon" style="font-size: 0.95rem;">😻</span>
             <span id="sw_f_count">0</span>
+        </div>
+        
+        <!-- Stats: Error count 💥 -->
+        <div id="sw_stats_e" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" title="Số câu bị lỗi 💥">
+            <span id="sw_e_icon" style="font-size: 0.95rem;">💥</span>
+            <span id="sw_e_count">0</span>
         </div>
         
         <!-- Divider -->
@@ -505,23 +541,21 @@
         function updateFlaggedCount() {
             const flaggedCards = document.querySelectorAll('.status-btn[data-flagged="true"]');
             const countSpan = document.getElementById('sw_f_count');
-            const iconSpan = document.getElementById('sw_f_icon');
             if (countSpan) {
                 countSpan.textContent = flaggedCards.length;
             }
-            if (iconSpan) {
-                if (flaggedCards.length > 0) {
-                    iconSpan.style.opacity = '1';
-                    iconSpan.style.color = '#ffdd00';
-                } else {
-                    iconSpan.style.opacity = '0.6';
-                    iconSpan.style.color = '#ffffff';
-                }
+        }
+
+        function updateErrorCount() {
+            const errorCards = document.querySelectorAll('.error-mark-btn[data-error="true"]');
+            const countSpan = document.getElementById('sw_e_count');
+            if (countSpan) {
+                countSpan.textContent = errorCards.length;
             }
         }
 
         function toggleFlag(btn, event, originalStatus) {
-            event.stopPropagation(); // Ngăn chặn toggle đóng/mở card body
+            event.stopPropagation();
             const isFlagged = btn.getAttribute('data-flagged') === 'true';
             
             if (isFlagged) {
@@ -533,10 +567,57 @@
                 }
             } else {
                 btn.setAttribute('data-flagged', 'true');
-                btn.innerHTML = `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+                btn.innerHTML = `<span style="font-size: 1.4rem; line-height: 1;">😻</span>`;
+                
+                // Tự động tắt nút 💥 trong cùng card khi đánh dấu thành công
+                const card = btn.closest('.card');
+                if (card) {
+                    const errorBtn = card.querySelector('.error-mark-btn[data-error="true"]');
+                    if (errorBtn) {
+                        errorBtn.setAttribute('data-error', 'false');
+                        errorBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3-4.8-2.5-4.8 2.5.9-5.3-3.8-3.7 5.3-.8z"></path></svg>`;
+                        errorBtn.style.opacity = '0.3';
+                        errorBtn.style.transform = 'scale(1)';
+                        updateErrorCount();
+                    }
+                }
             }
             
             updateFlaggedCount();
+        }
+
+        function toggleErrorMark(btn, event) {
+            event.stopPropagation();
+            const isError = btn.getAttribute('data-error') === 'true';
+            if (isError) {
+                // Tắt 💥
+                btn.setAttribute('data-error', 'false');
+                btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3-4.8-2.5-4.8 2.5.9-5.3-3.8-3.7 5.3-.8z"></path></svg>`;
+                btn.style.opacity = '0.3';
+                btn.style.transform = 'scale(1)';
+            } else {
+                // Bật 💥 — kiểm tra nếu card đang ở trạng thái 😻 thì reset về trạng thái gốc
+                const card = btn.closest('.card');
+                if (card) {
+                    const statusBtn = card.querySelector('.status-btn[data-flagged="true"]');
+                    if (statusBtn) {
+                        const originalStatus = statusBtn.getAttribute('data-original-status');
+                        statusBtn.setAttribute('data-flagged', 'false');
+                        if (originalStatus === 'success') {
+                            statusBtn.innerHTML = `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                        } else {
+                            statusBtn.innerHTML = `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                        }
+                        updateFlaggedCount();
+                    }
+                }
+
+                btn.setAttribute('data-error', 'true');
+                btn.innerHTML = `<span style="font-size: 1.25rem; line-height: 1;">💥</span>`;
+                btn.style.opacity = '1';
+                btn.style.transform = 'scale(1.25)';
+            }
+            updateErrorCount();
         }
 
         function deleteFileByName(name, event) {
@@ -712,9 +793,15 @@
                 const parsed = parseNotebookOutputLocal(entry.rawNotebookContent, validIndex);
                 const isSuccess = entry.status.toLowerCase().includes('thành công');
                 
+                // Nút đánh dấu câu bị lỗi 💥 (mặc định mờ nhạt màu trắng 0.3)
+                const errorMarkBtn = `
+                <button class="error-mark-btn" data-error="false" onclick="toggleErrorMark(this, event)" style="cursor: pointer; background: none; border: none; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; opacity: 0.3; transition: all 0.2s ease;" title="Đánh dấu câu bị lỗi">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3-4.8-2.5-4.8 2.5.9-5.3-3.8-3.7 5.3-.8z"></path></svg>
+                </button>`;
+
                 // Trình diễn icon dưới dạng nút bấm trạng thái/lá cờ chưa check
                 const statusBtn = `
-                <button class="status-btn" data-flagged="false" onclick="toggleFlag(this, event, '${isSuccess ? 'success' : 'fail'}')" style="cursor: pointer; background: none; border: none; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
+                <button class="status-btn" data-flagged="false" data-original-status="${isSuccess ? 'success' : 'fail'}" onclick="toggleFlag(this, event, '${isSuccess ? 'success' : 'fail'}')" style="cursor: pointer; background: none; border: none; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
                     ${isSuccess 
                         ? `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` 
                         : `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
@@ -732,10 +819,14 @@
                             <span style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem; word-break: break-all;">${entry.id || '?'}</span>
                             ${entry.id ? `<button class="btn-copy-header" onclick="event.stopPropagation(); navigator.clipboard.writeText('${entry.id}'); this.style.opacity='0.4'; this.style.transform='scale(0.95)'; setTimeout(()=>{this.style.opacity='1'; this.style.transform='none';}, 200);" title="Copy ID">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                            <button class="btn-search-header" onclick="quickEditLMS('${entry.id}', this, event)" title="Tìm kiếm & Mở Edit ngay trên LMS">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </button>` : ''}
                             <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem; font-style: italic; opacity: 0.8;">(Từ: ${entry.fileName})</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 1rem; padding-right: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; padding-right: 0.5rem;">
+                            ${errorMarkBtn}
                             ${statusBtn}
                         </div>
                     </div>
@@ -858,6 +949,40 @@
             }
         }
 
+        async function quickEditLMS(id, btn, event) {
+            if (event) event.stopPropagation();
+            if (!id) return;
+
+            btn.style.opacity = '0.5';
+            btn.style.transform = 'scale(0.9)';
+
+            try {
+                const res = await fetch('http://localhost:5050/quick_edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    btn.style.background = '#10b981'; // Sáng xanh lá báo mở edit thành công
+                    btn.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        btn.style.background = '#2563eb';
+                        btn.style.opacity = '1';
+                        btn.style.transform = 'none';
+                    }, 600);
+                } else {
+                    alert('Lỗi mở Edit LMS: ' + data.message);
+                    btn.style.opacity = '1';
+                    btn.style.transform = 'none';
+                }
+            } catch (e) {
+                alert('Chưa bật main_server.py! Vui lòng khởi động server để sử dụng tính năng này.');
+                btn.style.opacity = '1';
+                btn.style.transform = 'none';
+            }
+        }
+
         function copyValue(btn, textId) {
             const val = document.getElementById(textId).value;
             navigator.clipboard.writeText(val).then(() => {
@@ -866,6 +991,40 @@
                 setTimeout(() => {
                     btn.style.transform = 'none';
                 }, 200);
+            });
+        }
+
+        function formatFullPrompt(data) {
+            if (!data) return '';
+            const typeCode = data.typeCode || 'UNKNOWN';
+            let debai = data.debai || '';
+            const options = data.options || [];
+
+            if ((typeCode === 'TRAC_NGHIEM' || typeCode === 'DUNG_SAI') && options.length === 4) {
+                return `${debai}\n${options[0]}\n${options[1]}\n${options[2]}\n${options[3]}`;
+            } else if (typeCode === 'DIEN_DAPAN') {
+                return debai.replace(/__[^\n_]+__/g, '____');
+            }
+            return debai;
+        }
+
+        function copyFullPromptLocal(btn, index) {
+            const data = window.allParsedData[index];
+            if (!data) {
+                alert("Chưa có dữ liệu đề bài để copy!");
+                return;
+            }
+            const fullPrompt = formatFullPrompt(data);
+            navigator.clipboard.writeText(fullPrompt).then(() => {
+                btn.style.opacity = '0.4';
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = 'none';
+                    btn.style.opacity = '1';
+                }, 200);
+            }).catch(e => {
+                console.error("Lỗi copy đề bài:", e);
+                alert("Trình duyệt không hỗ trợ copy tự động.");
             });
         }
 
@@ -1126,6 +1285,31 @@
             if (hintMatch) addField('Gợi ý', hintMatch[1].trim(), '--btn-goiy', 'GỢI Ý', 'goiy');
             if (solMatch) addField('Lời giải chi tiết', solMatch[1].trim(), '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
 
+            // Chèn Đề bài đầy đủ lên TOP LIST của phần Xem chi tiết
+            const fullPromptVal = formatFullPrompt({ typeCode, debai: deBai, options });
+            if (fullPromptVal) {
+                const fullTextId = `txt_${index}_full_debai`;
+                const fullContainerId = `container_${index}_full_debai`;
+                textHtml = `
+                    <div class="field-group" style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--accent);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label style="color: var(--accent); font-weight: bold; font-size: 1rem;">📋 Đề bài đầy đủ</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-copy-header" style="background: transparent; color: var(--text-primary); padding: 0.3rem;" onclick="toggleSingle(this, '${fullContainerId}', '${fullTextId}')" title="Mở rộng / Thu gọn">
+                                    <svg style="transition: transform 0.3s ease;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                                <button class="btn-colored-copy" style="background: linear-gradient(135deg, #0284c7, #0369a1); font-size: 0.8rem; padding: 0.3rem 0.8rem;" onclick="copyValue(this, '${fullTextId}')" title="Copy Đề bài đầy đủ">
+                                    COPY ĐỀ BÀI
+                                </button>
+                            </div>
+                        </div>
+                        <div id="${fullContainerId}" style="display: none; margin-top: 0.75rem;">
+                            <textarea id="${fullTextId}" style="height: auto; overflow: hidden; resize: none; background: rgba(0,0,0,0.4);" spellcheck="false" oninput="autoResize(this)">${fullPromptVal}</textarea>
+                        </div>
+                    </div>
+                ` + textHtml;
+            }
+
             let ansHtml = '';
             ansHtml += `<div style="text-align: center; margin-bottom: 0.5rem;"><span style="display: inline-block; padding: 0.25rem 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid ${typeColor}; color: ${typeColor}; border-radius: 50px; font-size: 0.85rem; font-weight: bold;">Dạng câu hỏi: ${questionTypeStr}</span></div>`;
 
@@ -1153,6 +1337,10 @@
                 <button class="btn-colored-copy" onclick="copyAllToJSON(this, ${index})" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #f43f5e, #e11d48);" title="Copy toàn bộ JSON">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     COPY ALL
+                </button>
+                <button class="btn-colored-copy" onclick="copyFullPromptLocal(this, ${index})" style="display: flex; justify-content: center; align-items: center; gap: 0.4rem; background: linear-gradient(135deg, #0284c7, #0369a1);" title="Copy Đề bài đầy đủ (kèm 4 phương án/khẳng định)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                    COPY ĐỀ BÀI
                 </button>
                 <button class="btn-colored-copy" onclick="resetCardButtons(this, ${index})" style="display: flex; justify-content: center; align-items: center; padding: 0.4rem 0.6rem; background: var(--text-secondary);" title="Làm mới trạng thái các nút">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
