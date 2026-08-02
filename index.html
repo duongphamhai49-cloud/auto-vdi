@@ -1113,6 +1113,32 @@
                 }
             }
 
+            function cleanBlankLines(str) {
+                if (!str) return '';
+                return str.split('\n').map(l => l.trim()).filter(Boolean).join('\n');
+            }
+
+            function fixVietnameseTonePlacement(text) {
+                if (!text) return '';
+                const map = {
+                    'òa': 'oà', 'óa': 'oá', 'ỏa': 'oả', 'õa': 'oã', 'ọa': 'oạ',
+                    'Òa': 'Oà', 'Óa': 'Oá', 'Ỏa': 'Oả', 'Õa': 'Oã', 'Ọa': 'Oạ',
+                    'òe': 'oè', 'óe': 'oé', 'ỏe': 'oẻ', 'õe': 'oẽ', 'ọe': 'oẹ',
+                    'Òe': 'Oè', 'Óe': 'Oé', 'Ỏe': 'Oẻ', 'Õe': 'Oẽ', 'Ọe': 'Oẹ',
+                    'ùy': 'uỳ', 'úy': 'uý', 'ủy': 'uỷ', 'ũy': 'uỹ', 'ụy': 'uỵ',
+                    'Ùy': 'Uỳ', 'Úy': 'Uý', 'Ủy': 'Uỷ', 'Ũy': 'Uỹ', 'Ụy': 'Uỵ'
+                };
+                return text.replace(/([òóaỏaõaọaòeóeỏeõeọeùyúyủyũyụyÒaÓaỎaÕaỌaÒeÓeỎeÕeỌeÙyÚyỦyŨyỤy])/g, (m) => map[m] || m);
+            }
+
+            function formatLargeNumbers(text) {
+                if (!text) return '';
+                let normalized = text.replace(/(\d+)\\\s+(?=\d)/g, '$1');
+                return normalized.replace(/(?<![&#A-Za-z0-9])\b\d{5,}\b/g, (match) => {
+                    return match.replace(/\B(?=(\d{3})+(?!\d))/g, '\\ ');
+                });
+            }
+
             function extractSectionContent(text, startRegex, endRegex) {
                 if (!text) return '';
                 const startIdx = text.search(startRegex);
@@ -1131,13 +1157,18 @@
                     }
                 }
 
+                let content = '';
                 const codeBlockMatch = sub.match(/```(?:latex)?\s*\n?([\s\S]*?)\n?```/i);
                 if (codeBlockMatch) {
-                    return codeBlockMatch[1].trim();
+                    content = codeBlockMatch[1];
+                } else {
+                    content = sub.replace(/(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*.*?(?:\n|$)/gi, '');
                 }
 
-                sub = sub.replace(/(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*.*?(?:\n|$)/gi, '');
-                return sub.trim();
+                content = cleanBlankLines(content);
+                content = fixVietnameseTonePlacement(content);
+                content = formatLargeNumbers(content);
+                return content;
             }
 
             const questionText = extractSectionContent(rawText, /###\s*(?:mục|câu)?\s*1\b/i, /###\s*(?:mục|câu)?\s*2\b/i);
