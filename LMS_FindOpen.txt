@@ -16,7 +16,7 @@
     'use strict';
 
     const SERVER = 'http://localhost:5050';
-    const POLL_INTERVAL = 500; // 0.5 giây gửi poll một lần
+    const POLL_INTERVAL = 200; // 0.2 giây gửi poll một lần (tăng tốc 2.5x)
     let isProcessing = false;
     let badge = null;
     let currentSession = 0;
@@ -153,11 +153,9 @@
         setBadge('🔵 LMS FindOpen Ready', '#3b82f6');
     }
 
-    // --- DO SEARCH (Tìm kiếm ID bằng DOM) ---
+    // --- DO SEARCH (Tìm kiếm ID bằng DOM - Đã tối ưu tốc độ) ---
     async function doSearch(questionId) {
         setBadge(`🔍 Tìm ID: ${questionId}`, '#3b82f6');
-        window.scrollTo(0, 0);
-        await sleep(400);
 
         const exactInputSelector = 'div.ant-col.ant-form-item-control-wrapper:nth-of-type(2) > div.ant-form-item-control > span.ant-form-item-children > input.ant-input';
         let searchInput = document.querySelector(exactInputSelector);
@@ -181,13 +179,13 @@
         highlightElement(searchInput, 'red');
         searchInput.focus();
         searchInput.click();
-        await sleep(150);
+        await sleep(50);
 
         setReactValue(searchInput, questionId);
         searchInput.value = questionId;
         searchInput.setAttribute('value', questionId);
         triggerInputEvents(searchInput);
-        await sleep(300);
+        await sleep(100);
 
         const exactSearchBtn = document.querySelector('div.form-button-groups:nth-of-type(2) > div.ui-form-control.m-t-15 > div > button.btn-primary.btn');
         let searchBtn = exactSearchBtn;
@@ -201,7 +199,7 @@
 
         if (searchBtn) {
             highlightElement(searchBtn, 'blue');
-            await sleep(150);
+            await sleep(50);
             searchBtn.click();
         } else {
             searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
@@ -209,23 +207,54 @@
             searchInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
         }
 
-        // Đợi kết quả hiển thị trên bảng
-        await sleep(800);
-        let foundRow = false;
-        for (let i = 0; i < 30; i++) { // Chờ tối đa 15 giây
-            if (document.querySelector('tr.ant-table-row, i[aria-label="icon: edit"]')) {
-                foundRow = true;
+        // 1. Đợi nút Tìm kiếm đi vào trạng thái bận (Loading/Disabled) hoặc Table Spin xuất hiện (tối đa 1.5s)
+        for (let i = 0; i < 15; i++) {
+            const isBtnBusy = searchBtn && (
+                searchBtn.disabled || 
+                searchBtn.getAttribute('disabled') !== null || 
+                searchBtn.classList.contains('ant-btn-loading') || 
+                searchBtn.classList.contains('disabled') ||
+                searchBtn.classList.contains('is-loading')
+            );
+            const isTableSpinning = !!document.querySelector('.ant-table-spin-holder, .ant-spin-spinning, .ant-spin, .ant-table-loading');
+            if (isBtnBusy || isTableSpinning) {
                 break;
             }
-            await sleep(500);
+            await sleep(100);
         }
 
-        if (!foundRow) {
-            throw new Error('Tìm kiếm không trả về kết quả (hoặc bảng load quá chậm)');
+        // 2. Đợi NÚT TÌM KIẾM TRỞ LẠI TRẠNG THÁI BẤM ĐƯỢC (Ready / Enabled) và Bảng kết quả hết Loading
+        let searchFinished = false;
+        for (let i = 0; i < 200; i++) { // Chờ tối đa 20 giây (200 * 100ms)
+            const currentSearchBtn = document.querySelector('div.form-button-groups:nth-of-type(2) > div.ui-form-control.m-t-15 > div > button.btn-primary.btn') || searchBtn;
+            
+            const isBtnDisabled = currentSearchBtn ? (
+                currentSearchBtn.disabled || 
+                currentSearchBtn.getAttribute('disabled') !== null || 
+                currentSearchBtn.classList.contains('ant-btn-loading') || 
+                currentSearchBtn.classList.contains('disabled') || 
+                currentSearchBtn.classList.contains('is-loading')
+            ) : false;
+
+            const isTableSpinning = !!document.querySelector('.ant-table-spin-holder, .ant-spin-spinning, .ant-spin, .ant-table-loading');
+
+            // Nút bấm đã trở lại trạng thái BẤM ĐƯỢC (Enabled) + Bảng không còn loading
+            if (!isBtnDisabled && !isTableSpinning) {
+                const hasRow = !!document.querySelector('tr.ant-table-row, i[aria-label="icon: edit"]');
+                if (hasRow) {
+                    searchFinished = true;
+                    break;
+                }
+            }
+            await sleep(100);
         }
 
-        window.scrollTo(0, document.body.scrollHeight);
-        await sleep(600);
+        if (!searchFinished) {
+            throw new Error('Tìm kiếm không hoàn tất (Nút tìm kiếm chưa về trạng thái bấm được hoặc bảng load quá chậm)');
+        }
+
+        // Nghỉ thêm 200ms cho DOM render ổn định
+        await sleep(200);
 
         // Gửi phản hồi về server để báo hoàn tất tìm kiếm
         await postJSON(`${SERVER}/lms/done`, { event: 'lms_search_done', session: currentSession });
