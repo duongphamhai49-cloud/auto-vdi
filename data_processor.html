@@ -1048,6 +1048,14 @@
             });
         }
 
+        function removeDocCitations(text) {
+            if (!text) return '';
+            let cleaned = text.replace(/\s*\[[^\]]*?\bDoc\b[^\]]*?\]/gi, '');
+            cleaned = cleaned.replace(/\s+([.,;:?!])/g, '$1');
+            cleaned = cleaned.replace(/ {2,}/g, ' ');
+            return cleaned;
+        }
+
         function parseNotebookOutputLocal(rawText, index) {
             if (!rawText || !rawText.trim()) {
                 return {
@@ -1056,6 +1064,8 @@
                     ansHtml: ''
                 };
             }
+
+            rawText = removeDocCitations(rawText);
 
             // Make regexes forgiving of multiple newlines
             const qMatch = rawText.match(/### 1\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
@@ -1163,6 +1173,7 @@
                 content = cleanBlankLines(content);
                 content = fixVietnameseTonePlacement(content);
                 content = formatLargeNumbers(content);
+                content = removeDocCitations(content);
                 return content;
             }
 
@@ -1332,6 +1343,12 @@
                 } else {
                     answerTitleStr = rawAns;
                     parsedAnswerData = rawAns;
+                }
+            }
+
+            if (typeCode === 'DIEN_DAPAN' && deBai) {
+                if (!deBai.trim().endsWith('.')) {
+                    deBai = deBai.trim() + '.';
                 }
             }
 
