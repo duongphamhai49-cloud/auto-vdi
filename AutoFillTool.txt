@@ -25,7 +25,7 @@
 
         // 1. Chuyển đổi "Khẳng định A/B/C/D" hoặc "khẳng định a/b/c/d" thành "Khẳng định 1/2/3/4" (viết hoa chữ K)
         const mapLetterToNum = { 'A': '1', 'a': '1', 'B': '2', 'b': '2', 'C': '3', 'c': '3', 'D': '4', 'd': '4' };
-        safeStr = safeStr.replace(/\b(?:Khẳng|khẳng) định\s+([A-Da-d])\b/gi, (match, letter) => {
+        safeStr = safeStr.replace(/\b(?:Khẳng|khẳng)\s+định\s+([A-Da-d])(?![a-zA-Z\u00C0-\u024F\u1EA0-\u1EFF])/gi, (match, letter) => {
             const num = mapLetterToNum[letter] || letter;
             return `Khẳng định ${num}`;
         });

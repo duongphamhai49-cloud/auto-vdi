@@ -1144,6 +1144,38 @@
                 });
             }
 
+            function formatRomanNumerals(text) {
+                if (!text) return '';
+                
+                // 1. Danh sách số La Mã đa ký tự (từ 2 ký tự trở lên): II, III, IV, VI, VII, VIII, IX, XI, XII, XIII, XIV, XV, XVI, XVII, XVIII, XIX, XX, XXI, XXV, XL, XC...
+                // Tuyệt đối không chứa các cụm trùng tên đoạn thẳng hình học như CD, CM
+                const multiRomanPattern = "(?:II|III|IV|VI|VII|VIII|IX|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX|XXI|XXII|XXIII|XXIV|XXV|XXX|XL|XC)";
+                
+                // 2. Các từ tín hiệu ngữ cảnh bắt buộc đi kèm nếu là số La Mã 1 ký tự (I, V, X)
+                const contextPrefixes = "(?:tổ|bước|mục|phần|chương|bảng|hình|cột|dòng|loại|nhóm|giai\\s+đoạn|thế\\s+kỷ|thế\\s+kỉ|lần|đáp\\s+án|phương\\s+án|khẳng\\s+định|ý|câu|bài|trường\\s+hợp|đợt|khối|nhánh|kênh|quý|khóa|lớp)";
+
+                // Ép dạng $I$, $II$... (trong math mode không có \text) thành $\text{I}$
+                text = text.replace(new RegExp(`(?:\\$|\\\\\\()(${multiRomanPattern})(?:\\$|\\\\\\))`, 'gi'), '$\\text{$1}$');
+                text = text.replace(new RegExp(`(?:\\$|\\\\\\()([IVX])(?:\\$|\\\\\\))`, 'g'), '$\\text{$1}$');
+
+                // Tách các khối math mode để biến đổi ký tự La Mã thô nằm ngoài math mode
+                const mathRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[^\$\n]+?\$|\\\(.*?\\\))/g;
+                const parts = text.split(mathRegex);
+
+                const multiRomanRegex = new RegExp(`(?<![\\\\a-zA-Z])\\b(${multiRomanPattern})\\b(?![a-zA-Z])`, 'gi');
+                const singleRomanRegex = new RegExp(`(\\b${contextPrefixes}\\s+)(I|V|X)\\b(?![a-zA-Z\\u00C0-\\u024F\\u1EA0-\\u1EFF])`, 'gi');
+
+                for (let i = 0; i < parts.length; i++) {
+                    if (i % 2 === 0) {
+                        // Chuyển số La Mã từ 2 ký tự trở lên thành $\text{...}$
+                        parts[i] = parts[i].replace(multiRomanRegex, '$\\text{$1}$');
+                        // Chuyển số La Mã 1 ký tự (I, V, X) có từ tín hiệu đi kèm thành $\text{...}$
+                        parts[i] = parts[i].replace(singleRomanRegex, '$1$\\text{$2}$');
+                    }
+                }
+                return parts.join('');
+            }
+
             function extractSectionContent(text, startRegex, endRegex) {
                 if (!text) return '';
                 const startIdx = text.search(startRegex);
@@ -1173,6 +1205,7 @@
                 content = cleanBlankLines(content);
                 content = fixVietnameseTonePlacement(content);
                 content = formatLargeNumbers(content);
+                content = formatRomanNumerals(content);
                 content = removeDocCitations(content);
                 return content;
             }
@@ -1286,40 +1319,65 @@
                         parsedAnswerData = rawAns;
                     }
                 } else if (isMultipleChoice) {
-                    const parts = rawAns.split(/\s+và\s+|\s+and\s+|,/i).map(p => p.trim()).filter(Boolean);
                     const foundIndices = [];
                     
-                    for (const part of parts) {
-                        let choiceNum = null;
-                        let m1 = part.match(/(?:số|lựa chọn|phương án)\s*([1-4])/i);
-                        let m2 = part.match(/(?:đáp án|phương án)\s*([A-D])/i);
-                        if (m1) {
-                            choiceNum = parseInt(m1[1]);
-                        } else if (m2) {
-                            const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
-                            choiceNum = map[m2[1].toUpperCase()];
-                        }
-                        
-                        if (!choiceNum) {
-                            const cleanPart = part.replace(/[\$\.\s]/g, '').toLowerCase();
-                            if (/^[1-4]$/.test(cleanPart)) {
-                                choiceNum = parseInt(cleanPart);
-                            } else if (/^[a-d]$/i.test(cleanPart)) {
-                                const map = { 'a': 1, 'b': 2, 'c': 3, 'd': 4 };
-                                choiceNum = map[cleanPart];
-                            } else if (cleanPart) {
-                                for (let i = 0; i < options.length; i++) {
-                                    const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
-                                    if (cleanOpt && (cleanOpt.includes(cleanPart) || cleanPart.includes(cleanOpt))) {
-                                        choiceNum = i + 1;
-                                        break;
-                                    }
+                    // 1. Mẹo: Ưu tiên tìm cụm (Đáp án ...) trong ngoặc tròn ở cuối/sau cụm Đáp án:
+                    const parenRegex = /\((?:_|\*\*|\*)?(?:đáp án|phương án|lựa chọn)[:\s]*(.*?)(?:_|\*\*|\*)?\)/gi;
+                    let parenMatch;
+                    while ((parenMatch = parenRegex.exec(rawAns)) !== null) {
+                        const parenContent = parenMatch[1];
+                        const numMatches = parenContent.match(/\b([1-4]|[a-d])\b/gi);
+                        if (numMatches) {
+                            for (const numStr of numMatches) {
+                                let num = null;
+                                if (/^[1-4]$/.test(numStr)) {
+                                    num = parseInt(numStr);
+                                } else if (/^[a-d]$/i.test(numStr)) {
+                                    const map = { 'a': 1, 'b': 2, 'c': 3, 'd': 4 };
+                                    num = map[numStr.toLowerCase()];
+                                }
+                                if (num && !foundIndices.includes(num)) {
+                                    foundIndices.push(num);
                                 }
                             }
                         }
-                        
-                        if (choiceNum && !foundIndices.includes(choiceNum)) {
-                            foundIndices.push(choiceNum);
+                    }
+
+                    // 2. Nếu không xác nhận được số hoặc không tìm được trong ngoặc tròn -> parse theo cách cũ
+                    if (foundIndices.length === 0) {
+                        const parts = rawAns.split(/\s+và\s+|\s+and\s+|,/i).map(p => p.trim()).filter(Boolean);
+                        for (const part of parts) {
+                            let choiceNum = null;
+                            let m1 = part.match(/(?:số|lựa chọn|phương án)\s*([1-4])/i);
+                            let m2 = part.match(/(?:đáp án|phương án)\s*([A-D])/i);
+                            if (m1) {
+                                choiceNum = parseInt(m1[1]);
+                            } else if (m2) {
+                                const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
+                                choiceNum = map[m2[1].toUpperCase()];
+                            }
+                            
+                            if (!choiceNum) {
+                                const cleanPart = part.replace(/[\$\.\s]/g, '').toLowerCase();
+                                if (/^[1-4]$/.test(cleanPart)) {
+                                    choiceNum = parseInt(cleanPart);
+                                } else if (/^[a-d]$/i.test(cleanPart)) {
+                                    const map = { 'a': 1, 'b': 2, 'c': 3, 'd': 4 };
+                                    choiceNum = map[cleanPart];
+                                } else if (cleanPart) {
+                                    for (let i = 0; i < options.length; i++) {
+                                        const cleanOpt = options[i].replace(/[\$\.\s]/g, '').toLowerCase();
+                                        if (cleanOpt && (cleanOpt.includes(cleanPart) || cleanPart.includes(cleanOpt))) {
+                                            choiceNum = i + 1;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (choiceNum && !foundIndices.includes(choiceNum)) {
+                                foundIndices.push(choiceNum);
+                            }
                         }
                     }
 
