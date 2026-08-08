@@ -587,7 +587,7 @@
         }
 
         function toggleErrorMark(btn, event) {
-            event.stopPropagation();
+            if (event) event.stopPropagation();
             const isError = btn.getAttribute('data-error') === 'true';
             if (isError) {
                 // Tắt 💥
@@ -953,6 +953,15 @@
             if (event) event.stopPropagation();
             if (!id) return;
 
+            // Tự động bật icon nổ (💥) ở header của card khi bấm tìm kiếm
+            const card = btn.closest('.card');
+            if (card) {
+                const errorBtn = card.querySelector('.error-mark-btn');
+                if (errorBtn && errorBtn.getAttribute('data-error') !== 'true') {
+                    toggleErrorMark(errorBtn);
+                }
+            }
+
             btn.style.opacity = '0.5';
             btn.style.transform = 'scale(0.9)';
 
@@ -1147,33 +1156,83 @@
             function formatRomanNumerals(text) {
                 if (!text) return '';
                 
-                // 1. Danh sách số La Mã đa ký tự (từ 2 ký tự trở lên): II, III, IV, VI, VII, VIII, IX, XI, XII, XIII, XIV, XV, XVI, XVII, XVIII, XIX, XX, XXI, XXV, XL, XC...
-                // Tuyệt đối không chứa các cụm trùng tên đoạn thẳng hình học như CD, CM
-                const multiRomanPattern = "(?:II|III|IV|VI|VII|VIII|IX|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX|XXI|XXII|XXIII|XXIV|XXV|XXX|XL|XC)";
-                
-                // 2. Các từ tín hiệu ngữ cảnh bắt buộc đi kèm nếu là số La Mã 1 ký tự (I, V, X)
-                const contextPrefixes = "(?:tổ|bước|mục|phần|chương|bảng|hình|cột|dòng|loại|nhóm|giai\\s+đoạn|thế\\s+kỷ|thế\\s+kỉ|lần|đáp\\s+án|phương\\s+án|khẳng\\s+định|ý|câu|bài|trường\\s+hợp|đợt|khối|nhánh|kênh|quý|khóa|lớp)";
+                // Danh sách số La Mã từ 1 đến 22 (chỉ gồm các ký tự I, V, X)
+                const romanPattern = "(?:XVIII|VIII|XVII|XXII|XIII|XIV|XVI|XIX|III|VII|XII|XXI|II|IV|VI|IX|XI|XV|XX|I|V|X)";
 
-                // Ép dạng $I$, $II$... (trong math mode không có \text) thành $\text{I}$
-                text = text.replace(new RegExp(`(?:\\$|\\\\\\()(${multiRomanPattern})(?:\\$|\\\\\\))`, 'gi'), '$\\text{$1}$');
-                text = text.replace(new RegExp(`(?:\\$|\\\\\\()([IVX])(?:\\$|\\\\\\))`, 'g'), '$\\text{$1}$');
+                // Ép dạng $I$, $II$... (trong math mode không có \\text) thành $\\text{I}$
+                text = text.replace(new RegExp(`(?:\\$|\\\\\\()(${romanPattern})(?:\\$|\\\\\\))`, 'g'), '$\\text{$1}$');
 
                 // Tách các khối math mode để biến đổi ký tự La Mã thô nằm ngoài math mode
                 const mathRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[^\$\n]+?\$|\\\(.*?\\\))/g;
                 const parts = text.split(mathRegex);
 
-                const multiRomanRegex = new RegExp(`(?<![\\\\a-zA-Z])\\b(${multiRomanPattern})\\b(?![a-zA-Z])`, 'gi');
-                const singleRomanRegex = new RegExp(`(\\b${contextPrefixes}\\s+)(I|V|X)\\b(?![a-zA-Z\\u00C0-\\u024F\\u1EA0-\\u1EFF])`, 'gi');
+                const romanRegex = new RegExp(`(?<![\\\\\\p{L}\\d])(${romanPattern})(?![\\p{L}\\d])`, 'gu');
 
                 for (let i = 0; i < parts.length; i++) {
                     if (i % 2 === 0) {
-                        // Chuyển số La Mã từ 2 ký tự trở lên thành $\text{...}$
-                        parts[i] = parts[i].replace(multiRomanRegex, '$\\text{$1}$');
-                        // Chuyển số La Mã 1 ký tự (I, V, X) có từ tín hiệu đi kèm thành $\text{...}$
-                        parts[i] = parts[i].replace(singleRomanRegex, '$1$\\text{$2}$');
+                        parts[i] = parts[i].replace(romanRegex, (match, roman, offset, fullStr) => {
+                            // Không đưa vào LaTeX nếu phía trước đi kèm các từ: điểm/Điểm, đường thẳng/Đường thẳng, đoạn thẳng/Đoạn thẳng
+                            const beforeText = fullStr.substring(0, offset);
+                            if (/(?:điểm|Điểm|ĐIỂM|đường\s+thẳng|Đường\s+thẳng|ĐƯỜNG\s+THẲNG|đoạn\s+thẳng|Đoạn\s+thẳng|ĐOẠN\s+THẲNG|đoạn\s+thằng|Đoạn\s+thằng)\s+$/i.test(beforeText)) {
+                                return match;
+                            }
+
+                            // Không đưa vào LaTeX nếu phía sau đi kèm với ngoặc tròn của tọa độ (ví dụ: I(, C(, D()
+                            const afterText = fullStr.substring(offset + match.length);
+                            if (/^\s*\(/.test(afterText)) {
+                                return match;
+                            }
+
+                            return `$\\text{${match}}$`;
+                        });
                     }
                 }
                 return parts.join('');
+            }
+
+            function formatPrimeQuotes(text) {
+                if (!text) return '';
+                let res = text.replace(/''|’’|′′/g, '^\\prime ^\\prime');
+                res = res.replace(/'|’|′/g, '^\\prime');
+                return res;
+            }
+
+            function formatUnitsOfMeasurement(text) {
+                if (!text) return '';
+
+                // Bỏ ngoặc đơn \left(... \right) hoặc (...) cho đơn vị diện tích, thể tích có mũ (m^2, cm^2, dm^2, mm^2, km^2, m^3, cm^3, dm^3, mm^3, km^3)
+                text = text.replace(/(?:\\left\(|\()\s*(?:\\text\{\s*([a-z]+)\s*\}|\s*([a-z]+)\s*)\^(2|3)\s*(?:\\right\)|\))/gi, (m, u1, u2, exp) => {
+                    const u = (u1 || u2).toLowerCase();
+                    if (['m', 'cm', 'dm', 'mm', 'km'].includes(u)) {
+                        return `\\text{${u}}^${exp}`;
+                    }
+                    return m;
+                });
+
+                text = text.replace(/(?:\\left\(|\()\s*\\text\{\s*([a-z]+)\^(2|3)\s*\}\s*(?:\\right\)|\))/gi, (m, u, exp) => {
+                    const unit = u.toLowerCase();
+                    if (['m', 'cm', 'dm', 'mm', 'km'].includes(unit)) {
+                        return `\\text{${unit}}^${exp}`;
+                    }
+                    return m;
+                });
+
+                // Bỏ ngoặc đơn \left(... \right) hoặc (...) cho đơn vị không mũ (ha, ml)
+                text = text.replace(/(?:\\left\(|\()\s*(?:\\text\{\s*(ha|ml)\s*\}|\s*(ha|ml)\s*)\s*(?:\\right\)|\))/gi, (m, u1, u2) => {
+                    const u = (u1 || u2).toLowerCase();
+                    return `\\text{${u}}`;
+                });
+
+                return text;
+            }
+
+            function formatLatexSymbols(text) {
+                if (!text) return '';
+                let res = text;
+                res = res.replace(/\\implies\b/g, '\\Rightarrow');
+                res = res.replace(/\\iff\b/g, '\\Leftrightarrow');
+                res = res.replace(/\\vec(?![a-zA-Z])/g, '\\overrightarrow');
+                return res;
             }
 
             function extractSectionContent(text, startRegex, endRegex) {
@@ -1206,6 +1265,9 @@
                 content = fixVietnameseTonePlacement(content);
                 content = formatLargeNumbers(content);
                 content = formatRomanNumerals(content);
+                content = formatPrimeQuotes(content);
+                content = formatUnitsOfMeasurement(content);
+                content = formatLatexSymbols(content);
                 content = removeDocCitations(content);
                 return content;
             }
@@ -1242,6 +1304,83 @@
             if (isShortAnswer) { questionTypeStr = "Điền đáp án"; typeCode = "DIEN_DAPAN"; typeColor = "var(--warning)"; }
             else if (isTrueFalse) { questionTypeStr = "Đúng / Sai"; typeCode = "DUNG_SAI"; typeColor = "var(--accent)"; }
             else if (isMultipleChoice) { questionTypeStr = "Trắc nghiệm"; typeCode = "TRAC_NGHIEM"; typeColor = "var(--success)"; }
+
+            function formatDeBaiParagraph(deBaiText, typeCode) {
+                if (!deBaiText) return '';
+                
+                const lines = deBaiText.split('\n').map(l => l.trim()).filter(Boolean);
+                if (lines.length <= 1) {
+                    let res = deBaiText.trim();
+                    if (typeCode === 'DIEN_DAPAN' && res && !/[.?!:]$/.test(res)) {
+                        res += '.';
+                    }
+                    return res;
+                }
+
+                if (typeCode === 'DUNG_SAI') {
+                    const isCommandLine = (line, idx) => {
+                        const cleanLine = line.replace(/^[#*_\s]+|[#*_\s]+$/g, '').trim();
+                        if (/xét tính đúng\s*[-,\/]?\s*sai/i.test(cleanLine)) return true;
+                        if (/các (khẳng định|phát biểu|mệnh đề) (sau|đây)/i.test(cleanLine)) return true;
+                        if (/đúng hay sai/i.test(cleanLine)) return true;
+                        if (/chọn (đúng|sai)/i.test(cleanLine)) return true;
+                        if (idx === lines.length - 1 && (cleanLine.endsWith(':') || /khẳng định|phát biểu|mệnh đề|đúng|sai/i.test(cleanLine))) return true;
+                        return false;
+                    };
+
+                    const contextLines = [];
+                    const commandLines = [];
+
+                    lines.forEach((line, idx) => {
+                        if (isCommandLine(line, idx)) {
+                            commandLines.push(line);
+                        } else {
+                            contextLines.push(line);
+                        }
+                    });
+
+                    const contextStr = contextLines.join(' ').trim();
+                    const commandStr = commandLines.join('\n').trim();
+
+                    if (contextStr && commandStr) return contextStr + '\n' + commandStr;
+                    if (contextStr) return contextStr;
+                    return commandStr;
+                } 
+                else if (typeCode === 'DIEN_DAPAN') {
+                    const isInstructionLine = (line) => {
+                        // Loại bỏ ký tự markdown bao quanh (như **, _, *, #...) để kiểm tra
+                        const cleanLine = line.replace(/^[#*_\s]+|[#*_\s]+$/g, '').trim();
+                        return /^(điền|hãy điền)\b.*:$/i.test(cleanLine);
+                    };
+
+                    const contextLines = [];
+                    const commandLines = [];
+
+                    lines.forEach((line) => {
+                        if (isInstructionLine(line)) {
+                            commandLines.push(line);
+                        } else {
+                            contextLines.push(line);
+                        }
+                    });
+
+                    let contextStr = contextLines.join(' ').trim();
+                    if (contextStr && !/[.?!:]$/.test(contextStr)) {
+                        contextStr += '.';
+                    }
+                    const commandStr = commandLines.join('\n').trim();
+
+                    if (contextStr && commandStr) return commandStr + '\n' + contextStr;
+                    if (contextStr) return contextStr;
+                    return commandStr;
+                } 
+                else {
+                    // TRAC_NGHIEM hoặc UNKNOWN: gộp tất cả các dòng đề bài thành 1 đoạn
+                    return lines.join(' ').trim();
+                }
+            }
+
+            deBai = formatDeBaiParagraph(deBai, typeCode);
 
             let answerTitleStr = '';
             let answerContentStr = '';
@@ -1405,8 +1544,9 @@
             }
 
             if (typeCode === 'DIEN_DAPAN' && deBai) {
-                if (!deBai.trim().endsWith('.')) {
-                    deBai = deBai.trim() + '.';
+                const trimmed = deBai.trim();
+                if (!/[.?!:]$/.test(trimmed)) {
+                    deBai = trimmed + '.';
                 }
             }
 
