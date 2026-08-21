@@ -562,19 +562,25 @@ def append_history_entry(stt, question_id, status, content):
     if not current_history_file:
         return
         
-    if "thành công" not in status.lower():
-        current_failed_items.append({"stt": stt, "id": question_id, "status": status})
+    is_success = "thành công" in str(status).lower()
+    clean_status = "Thành công" if is_success else "Thất bại"
+    
+    if is_success:
+        current_failed_items = [item for item in current_failed_items if item.get('id') != question_id]
+    else:
+        if not any(item.get('id') == question_id for item in current_failed_items):
+            current_failed_items.append({"stt": stt, "id": question_id, "status": status})
     
     with open(current_history_file, 'a', encoding='utf-8') as f:
         f.write(f"- STT: {stt}\n")
         f.write(f"- ID: {question_id}\n")
-        f.write(f"- Trạng thái: {status}\n")
+        f.write(f"- Trạng thái: {clean_status}\n")
         f.write(f"- Nội dung: {content}\n")
         f.write("\n")
         f.write("-" * 50 + "\n")
         f.write("\n")
     
-    log(f"Đã ghi history: STT {stt} - {question_id} - {status}", "INFO")
+    log(f"Đã ghi history: STT {stt} - {question_id} - {clean_status}", "INFO")
 
 def finalize_history(success_count, total_count):
     """Ghi footer vào cuối file history."""
@@ -839,6 +845,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 stt = data.get('stt', None)
                 is_reedit = data.get('is_reedit', False)
                 backup_folder = data.get('backup_folder', '')
+                default_prompt = data.get('default_prompt', '') or data.get('nblm_default_prompt', '')
                 if question_id and stt:
                     id_stt_map[question_id] = stt
             except:
@@ -846,6 +853,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 stt = None
                 is_reedit = False
                 backup_folder = ''
+                default_prompt = ''
             
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1101,6 +1109,16 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log(f"Không thể đọc màu rảnh rỗi động của NotebookLM: {e}. Sử dụng mặc định {GUIHelper.NBLM_IDLE_COLOR}", "WARN")
                 
                 # Click vào ô chat NotebookLM và dán gửi
+                if default_prompt and default_prompt.strip():
+                    try:
+                        gemini_output = ClipboardHelper.paste_text()
+                        if gemini_output and not gemini_output.startswith(default_prompt.strip()):
+                            combined_input = f"{default_prompt.strip()}\n\n{gemini_output.strip()}"
+                            ClipboardHelper.copy_text(combined_input)
+                            log("Đã ghép Prompt mặc định NBLM vào trước kết quả Gemini trong Clipboard.", "OK")
+                    except Exception as ex_p:
+                        log(f"Lỗi ghép Prompt mặc định NBLM: {ex_p}", "WARN")
+
                 pyautogui.click(GUIHelper.NBLM_CHATBOX[0], GUIHelper.NBLM_CHATBOX[1])
                 time.sleep(0.3)
                 pyautogui.hotkey('ctrl', 'v')
@@ -1254,6 +1272,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 lms_tab = int(data.get('lms_tab', 2))
                 is_reedit = data.get('is_reedit', False)
                 backup_folder = data.get('backup_folder', '')
+                default_prompt = data.get('default_prompt', '') or data.get('nblm_default_prompt', '')
                 if question_id and stt:
                     id_stt_map[question_id] = stt
             except:
@@ -1263,6 +1282,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 lms_tab = 2
                 is_reedit = False
                 backup_folder = ''
+                default_prompt = ''
             
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -1441,6 +1461,16 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     if STOP_FLAG:
                         raise Exception("Bị dừng bởi người dùng!")
                         
+                    if retry == 0 and default_prompt and default_prompt.strip():
+                        try:
+                            gemini_output = ClipboardHelper.paste_text()
+                            if gemini_output and not gemini_output.startswith(default_prompt.strip()):
+                                combined_input = f"{default_prompt.strip()}\n\n{gemini_output.strip()}"
+                                ClipboardHelper.copy_text(combined_input)
+                                log("Đã ghép Prompt mặc định NBLM vào trước kết quả Gemini trong Clipboard.", "OK")
+                        except Exception as ex_p:
+                            log(f"Lỗi ghép Prompt mặc định NBLM: {ex_p}", "WARN")
+
                     log(f"[NBLM INPUT RETRY {retry+1}/5] Click chatbox và dán nội dung...", "ACTION")
                     pyautogui.click(GUIHelper.NBLM_CHATBOX[0], GUIHelper.NBLM_CHATBOX[1])
                     time.sleep(0.3)
@@ -1852,10 +1882,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 )
                 send_discord(discord_msg)
                 
+                backup_folder_name = os.path.basename(current_backup_dir) if current_backup_dir else data.get('backup_folder', '')
                 self.wfile.write(json.dumps({
                     "status": "success",
                     "message": f"Đã tạo file history cho {total_ids} ID",
-                    "history_file": filepath
+                    "history_file": filepath,
+                    "backup_folder": backup_folder_name
                 }).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
@@ -1947,6 +1979,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 success_count = data.get('success_count', 0)
                 total_count = data.get('total_count', 0)
                 reason = data.get('reason', 'completed')  # 'completed' hoặc 'stopped'
+                pending_failures = data.get('pending_failures', [])
+                
+                if pending_failures:
+                    for pf in pending_failures:
+                        append_history_entry(pf.get('stt', 0), pf.get('id', ''), "Thất bại", pf.get('content', ''))
                 
                 finalize_history(success_count, total_count)
                 
@@ -1998,10 +2035,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 
                 email_sent = send_gmail_notification(subject, body)
                 
+                failed_ids = [item['id'] for item in current_failed_items] if current_failed_items else []
                 self.wfile.write(json.dumps({
                     "status": "success",
                     "message": f"Hoàn tất {success_count}/{total_count}",
-                    "email_sent": email_sent
+                    "email_sent": email_sent,
+                    "failed_ids": failed_ids
                 }).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))

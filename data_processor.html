@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -56,11 +57,11 @@
             justify-content: center;
             margin-bottom: 2rem;
         }
-        
+
         .file-upload-input {
             display: none;
         }
-        
+
         .file-upload-btn {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             padding: 1rem;
@@ -75,7 +76,7 @@
             gap: 0.5rem;
             transition: all 0.3s;
         }
-        
+
         .file-upload-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
@@ -113,7 +114,8 @@
             flex-direction: column;
             gap: 1.5rem;
             border-top: 1px solid var(--border-color);
-            display: none; /* Initially collapsed */
+            display: none;
+            /* Initially collapsed */
         }
 
         button {
@@ -144,6 +146,7 @@
             transition: all 0.1s;
             position: relative;
         }
+
         .btn-copy-header:active {
             transform: translate(2px, 2px);
             box-shadow: 0px 0px 0px #000;
@@ -163,9 +166,11 @@
             transition: all 0.1s;
             position: relative;
         }
+
         .btn-search-header:hover {
             background: #3b82f6;
         }
+
         .btn-search-header:active {
             transform: translate(2px, 2px);
             box-shadow: 0px 0px 0px #000;
@@ -175,6 +180,7 @@
             opacity: 0.8 !important;
             transform: scale(1.15);
         }
+
         .error-mark-btn:active {
             transform: scale(0.95) !important;
         }
@@ -242,7 +248,7 @@
             display: flex;
             flex-direction: column;
             gap: 0.25rem;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.2);
             padding: 1rem;
             border-radius: 0.5rem;
             border: 1px solid var(--border-color);
@@ -285,15 +291,17 @@
             transform: translateY(-5px) scale(1.1);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         }
-        
+
         .sw-btn {
             transition: all 0.2s ease;
         }
+
         .sw-btn:hover {
             transform: translateY(-2px);
             opacity: 0.9;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         }
+
         .sw-btn:active {
             transform: scale(0.95) !important;
         }
@@ -304,6 +312,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <div class="header">
@@ -312,7 +321,8 @@
 
     <div class="file-upload-wrapper">
         <label for="historyFile" class="file-upload-btn" title="Tải thêm file History (.txt)">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -326,52 +336,78 @@
     </div>
 
     <button id="scrollTopBtn" onclick="scrollToTop()" title="Lên đầu trang">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round">
             <polyline points="18 15 12 9 6 15"></polyline>
         </svg>
     </button>
 
-    <div id="stopwatch_widget" style="position: fixed; bottom: 30px; left: 30px; z-index: 1000; background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border-radius: 8px; padding: 0.35rem 0.6rem; display: flex; align-items: center; gap: 0.6rem; width: auto; min-width: 140px; transition: all 0.3s ease;">
+    <div id="stopwatch_widget"
+        style="position: fixed; bottom: 30px; left: 30px; z-index: 1000; background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border-radius: 8px; padding: 0.35rem 0.6rem; display: flex; align-items: center; gap: 0.6rem; width: auto; min-width: 140px; transition: all 0.3s ease;">
         <!-- Time display -->
-        <div id="stopwatch_time" style="font-family: monospace; font-size: 0.95rem; font-weight: bold; color: #ffffff; min-width: 60px; text-shadow: 0 0 6px rgba(255, 255, 255, 0.3); text-align: center;">00:00:00</div>
-        
+        <div id="stopwatch_time"
+            style="font-family: monospace; font-size: 0.95rem; font-weight: bold; color: #ffffff; min-width: 60px; text-shadow: 0 0 6px rgba(255, 255, 255, 0.3); text-align: center;">
+            00:00:00</div>
+
         <!-- Divider -->
         <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.3);"></div>
-        
+
         <!-- Stats: Questions count -->
-        <div id="sw_stats_q" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold;" title="Tổng số câu hỏi duy nhất">
+        <div id="sw_stats_q"
+            style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold;"
+            title="Tổng số câu hỏi duy nhất">
             <span>📝</span>
             <span id="sw_q_count">0</span>
         </div>
-        
+
         <!-- Stats: Flagged count 😻 -->
-        <div id="sw_stats_f" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" title="Số câu đã đánh dấu">
+        <div id="sw_stats_f"
+            style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;"
+            title="Số câu đã đánh dấu">
             <span id="sw_f_icon" style="font-size: 0.95rem;">😻</span>
             <span id="sw_f_count">0</span>
         </div>
-        
+
         <!-- Stats: Error count 💥 -->
-        <div id="sw_stats_e" style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;" title="Số câu bị lỗi 💥">
+        <div id="sw_stats_e"
+            style="display: flex; align-items: center; gap: 0.2rem; color: #ffffff; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;"
+            title="Số câu bị lỗi 💥">
             <span id="sw_e_icon" style="font-size: 0.95rem;">💥</span>
             <span id="sw_e_count">0</span>
         </div>
-        
+
         <!-- Divider -->
         <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.3);"></div>
-        
+
         <!-- Controls wrapper -->
         <div style="display: flex; gap: 0.25rem; align-items: center;">
             <!-- Play / Pause -->
-            <button id="sw_play_btn" class="sw-btn" onclick="toggleStopwatch()" style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;" title="Bắt đầu / Tạm dừng">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <button id="sw_play_btn" class="sw-btn" onclick="toggleStopwatch()"
+                style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;"
+                title="Bắt đầu / Tạm dừng">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor"
+                    stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
             </button>
             <!-- Reset -->
-            <button id="sw_reset_btn" class="sw-btn" onclick="resetStopwatch()" style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;" title="Đặt lại">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+            <button id="sw_reset_btn" class="sw-btn" onclick="resetStopwatch()"
+                style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;"
+                title="Đặt lại">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                </svg>
             </button>
             <!-- Hide / Show -->
-            <button id="sw_hide_btn" class="sw-btn" onclick="toggleHideStopwatch()" style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;" title="Ẩn / Hiện thời gian">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <button id="sw_hide_btn" class="sw-btn" onclick="toggleHideStopwatch()"
+                style="cursor: pointer; background: rgba(0, 0, 0, 0.25); border: none; border-radius: 6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: white; transition: all 0.2s;"
+                title="Ẩn / Hiện thời gian">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
             </button>
         </div>
     </div>
@@ -429,7 +465,7 @@
             stopwatchSeconds = 0;
             stopwatchIsRunning = false;
             updateStopwatchDisplay();
-            
+
             const playBtn = document.getElementById('sw_play_btn');
             if (playBtn) {
                 playBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
@@ -454,7 +490,7 @@
         }
 
         // Confirm before refresh/close if data exists
-        window.addEventListener('beforeunload', function(e) {
+        window.addEventListener('beforeunload', function (e) {
             if (Object.keys(window.allParsedData).length > 0) {
                 e.preventDefault();
                 e.returnValue = '';
@@ -491,7 +527,7 @@
 
         window.loadedFilesData = [];
 
-        document.getElementById('historyFile').addEventListener('change', function(e) {
+        document.getElementById('historyFile').addEventListener('change', function (e) {
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
 
@@ -502,15 +538,15 @@
                 window.loadedFilesData = window.loadedFilesData.filter(f => f.name !== file.name);
 
                 const reader = new FileReader();
-                reader.onload = function(evt) {
+                reader.onload = function (evt) {
                     const text = evt.target.result.replace(/\r/g, '');
-                    
+
                     // Parse times to determine file timestamp
                     const timeMatch = text.match(/PHIẾU TỰ ĐỘNG - (.*)/);
                     let startTime = timeMatch ? timeMatch[1].trim() : 'Không rõ';
                     const endTimeMatch = text.match(/Hoàn thành lúc: (.*)/);
                     let endTime = endTimeMatch ? endTimeMatch[1].trim() : 'Không rõ';
-                    
+
                     let fileTimestamp = parseFileDate(endTime);
                     if (fileTimestamp === 0) {
                         fileTimestamp = parseFileDate(startTime);
@@ -557,7 +593,7 @@
         function toggleFlag(btn, event, originalStatus) {
             event.stopPropagation();
             const isFlagged = btn.getAttribute('data-flagged') === 'true';
-            
+
             if (isFlagged) {
                 btn.setAttribute('data-flagged', 'false');
                 if (originalStatus === 'success') {
@@ -568,7 +604,7 @@
             } else {
                 btn.setAttribute('data-flagged', 'true');
                 btn.innerHTML = `<span style="font-size: 1.4rem; line-height: 1;">😻</span>`;
-                
+
                 // Tự động tắt nút 💥 trong cùng card khi đánh dấu thành công
                 const card = btn.closest('.card');
                 if (card) {
@@ -582,7 +618,7 @@
                     }
                 }
             }
-            
+
             updateFlaggedCount();
         }
 
@@ -622,27 +658,27 @@
 
         function deleteFileByName(name, event) {
             if (event) event.stopPropagation();
-            
+
             const conf1 = confirm(`Bạn có chắc chắn muốn xóa file "${name}" không?`);
             if (!conf1) return;
-            
+
             const conf2 = confirm(`XÁC NHẬN LẠI: Bạn có thực sự muốn xóa file "${name}" khỏi danh sách dữ liệu hiện tại?`);
             if (!conf2) return;
-            
+
             // Remove from array
             window.loadedFilesData = window.loadedFilesData.filter(f => f.name !== name);
-            
+
             // Re-render
             processHistoryContent(window.loadedFilesData);
         }
 
         function processHistoryContent(filesData) {
             const container = document.getElementById('card_container');
-            container.innerHTML = ''; 
+            container.innerHTML = '';
             window.allParsedData = {};
 
             let headerHtml = '<div style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; margin-bottom: 2rem; width: 100%;">';
-            
+
             const mergedEntries = new Map();
             let entryCounter = 0;
 
@@ -679,11 +715,11 @@
                     const hMatch = durStr.match(/(\d+)\s*giờ/);
                     const mMatch = durStr.match(/(\d+)\s*phút/);
                     const sMatch = durStr.match(/(\d+)\s*giây/);
-                    
+
                     if (hMatch) h = parseInt(hMatch[1]);
                     if (mMatch) m = parseInt(mMatch[1]);
                     if (sMatch) s = parseInt(sMatch[1]);
-                    
+
                     const pad = (num) => num.toString().padStart(2, '0');
                     return `${pad(h)}:${pad(m)}:${pad(s)}`;
                 }
@@ -735,7 +771,7 @@
                     let status = '';
                     let contentArr = [];
                     let isContent = false;
-                    
+
                     for (let i = 0; i < lines.length; i++) {
                         const line = lines[i].trim();
                         if (line.startsWith('- STT:')) {
@@ -755,12 +791,12 @@
                             contentArr.push(lines[i]);
                         }
                     }
-                    
+
                     if (!stt && !id) return;
 
                     const rawNotebookContent = contentArr.join('\n').trim();
                     const key = id || `NO_ID_${entryCounter++}`;
-                    
+
                     mergedEntries.set(key, {
                         stt: stt,
                         id: id,
@@ -792,7 +828,7 @@
             sortedEntries.forEach((entry) => {
                 const parsed = parseNotebookOutputLocal(entry.rawNotebookContent, validIndex);
                 const isSuccess = entry.status.toLowerCase().includes('thành công');
-                
+
                 // Nút đánh dấu câu bị lỗi 💥 (mặc định mờ nhạt màu trắng 0.3)
                 const errorMarkBtn = `
                 <button class="error-mark-btn" data-error="false" onclick="toggleErrorMark(this, event)" style="cursor: pointer; background: none; border: none; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; opacity: 0.3; transition: all 0.2s ease;" title="Đánh dấu câu bị lỗi">
@@ -802,12 +838,12 @@
                 // Trình diễn icon dưới dạng nút bấm trạng thái/lá cờ chưa check
                 const statusBtn = `
                 <button class="status-btn" data-flagged="false" data-original-status="${isSuccess ? 'success' : 'fail'}" onclick="toggleFlag(this, event, '${isSuccess ? 'success' : 'fail'}')" style="cursor: pointer; background: none; border: none; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
-                    ${isSuccess 
-                        ? `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` 
+                    ${isSuccess
+                        ? `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`
                         : `<svg class="status-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`
                     }
                 </button>`;
-                
+
                 let sttDisplay = entry.stt ? entry.stt.padStart(2, '0') : '?';
 
                 html += `
@@ -852,7 +888,7 @@
 
             if (validIndex === 0) {
                 container.innerHTML = '<div style="text-align: center; color: var(--warning); padding: 2rem;">Chưa tải dữ liệu file history nào. Vui lòng bấm nút tròn xanh lục ở trên để tải file!</div>';
-                
+
                 // Reset stats in stopwatch to 0 when no files loaded
                 const qCountEl = document.getElementById('sw_q_count');
                 if (qCountEl) qCountEl.textContent = '0';
@@ -867,7 +903,7 @@
             }
 
             container.innerHTML = headerHtml + html;
-            
+
             // Cập nhật số cờ đỏ
             updateFlaggedCount();
 
@@ -879,7 +915,7 @@
 
         function toggleCardBody(index) {
             const body = document.getElementById(`card_body_${index}`);
-            
+
             if (body.style.display === 'none' || body.style.display === '') {
                 body.style.display = 'flex';
                 setTimeout(() => {
@@ -1009,8 +1045,8 @@
             let debai = data.debai || '';
             const options = data.options || [];
 
-            if ((typeCode === 'TRAC_NGHIEM' || typeCode === 'DUNG_SAI') && options.length === 4) {
-                return `${debai}\n${options[0]}\n${options[1]}\n${options[2]}\n${options[3]}`;
+            if ((typeCode === 'TRAC_NGHIEM' || typeCode === 'DUNG_SAI') && options.length > 0) {
+                return `${debai}\n${options.join('\n')}`;
             } else if (typeCode === 'DIEN_DAPAN') {
                 return debai.replace(/__[^\n_]+__/g, '____');
             }
@@ -1078,7 +1114,7 @@
 
             // Make regexes forgiving of multiple newlines
             const qMatch = rawText.match(/### 1\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
-            
+
             // Xác định vùng tìm kiếm đáp án (Ưu tiên vùng giữa mục 1 và mục 2, lấy đáp án ở vị trí cuối cùng trước mục 2)
             let targetText = rawText;
             const sec1Idx = rawText.search(/###\s*(?:mục|câu)?\s*1\b/i);
@@ -1134,15 +1170,20 @@
 
             function fixVietnameseTonePlacement(text) {
                 if (!text) return '';
+                text = text.normalize('NFC');
                 const map = {
                     'òa': 'oà', 'óa': 'oá', 'ỏa': 'oả', 'õa': 'oã', 'ọa': 'oạ',
                     'Òa': 'Oà', 'Óa': 'Oá', 'Ỏa': 'Oả', 'Õa': 'Oã', 'Ọa': 'Oạ',
+                    'ÒA': 'OÀ', 'ÓA': 'OÁ', 'ỎA': 'OẢ', 'ÕA': 'OÃ', 'ỌA': 'OẠ',
                     'òe': 'oè', 'óe': 'oé', 'ỏe': 'oẻ', 'õe': 'oẽ', 'ọe': 'oẹ',
                     'Òe': 'Oè', 'Óe': 'Oé', 'Ỏe': 'Oẻ', 'Õe': 'Oẽ', 'Ọe': 'Oẹ',
+                    'ÒE': 'OÈ', 'ÓE': 'OÉ', 'ỎE': 'OẺ', 'ÕE': 'OẼ', 'ỌE': 'OẸ',
                     'ùy': 'uỳ', 'úy': 'uý', 'ủy': 'uỷ', 'ũy': 'uỹ', 'ụy': 'uỵ',
-                    'Ùy': 'Uỳ', 'Úy': 'Uý', 'Ủy': 'Uỷ', 'Ũy': 'Uỹ', 'Ụy': 'Uỵ'
+                    'Ùy': 'Uỳ', 'Úy': 'Uý', 'Ủy': 'Uỷ', 'Ũy': 'Uỹ', 'Ụy': 'Uỵ',
+                    'ÙY': 'UỲ', 'ÚY': 'UÝ', 'ỦY': 'UỶ', 'ŨY': 'UỸ', 'ỤY': 'UỴ'
                 };
-                return text.replace(/([òóaỏaõaọaòeóeỏeõeọeùyúyủyũyụyÒaÓaỎaÕaỌaÒeÓeỎeÕeỌeÙyÚyỦyŨyỤy])/g, (m) => map[m] || m);
+                const pattern = new RegExp(Object.keys(map).join('|'), 'g');
+                return text.replace(pattern, (m) => map[m] || m);
             }
 
             function formatLargeNumbers(text) {
@@ -1155,7 +1196,7 @@
 
             function formatRomanNumerals(text) {
                 if (!text) return '';
-                
+
                 // Danh sách số La Mã từ 1 đến 22 (chỉ gồm các ký tự I, V, X)
                 const romanPattern = "(?:XVIII|VIII|XVII|XXII|XIII|XIV|XVI|XIX|III|VII|XII|XXI|II|IV|VI|IX|XI|XV|XX|I|V|X)";
 
@@ -1283,9 +1324,36 @@
             const isShortAnswer = questionText.includes('____');
             const isTrueFalse = questionText.toLowerCase().includes("xét tính đúng sai");
 
+            // Extract De bai and Options
             if (questionText && !isShortAnswer) {
                 const lines = questionText.split('\n').filter(l => l.trim() !== '');
-                if (lines.length >= 5) {
+                if (isTrueFalse) {
+                    // Dạng Đúng / Sai: Tìm chính xác câu lệnh "Xét tính đúng sai của các khẳng định sau:"
+                    let cmdIdx = -1;
+                    for (let i = 0; i < lines.length; i++) {
+                        const clean = lines[i].replace(/^[#*_\s]+|[#*_\s]+$/g, '').trim();
+                        if (/^xét tính đúng\s*[-,\/]?\s*sai của các khẳng định sau:?$/i.test(clean)) {
+                            cmdIdx = i;
+                            break;
+                        }
+                    }
+
+                    if (cmdIdx !== -1) {
+                        // Nếu thấy câu lệnh: Đề bài lấy từ đầu đến hết câu lệnh đó
+                        deBai = lines.slice(0, cmdIdx + 1).join('\n').trim();
+                        // Mỗi dòng phía dưới sẽ là các khẳng định
+                        options = lines.slice(cmdIdx + 1).map(l => l.trim());
+                        options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, '').replace(/^Khẳng định\s+[1-4][\.\:]\s*/i, ''));
+                    } else if (lines.length >= 5) {
+                        // Không thấy câu lệnh đó thì cứ lấy 4 dòng cuối như bình thường
+                        options = lines.slice(-4).map(l => l.trim());
+                        deBai = lines.slice(0, -4).join('\n').trim();
+                        options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, ''));
+                    } else {
+                        deBai = questionText;
+                    }
+                } else if (lines.length >= 5) {
+                    // Các dạng khác (Trắc nghiệm): Lấy 4 dòng cuối như bình thường
                     options = lines.slice(-4).map(l => l.trim());
                     deBai = lines.slice(0, -4).join('\n').trim();
                     options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, ''));
@@ -1307,7 +1375,7 @@
 
             function formatDeBaiParagraph(deBaiText, typeCode) {
                 if (!deBaiText) return '';
-                
+
                 const lines = deBaiText.split('\n').map(l => l.trim()).filter(Boolean);
                 if (lines.length <= 1) {
                     let res = deBaiText.trim();
@@ -1345,7 +1413,7 @@
                     if (contextStr && commandStr) return contextStr + '\n' + commandStr;
                     if (contextStr) return contextStr;
                     return commandStr;
-                } 
+                }
                 else if (typeCode === 'DIEN_DAPAN') {
                     const isInstructionLine = (line) => {
                         // Loại bỏ ký tự markdown bao quanh (như **, _, *, #...) để kiểm tra
@@ -1373,7 +1441,7 @@
                     if (contextStr && commandStr) return commandStr + '\n' + contextStr;
                     if (contextStr) return contextStr;
                     return commandStr;
-                } 
+                }
                 else {
                     // TRAC_NGHIEM hoặc UNKNOWN: gộp tất cả các dòng đề bài thành 1 đoạn
                     return lines.join(' ').trim();
@@ -1389,7 +1457,7 @@
             if (deBai.includes('____') && ansMatch && options.length === 0) {
                 let rawAns = ansMatch[1].replace(/\$/g, '').trim();
                 const numBlanks = (deBai.match(/____/g) || []).length;
-                
+
                 let ansParts = [];
                 if (numBlanks <= 1) {
                     ansParts = [rawAns];
@@ -1406,7 +1474,7 @@
                         }
                     }
                 }
-                
+
                 answerTitleStr = ansParts.join(' | ');
                 parsedAnswerData = rawAns;
 
@@ -1444,13 +1512,13 @@
 
                 if (isTrueFalse) {
                     let tfMatch = rawAns.toLowerCase().match(/(đúng|sai)/g);
-                    if (!tfMatch || tfMatch.length !== 4) {
+                    if (!tfMatch || (tfMatch.length !== 4 && tfMatch.length !== options.length)) {
                         let dsMatch = rawAns.match(/(Đ|S)/ig);
-                        if (dsMatch && dsMatch.length === 4) {
+                        if (dsMatch && (dsMatch.length === 4 || dsMatch.length === options.length)) {
                             tfMatch = dsMatch.map(x => x.toUpperCase() === 'Đ' ? 'đúng' : 'sai');
                         }
                     }
-                    if (tfMatch && tfMatch.length === 4) {
+                    if (tfMatch && (tfMatch.length === 4 || tfMatch.length === options.length)) {
                         answerTitleStr = tfMatch.map(x => x === 'đúng' ? 'Đ' : 'S').join('  ');
                         parsedAnswerData = tfMatch.map(x => x === 'đúng');
                     } else {
@@ -1459,7 +1527,7 @@
                     }
                 } else if (isMultipleChoice) {
                     const foundIndices = [];
-                    
+
                     // 1. Mẹo: Ưu tiên tìm cụm (Đáp án ...) trong ngoặc tròn ở cuối/sau cụm Đáp án:
                     const parenRegex = /\((?:_|\*\*|\*)?(?:đáp án|phương án|lựa chọn)[:\s]*(.*?)(?:_|\*\*|\*)?\)/gi;
                     let parenMatch;
@@ -1495,7 +1563,7 @@
                                 const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
                                 choiceNum = map[m2[1].toUpperCase()];
                             }
-                            
+
                             if (!choiceNum) {
                                 const cleanPart = part.replace(/[\$\.\s]/g, '').toLowerCase();
                                 if (/^[1-4]$/.test(cleanPart)) {
@@ -1513,7 +1581,7 @@
                                     }
                                 }
                             }
-                            
+
                             if (choiceNum && !foundIndices.includes(choiceNum)) {
                                 foundIndices.push(choiceNum);
                             }
@@ -1595,11 +1663,13 @@
 
             addField('Đề bài', deBai, '--btn-debai', 'ĐỀ BÀI', 'debai');
 
-            if (options.length === 4) {
-                const labels = isTrueFalse ? ['Khẳng định 1', 'Khẳng định 2', 'Khẳng định 3', 'Khẳng định 4'] : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
+            if (options.length > 0) {
+                const labels = isTrueFalse 
+                    ? options.map((_, i) => `Khẳng định ${i + 1}`) 
+                    : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
                 const btnPrefix = isTrueFalse ? 'KĐ' : 'LC';
                 options.forEach((opt, idx) => {
-                    addField(labels[idx], opt, '--btn-lc', `${btnPrefix}${idx + 1}`, `opt${idx}`);
+                    addField(labels[idx] || `Phương án ${idx + 1}`, opt, '--btn-lc', `${btnPrefix}${idx + 1}`, `opt${idx}`);
                 });
             }
 
@@ -1689,4 +1759,5 @@
         }
     </script>
 </body>
+
 </html>

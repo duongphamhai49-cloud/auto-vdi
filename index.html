@@ -286,39 +286,86 @@
                 style="overflow-y: auto; resize: vertical; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease;"></textarea>
 
             <!-- Ô nhập tên file history tùy chỉnh -->
-            <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
-                <label for="history_filename_input" style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">Tên file History (Tùy chọn):</label>
-                <input type="text" id="history_filename_input" placeholder="Ví dụ: history_buoi_chieu (để trống sẽ tự động đặt tên theo ngày giờ)"
+            <div
+                style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                <label for="history_filename_input"
+                    style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">Tên file History (Tùy
+                    chọn):</label>
+                <input type="text" id="history_filename_input"
+                    placeholder="Ví dụ: history_buoi_chieu (để trống sẽ tự động đặt tên theo ngày giờ)"
                     style="padding: 0.6rem 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease; outline: none; box-sizing: border-box;">
             </div>
 
+            <!-- Ô nhập Prompt mặc định NotebookLM -->
+            <div
+                style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                <label for="nblm_default_prompt_input"
+                    style="font-size: 0.85rem; font-weight: bold; color: #8b5cf6; display: flex; align-items: center; gap: 0.3rem;">
+                    📝 Prompt mặc định NotebookLM (Tùy chọn):
+                </label>
+                <textarea id="nblm_default_prompt_input" rows="2"
+                    placeholder="Nhập prompt mặc định sẽ tự động chèn vào TRƯỚC output Gemini khi gửi sang NotebookLM..."
+                    style="overflow-y: auto; resize: vertical; padding: 0.6rem 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease; outline: none; box-sizing: border-box;"
+                    oninput="localStorage.setItem('nblm_default_prompt', this.value)"></textarea>
+            </div>
+
             <!-- Cấu hình ReEdit (Nạp từ Ảnh Backup) -->
-            <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(8px);">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 0.4rem; font-weight: bold; color: #3b82f6; cursor: pointer; margin: 0; user-select: none; font-size: 0.85rem;">
-                        <input type="checkbox" id="reedit_mode_checkbox" onchange="toggleReEditConfig()" style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;">
+            <div
+                style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(8px);">
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.4rem; font-weight: bold; color: #3b82f6; cursor: pointer; margin: 0; user-select: none; font-size: 0.85rem;">
+                        <input type="checkbox" id="reedit_mode_checkbox" onchange="toggleReEditConfig()"
+                            style="width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6;">
                         ReEdit
                     </label>
                 </div>
-                <div id="reedit_folder_container" style="display: none; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">
-                    <label for="reedit_folder_input" style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">Tên folder backups:</label>
+                <div id="reedit_folder_container"
+                    style="display: none; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">
+                    <label for="reedit_folder_input"
+                        style="font-size: 0.85rem; font-weight: bold; color: var(--text-secondary);">Tên folder
+                        backups:</label>
                     <input type="text" id="reedit_folder_input" placeholder="Ví dụ: ĐS Hình học Oxyz_backups"
                         style="padding: 0.6rem 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.25rem; font-family: inherit; width: 100%; transition: all 0.2s ease; outline: none; box-sizing: border-box;">
                 </div>
             </div>
 
+            <!-- Cấu hình Tự động Biên tập lại (Lượt 2 ReEdit) -->
+            <div
+                style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(8px);">
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.4rem; font-weight: bold; color: #10b981; cursor: pointer; margin: 0; user-select: none; font-size: 0.85rem;"
+                        title="Tự động biên tập lại các câu bị lỗi ở Lượt 1 bằng chế độ ReEdit ngay khi có tab NotebookLM rảnh">
+                        <input type="checkbox" id="auto_retry_failed_checkbox" checked
+                            style="width: 16px; height: 16px; cursor: pointer; accent-color: #10b981;">
+                        🔄 Tự động sửa lại câu lỗi (Lượt 2 - ReEdit)
+                    </label>
+                </div>
+            </div>
+
             <!-- Cấu hình chạy song song LMS + NotebookLM -->
-            <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(8px);">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 0.4rem; font-weight: bold; color: var(--warning); cursor: pointer; margin: 0; user-select: none; font-size: 0.85rem;">
-                        <input type="checkbox" id="parallel_mode_checkbox" checked onchange="toggleParallelConfig()" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--warning);">
+            <div
+                style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(8px);">
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.4rem; font-weight: bold; color: var(--warning); cursor: pointer; margin: 0; user-select: none; font-size: 0.85rem;">
+                        <input type="checkbox" id="parallel_mode_checkbox" checked onchange="toggleParallelConfig()"
+                            style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--warning);">
                         CHẠY SONG SONG
                     </label>
                     <div id="parallel_nblm_count_container" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 0.75rem; color: white; font-weight: bold;">Số lượng Tab NotebookLM:</span>
-                        <div style="display: flex; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 2px;">
-                            <button type="button" id="btn_tab_count_2" onclick="setNblmCount(2)" style="border: none; background: transparent; color: #94a3b8; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 3px; cursor: pointer; transition: all 0.2s; outline: none;">2</button>
-                            <button type="button" id="btn_tab_count_3" onclick="setNblmCount(3)" style="border: none; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 3px; cursor: pointer; transition: all 0.2s; outline: none;">3</button>
+                        <span style="font-size: 0.75rem; color: white; font-weight: bold;">Số lượng Tab
+                            NotebookLM:</span>
+                        <div
+                            style="display: flex; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 2px;">
+                            <button type="button" id="btn_tab_count_2" onclick="setNblmCount(2)"
+                                style="border: none; background: transparent; color: #94a3b8; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 3px; cursor: pointer; transition: all 0.2s; outline: none;">2</button>
+                            <button type="button" id="btn_tab_count_3" onclick="setNblmCount(3)"
+                                style="border: none; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 3px; cursor: pointer; transition: all 0.2s; outline: none;">3</button>
                         </div>
                         <input type="hidden" id="parallel_nblm_count" value="3">
                     </div>
@@ -326,11 +373,12 @@
             </div>
 
             <div style="display: flex; gap: 1rem; align-items: stretch; padding-top: 0.5rem;">
-                
+
                 <!-- NÚT CHẠY TỰ ĐỘNG (To nhất) -->
                 <button id="batchRunBtn" onclick="startBatchProcess()"
                     style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 0.75rem 1.5rem; border: none; border-radius: 0.25rem; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; flex: 1; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-size: 1.1rem;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                     </svg>
                     CHẠY TỰ ĐỘNG
@@ -338,32 +386,64 @@
             </div>
 
 
-            <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; justify-content: space-between;">
+            <div
+                style="display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; justify-content: space-between;">
                 <span style="color: var(--text-secondary); font-size: 0.8rem;">📧 Tự động gửi Gmail khi xong/dừng</span>
-                <div id="search_status" style="color: var(--text-secondary); font-size: 0.9rem; text-align: right; font-weight: bold;">Chưa chạy...</div>
+                <div id="search_status"
+                    style="color: var(--text-secondary); font-size: 0.9rem; text-align: right; font-weight: bold;">Chưa
+                    chạy...</div>
             </div>
 
             <!-- THANH TIẾN ĐỘ BATCH -->
             <div id="batch_progress_wrapper" style="display: none; flex-direction: column; gap: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span id="batch_progress_text" style="color: var(--accent); font-size: 0.85rem; font-weight: bold;">Đang chạy...</span>
+                    <span id="batch_progress_text"
+                        style="color: var(--accent); font-size: 0.85rem; font-weight: bold;">Đang chạy...</span>
                     <span id="batch_progress_count" style="color: var(--text-secondary); font-size: 0.85rem;">0/0</span>
                 </div>
-                <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;">
-                    <div id="batch_progress_bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #3b82f6); border-radius: 4px; transition: width 0.5s ease;"></div>
+                <div
+                    style="width: 100%; height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;">
+                    <div id="batch_progress_bar"
+                        style="width: 0%; height: 100%; background: linear-gradient(90deg, #8b5cf6, #3b82f6); border-radius: 4px; transition: width 0.5s ease;">
+                    </div>
                 </div>
+            </div>
+
+            <!-- BẢNG HIỂN THỊ DANH SÁCH CÂU LỖI SAU KHI XONG -->
+            <div id="failed_ids_summary_box"
+                style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 0.75rem; margin-top: 0.75rem; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span
+                        style="font-size: 0.85rem; font-weight: bold; color: #ef4444; display: flex; align-items: center; gap: 0.3rem;">
+                        ❌ Danh sách ID bị lỗi (không thể biên tập):
+                    </span>
+                    <button type="button" onclick="copyFailedIdsList()"
+                        style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                        📋 Copy danh sách ID lỗi
+                    </button>
+                </div>
+                <textarea id="failed_ids_list_textarea" rows="4" readonly
+                    style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; font-family: monospace; font-size: 0.85rem; padding: 0.5rem; border-radius: 4px; resize: vertical; box-sizing: border-box; outline: none;"></textarea>
             </div>
 
             <!-- KHU VỰC NHẬT KÝ CONSOLE LOGS -->
             <div style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span style="font-size: 0.85rem; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 0.25rem;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                    <span
+                        style="font-size: 0.85rem; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
                         Nhật ký hoạt động (Realtime Logs)
                     </span>
-                    <button onclick="clearConsoleLogs()" style="background: transparent; border: none; color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 0;">Xóa log</button>
+                    <button onclick="clearConsoleLogs()"
+                        style="background: transparent; border: none; color: var(--text-secondary); font-size: 0.75rem; cursor: pointer; text-decoration: underline; padding: 0;">Xóa
+                        log</button>
                 </div>
-                <div id="log_console" style="height: 180px; overflow-y: auto; background: #ffffff; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.5rem; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.75rem; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth; color: #0f172a; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);">
+                <div id="log_console"
+                    style="height: 180px; overflow-y: auto; background: #ffffff; border: 1px solid var(--border-color); border-radius: 4px; padding: 0.5rem; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.75rem; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth; color: #0f172a; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);">
                     <div style="color: #64748b;">Hệ thống sẵn sàng. Bắt đầu phiên chạy để ghi nhận nhật ký...</div>
                 </div>
             </div>
@@ -420,8 +500,17 @@
     </div>
 
     <script>
+        // Khôi phục Prompt mặc định NBLM từ localStorage khi tải trang
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedPrompt = localStorage.getItem('nblm_default_prompt');
+            if (savedPrompt !== null) {
+                const inp = document.getElementById('nblm_default_prompt_input');
+                if (inp) inp.value = savedPrompt;
+            }
+        });
+
         // Cảnh báo khi tải lại trang (F5) nếu đang có ID hoặc đang chạy
-        window.addEventListener('beforeunload', function(e) {
+        window.addEventListener('beforeunload', function (e) {
             const textarea = document.getElementById('id_list_input');
             const hasIds = textarea && textarea.value.trim().length > 0;
             if (hasIds || (typeof batchRunning !== 'undefined' && batchRunning)) {
@@ -474,9 +563,11 @@
             const chkReEdit = document.getElementById('reedit_mode_checkbox');
             const folderInput = document.getElementById('reedit_folder_input');
             const chkParallel = document.getElementById('parallel_mode_checkbox');
+            const chkAutoRetry = document.getElementById('auto_retry_failed_checkbox');
             if (chkReEdit) chkReEdit.disabled = isLocked;
             if (folderInput) folderInput.disabled = isLocked;
             if (chkParallel) chkParallel.disabled = isLocked;
+            if (chkAutoRetry) chkAutoRetry.disabled = isLocked;
         }
 
         function stopProcess(btn) {
@@ -505,6 +596,31 @@
         // CHẠY TỰ ĐỘNG (BATCH PROCESS)
         // ==============================================
         let batchRunning = false;
+
+        function showFailedIdsSummary(failedIds) {
+            const summaryBox = document.getElementById('failed_ids_summary_box');
+            const textarea = document.getElementById('failed_ids_list_textarea');
+            if (!summaryBox || !textarea) return;
+
+            if (failedIds && failedIds.length > 0) {
+                textarea.value = failedIds.join('\n');
+                summaryBox.style.display = 'flex';
+                addConsoleLog(`❌ Có ${failedIds.length} ID bị lỗi chốt cuối cùng: ${failedIds.join(', ')}`, 'ERROR');
+            } else {
+                textarea.value = '';
+                summaryBox.style.display = 'none';
+                addConsoleLog(`🎉 Tuyệt vời! Tất cả các câu trong phiếu đều biên tập thành công.`, 'OK');
+            }
+        }
+
+        function copyFailedIdsList() {
+            const textarea = document.getElementById('failed_ids_list_textarea');
+            if (textarea && textarea.value.trim()) {
+                navigator.clipboard.writeText(textarea.value.trim()).then(() => {
+                    alert('Đã copy danh sách ID lỗi vào Clipboard!');
+                });
+            }
+        }
 
         function batchLog(msg) {
             // Không ghi log realtime lên UI nữa
@@ -556,6 +672,7 @@
             const progressBar = document.getElementById('batch_progress_bar');
             const progressText = document.getElementById('batch_progress_text');
             const progressCount = document.getElementById('batch_progress_count');
+            document.getElementById('failed_ids_summary_box').style.display = 'none';
 
             // Khóa nút
             btn.disabled = true;
@@ -572,9 +689,13 @@
 
             const customFilename = document.getElementById('history_filename_input').value.trim();
 
+            const autoRetry = document.getElementById('auto_retry_failed_checkbox').checked;
+            let effectiveBackupFolder = backupFolder;
+            let retryQueue = [];
+
             // 1. Gọi server tạo file history
             try {
-                await fetch('http://localhost:5050/batch_start', {
+                const startRes = await fetch('http://localhost:5050/batch_start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -584,12 +705,16 @@
                         backup_folder: backupFolder
                     })
                 });
+                const startData = await startRes.json();
+                if (startData.backup_folder) {
+                    effectiveBackupFolder = startData.backup_folder;
+                }
                 batchLog(`📁 Đã tạo file history cho ${totalIds} ID`);
             } catch (e) {
                 batchLog(`❌ Lỗi tạo file history: ${e}`);
             }
 
-            // 2. Vòng lặp xử lý từng ID
+            // 2. Vòng lặp xử lý từng ID (Lượt 1)
             let wasStopped = false;
             for (let stt = 1; stt <= totalIds; stt++) {
                 if (!batchRunning) {
@@ -690,24 +815,30 @@
                     ? `${itemDurationMin} phut ${itemDurationRemSec} giay`
                     : `${itemDurationRemSec} giay`;
 
-                // Ghi ket qua vao file history + gui Discord tong ket cau
-                try {
-                    await fetch('http://localhost:5050/batch_log', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            stt: stt,
-                            id: currentId,
-                            status: idStatus,
-                            content: notebookContent,
-                            type_code: typeCode,
-                            error_detail: errorDetail,
-                            start_time: itemStartStr,
-                            end_time: itemEndStr,
-                            duration: itemDurationStr
-                        })
-                    });
-                } catch (e) { /* Bo qua loi ghi log */ }
+                // Nếu THÀNH CÔNG hoặc KHÔNG tự động sửa lỗi -> Ghi log History ngay
+                // Nếu THẤT BẠI và CÓ bật tự động sửa lỗi -> Hoãn ghi log History, đưa vào retryQueue
+                if (idStatus === 'Thành công' || !autoRetry) {
+                    try {
+                        await fetch('http://localhost:5050/batch_log', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                stt: stt,
+                                id: currentId,
+                                status: idStatus,
+                                content: notebookContent,
+                                type_code: typeCode,
+                                error_detail: errorDetail,
+                                start_time: itemStartStr,
+                                end_time: itemEndStr,
+                                duration: itemDurationStr
+                            })
+                        });
+                    } catch (e) { /* Bo qua loi ghi log */ }
+                } else {
+                    retryQueue.push({ stt: stt, id: currentId, startTime: itemStartTime, errorDetail: errorDetail });
+                    addConsoleLog(`⚠️ [Lượt 1] Câu ${stt} (${currentId}) bị lỗi: ${errorDetail}. Đã thêm vào danh sách chờ Lượt 2 ReEdit...`, 'WARN');
+                }
 
                 // Cap nhat textarea (xoa ID da xu ly)
                 textarea.value = ids.slice(stt).join('\n');
@@ -717,7 +848,7 @@
                 const finalPct = Math.round(stt / totalIds * 100);
                 progressBar.style.width = finalPct + '%';
                 progressCount.innerText = `${stt}/${totalIds}`;
-                
+
                 // Keo man hinh len xem tien do
                 document.getElementById('batch_progress_wrapper').scrollIntoView({ behavior: 'smooth', block: 'center' });
 
@@ -727,7 +858,103 @@
                 }
             }
 
-            // 3. Kết thúc batch: ghi footer + TỰ ĐỘNG gửi Gmail
+            // 3. Xử lý Lượt 2 (ReEdit) cho các câu trong retryQueue
+            if (batchRunning && !wasStopped && autoRetry && retryQueue.length > 0) {
+                addConsoleLog(`🔄 [Lượt 2 - ReEdit] Bắt đầu tự động biên tập lại ${retryQueue.length} câu bị lỗi...`, 'STATUS');
+                const remainingRetry = [...retryQueue];
+                for (const item of remainingRetry) {
+                    if (!batchRunning) {
+                        wasStopped = true;
+                        break;
+                    }
+                    status.style.color = 'var(--warning)';
+                    status.innerText = `[Lượt 2 ReEdit] Đang xử lý câu ${item.stt}: ${item.id}...`;
+                    progressText.innerText = `[Lượt 2 ReEdit] ${item.id}`;
+
+                    let idStatus = 'Thất bại';
+                    let notebookContent = '';
+                    let typeCode = 'N/A';
+                    let errorDetail = '';
+                    const itemStartTime = item.startTime || new Date();
+
+                    try {
+                        const defaultPrompt = document.getElementById('nblm_default_prompt_input') ? document.getElementById('nblm_default_prompt_input').value : '';
+                        const searchRes = await fetch('http://localhost:5050/search_id', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: item.id,
+                                stt: item.stt,
+                                is_reedit: true,
+                                backup_folder: effectiveBackupFolder,
+                                default_prompt: defaultPrompt
+                            })
+                        });
+                        const searchData = await searchRes.json();
+
+                        if (searchData.status === 'skipped') {
+                            idStatus = 'Thất bại - Không thấy ảnh backup';
+                            errorDetail = searchData.message || 'Không tìm thấy ảnh backup';
+                        } else if (searchData.status === 'success' && searchData.notebook_output) {
+                            notebookContent = searchData.notebook_output;
+                            if (searchData.skip_paste) {
+                                errorDetail = searchData.error_detail || 'Bỏ qua dán do lỗi mở Edit trên LMS';
+                            } else {
+                                const notebookInput = document.getElementById('notebook_input');
+                                notebookInput.value = searchData.notebook_output;
+                                parseNotebookOutput();
+                                if (window.currentParsedData) {
+                                    typeCode = window.currentParsedData.typeCode || 'N/A';
+                                    const pasteRes = await fetch('http://localhost:5050/paste_lms', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ parsed_data: window.currentParsedData })
+                                    });
+                                    const pasteData = await pasteRes.json();
+                                    if (pasteData.status === 'success') {
+                                        idStatus = 'Thành công';
+                                        successCount++;
+                                        addConsoleLog(`✅ [Lượt 2 - ReEdit] Sửa thành công câu ${item.id}!`, 'OK');
+                                    } else {
+                                        errorDetail = `Loi dan LMS: ${pasteData.message}`;
+                                    }
+                                } else {
+                                    errorDetail = 'Khong parse duoc noi dung NBLM';
+                                }
+                            }
+                        } else {
+                            errorDetail = `Loi search_id: ${searchData.message || 'Khong co noi dung'}`;
+                        }
+                    } catch (e) {
+                        errorDetail = `Loi ket noi: ${e}`;
+                    }
+
+                    // Ghi log History 1 lần duy nhất cho kết quả Lượt 2
+                    try {
+                        await fetch('http://localhost:5050/batch_log', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                stt: item.stt,
+                                id: item.id,
+                                status: idStatus,
+                                content: notebookContent,
+                                type_code: typeCode,
+                                error_detail: errorDetail,
+                                start_time: itemStartTime.toLocaleTimeString('vi-VN'),
+                                end_time: new Date().toLocaleTimeString('vi-VN'),
+                                duration: ''
+                            })
+                        });
+                    } catch (e) { }
+
+                    // Xóa khỏi retryQueue
+                    const idx = retryQueue.findIndex(r => r.id === item.id);
+                    if (idx !== -1) retryQueue.splice(idx, 1);
+                }
+            }
+
+            // 4. Kết thúc batch: ghi footer + TỰ ĐỘNG gửi Gmail
             const reason = wasStopped ? 'stopped' : 'completed';
             try {
                 const endRes = await fetch('http://localhost:5050/batch_end', {
@@ -736,12 +963,16 @@
                     body: JSON.stringify({
                         success_count: successCount,
                         total_count: totalIds,
-                        reason: reason
+                        reason: reason,
+                        pending_failures: retryQueue.map(item => ({ stt: item.stt, id: item.id, content: '' }))
                     })
                 });
                 const endData = await endRes.json();
                 if (endData.email_sent) {
                     batchLog(`📧 Đã tự động gửi email thông báo!`);
+                }
+                if (endData.failed_ids) {
+                    showFailedIdsSummary(endData.failed_ids);
                 }
             } catch (e) {
                 batchLog(`⚠️ Lỗi kết thúc batch: ${e}`);
@@ -1005,8 +1236,8 @@
             let debai = data.debai || '';
             const options = data.options || [];
 
-            if ((typeCode === 'TRAC_NGHIEM' || typeCode === 'DUNG_SAI') && options.length === 4) {
-                return `${debai}\n${options[0]}\n${options[1]}\n${options[2]}\n${options[3]}`;
+            if ((typeCode === 'TRAC_NGHIEM' || typeCode === 'DUNG_SAI') && options.length > 0) {
+                return `${debai}\n${options.join('\n')}`;
             } else if (typeCode === 'DIEN_DAPAN') {
                 return debai.replace(/__[^\n_]+__/g, '____');
             }
@@ -1078,7 +1309,7 @@
 
             // Regex patterns
             const qMatch = rawText.match(/### 1\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
-            
+
             // Xác định vùng tìm kiếm đáp án (Ưu tiên vùng giữa mục 1 và mục 2, lấy đáp án ở vị trí cuối cùng trước mục 2)
             let targetText = rawText;
             const sec1Idx = rawText.search(/###\s*(?:mục|câu)?\s*1\b/i);
@@ -1134,15 +1365,20 @@
 
             function fixVietnameseTonePlacement(text) {
                 if (!text) return '';
+                text = text.normalize('NFC');
                 const map = {
                     'òa': 'oà', 'óa': 'oá', 'ỏa': 'oả', 'õa': 'oã', 'ọa': 'oạ',
                     'Òa': 'Oà', 'Óa': 'Oá', 'Ỏa': 'Oả', 'Õa': 'Oã', 'Ọa': 'Oạ',
+                    'ÒA': 'OÀ', 'ÓA': 'OÁ', 'ỎA': 'OẢ', 'ÕA': 'OÃ', 'ỌA': 'OẠ',
                     'òe': 'oè', 'óe': 'oé', 'ỏe': 'oẻ', 'õe': 'oẽ', 'ọe': 'oẹ',
                     'Òe': 'Oè', 'Óe': 'Oé', 'Ỏe': 'Oẻ', 'Õe': 'Oẽ', 'Ọe': 'Oẹ',
+                    'ÒE': 'OÈ', 'ÓE': 'OÉ', 'ỎE': 'OẺ', 'ÕE': 'OẼ', 'ỌE': 'OẸ',
                     'ùy': 'uỳ', 'úy': 'uý', 'ủy': 'uỷ', 'ũy': 'uỹ', 'ụy': 'uỵ',
-                    'Ùy': 'Uỳ', 'Úy': 'Uý', 'Ủy': 'Uỷ', 'Ũy': 'Uỹ', 'Ụy': 'Uỵ'
+                    'Ùy': 'Uỳ', 'Úy': 'Uý', 'Ủy': 'Uỷ', 'Ũy': 'Uỹ', 'Ụy': 'Uỵ',
+                    'ÙY': 'UỲ', 'ÚY': 'UÝ', 'ỦY': 'UỶ', 'ŨY': 'UỸ', 'ỤY': 'UỴ'
                 };
-                return text.replace(/([òóaỏaõaọaòeóeỏeõeọeùyúyủyũyụyÒaÓaỎaÕaỌaÒeÓeỎeÕeỌeÙyÚyỦyŨyỤy])/g, (m) => map[m] || m);
+                const pattern = new RegExp(Object.keys(map).join('|'), 'g');
+                return text.replace(pattern, (m) => map[m] || m);
             }
 
             function formatLargeNumbers(text) {
@@ -1155,7 +1391,7 @@
 
             function formatRomanNumerals(text) {
                 if (!text) return '';
-                
+
                 // Danh sách số La Mã từ 1 đến 22 (chỉ gồm các ký tự I, V, X)
                 const romanPattern = "(?:XVIII|VIII|XVII|XXII|XIII|XIV|XVI|XIX|III|VII|XII|XXI|II|IV|VI|IX|XI|XV|XX|I|V|X)";
 
@@ -1287,7 +1523,33 @@
             // Extract De bai and Options
             if (questionText && !isShortAnswer) {
                 const lines = questionText.split('\n').filter(l => l.trim() !== '');
-                if (lines.length >= 5) {
+                if (isTrueFalse) {
+                    // Dạng Đúng / Sai: Tìm chính xác câu lệnh "Xét tính đúng sai của các khẳng định sau:"
+                    let cmdIdx = -1;
+                    for (let i = 0; i < lines.length; i++) {
+                        const clean = lines[i].replace(/^[#*_\s]+|[#*_\s]+$/g, '').trim();
+                        if (/^xét tính đúng\s*[-,\/]?\s*sai của các khẳng định sau:?$/i.test(clean)) {
+                            cmdIdx = i;
+                            break;
+                        }
+                    }
+
+                    if (cmdIdx !== -1) {
+                        // Nếu thấy câu lệnh: Đề bài lấy từ đầu đến hết câu lệnh đó
+                        deBai = lines.slice(0, cmdIdx + 1).join('\n').trim();
+                        // Mỗi dòng phía dưới sẽ là các khẳng định
+                        options = lines.slice(cmdIdx + 1).map(l => l.trim());
+                        options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, '').replace(/^Khẳng định\s+[1-4][\.\:]\s*/i, ''));
+                    } else if (lines.length >= 5) {
+                        // Không thấy câu lệnh đó thì cứ lấy 4 dòng cuối như bình thường
+                        options = lines.slice(-4).map(l => l.trim());
+                        deBai = lines.slice(0, -4).join('\n').trim();
+                        options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, ''));
+                    } else {
+                        deBai = questionText;
+                    }
+                } else if (lines.length >= 5) {
+                    // Các dạng khác (Trắc nghiệm): Lấy 4 dòng cuối như bình thường
                     options = lines.slice(-4).map(l => l.trim());
                     deBai = lines.slice(0, -4).join('\n').trim();
                     options = options.map(opt => opt.replace(/^[\-\*\+]\s*/, '').replace(/^[A-D][\.\)]\s*/i, ''));
@@ -1309,7 +1571,7 @@
 
             function formatDeBaiParagraph(deBaiText, typeCode) {
                 if (!deBaiText) return '';
-                
+
                 const lines = deBaiText.split('\n').map(l => l.trim()).filter(Boolean);
                 if (lines.length <= 1) {
                     let res = deBaiText.trim();
@@ -1347,7 +1609,7 @@
                     if (contextStr && commandStr) return contextStr + '\n' + commandStr;
                     if (contextStr) return contextStr;
                     return commandStr;
-                } 
+                }
                 else if (typeCode === 'DIEN_DAPAN') {
                     const isInstructionLine = (line) => {
                         // Loại bỏ ký tự markdown bao quanh (như **, _, *, #...) để kiểm tra
@@ -1375,7 +1637,7 @@
                     if (contextStr && commandStr) return commandStr + '\n' + contextStr;
                     if (contextStr) return contextStr;
                     return commandStr;
-                } 
+                }
                 else {
                     // TRAC_NGHIEM hoặc UNKNOWN: gộp tất cả các dòng đề bài thành 1 đoạn
                     return lines.join(' ').trim();
@@ -1392,7 +1654,7 @@
             if (deBai.includes('____') && ansMatch && options.length === 0) {
                 let rawAns = ansMatch[1].replace(/\$/g, '').trim();
                 const numBlanks = (deBai.match(/____/g) || []).length;
-                
+
                 let ansParts = [];
                 if (numBlanks <= 1) {
                     ansParts = [rawAns];
@@ -1409,7 +1671,7 @@
                         }
                     }
                 }
-                
+
                 answerTitleStr = ansParts.join(' | ');
                 parsedAnswerData = rawAns;
 
@@ -1448,14 +1710,14 @@
 
                 if (isTrueFalse) {
                     let tfMatch = rawAns.toLowerCase().match(/(đúng|sai)/g);
-                    if (!tfMatch || tfMatch.length !== 4) {
+                    if (!tfMatch || (tfMatch.length !== 4 && tfMatch.length !== options.length)) {
                         let dsMatch = rawAns.match(/(Đ|S)/ig);
-                        if (dsMatch && dsMatch.length === 4) {
+                        if (dsMatch && (dsMatch.length === 4 || dsMatch.length === options.length)) {
                             tfMatch = dsMatch.map(x => x.toUpperCase() === 'Đ' ? 'đúng' : 'sai');
                         }
                     }
 
-                    if (tfMatch && tfMatch.length === 4) {
+                    if (tfMatch && (tfMatch.length === 4 || tfMatch.length === options.length)) {
                         answerTitleStr = tfMatch.map(x => x === 'đúng' ? 'Đ' : 'S').join('  ');
                         parsedAnswerData = tfMatch.map(x => x === 'đúng');
                     } else {
@@ -1464,7 +1726,7 @@
                     }
                 } else if (isMultipleChoice) {
                     const foundIndices = [];
-                    
+
                     // 1. Mẹo: Ưu tiên tìm cụm (Đáp án ...) trong ngoặc tròn ở cuối/sau cụm Đáp án:
                     const parenRegex = /\((?:_|\*\*|\*)?(?:đáp án|phương án|lựa chọn)[:\s]*(.*?)(?:_|\*\*|\*)?\)/gi;
                     let parenMatch;
@@ -1500,7 +1762,7 @@
                                 const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 };
                                 choiceNum = map[m2[1].toUpperCase()];
                             }
-                            
+
                             if (!choiceNum) {
                                 const cleanPart = part.replace(/[\$\.\s]/g, '').toLowerCase();
                                 if (/^[1-4]$/.test(cleanPart)) {
@@ -1518,7 +1780,7 @@
                                     }
                                 }
                             }
-                            
+
                             if (choiceNum && !foundIndices.includes(choiceNum)) {
                                 foundIndices.push(choiceNum);
                             }
@@ -1600,11 +1862,13 @@
 
             addField('Đề bài', deBai, '--btn-debai', 'ĐỀ BÀI', 'debai');
 
-            if (options.length === 4) {
-                const labels = isTrueFalse ? ['Khẳng định 1', 'Khẳng định 2', 'Khẳng định 3', 'Khẳng định 4'] : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
+            if (options.length > 0) {
+                const labels = isTrueFalse 
+                    ? options.map((_, i) => `Khẳng định ${i + 1}`) 
+                    : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
                 const btnPrefix = isTrueFalse ? 'KĐ' : 'LC';
                 options.forEach((opt, idx) => {
-                    addField(labels[idx], opt, '--btn-lc', `${btnPrefix}${idx + 1}`, `opt${idx}`);
+                    addField(labels[idx] || `Phương án ${idx + 1}`, opt, '--btn-lc', `${btnPrefix}${idx + 1}`, `opt${idx}`);
                 });
             }
 
@@ -1730,10 +1994,10 @@
 
         function setNblmCount(count) {
             document.getElementById('parallel_nblm_count').value = count;
-            
+
             const btn2 = document.getElementById('btn_tab_count_2');
             const btn3 = document.getElementById('btn_tab_count_3');
-            
+
             if (count === 2) {
                 btn2.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
                 btn2.style.color = 'white';
@@ -1815,6 +2079,7 @@
             const progressBar = document.getElementById('batch_progress_bar');
             const progressText = document.getElementById('batch_progress_text');
             const progressCount = document.getElementById('batch_progress_count');
+            document.getElementById('failed_ids_summary_box').style.display = 'none';
 
             btn.disabled = true;
             btn.style.opacity = '0.5';
@@ -1834,9 +2099,14 @@
                 addConsoleLog(msg, level);
             }
 
+            const autoRetry = document.getElementById('auto_retry_failed_checkbox').checked;
+            let effectiveBackupFolder = backupFolder;
+            let retryQueue = [];
+            let pendingFailures = [];
+
             // 1. Tạo file history
             try {
-                await fetch('http://localhost:5050/batch_start', {
+                const startRes = await fetch('http://localhost:5050/batch_start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1846,6 +2116,10 @@
                         backup_folder: backupFolder
                     })
                 });
+                const startData = await startRes.json();
+                if (startData.backup_folder) {
+                    effectiveBackupFolder = startData.backup_folder;
+                }
             } catch (e) {
                 console.error("Lỗi tạo file history:", e);
             }
@@ -1858,13 +2132,13 @@
 
             // Khởi tạo các slot
             let slots = [
-                { index: 1, tab: tab_nblm1, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0 },
-                { index: 2, tab: tab_nblm2, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0 }
+                { index: 1, tab: tab_nblm1, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0, currentJob: null },
+                { index: 2, tab: tab_nblm2, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0, currentJob: null }
             ];
-            
+
             if (nblmCount === 3) {
                 const tab_nblm3 = 5;
-                slots.push({ index: 3, tab: tab_nblm3, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0 });
+                slots.push({ index: 3, tab: tab_nblm3, state: 'idle', currentId: null, stt: 0, startTime: null, lastCheckTime: 0, currentJob: null });
             }
 
             let nextStt = 1;
@@ -1872,100 +2146,139 @@
             let checksSinceLms = 0;
 
             // Vòng lặp điều phối chính
-            while (batchRunning && (ids.length > 0 || slots.some(s => s.state !== 'idle'))) {
+            while (batchRunning && (ids.length > 0 || retryQueue.length > 0 || slots.some(s => s.state !== 'idle'))) {
                 if (!batchRunning) {
                     wasStopped = true;
                     break;
                 }
 
-                // 1. Tìm slot rảnh và còn câu hỏi trong hàng đợi -> Nạp câu hỏi
+                // 1. Tìm slot rảnh -> Nạp câu Lượt 1 hoặc Lượt 2
                 let idleSlot = slots.find(s => s.state === 'idle');
-                if (idleSlot && ids.length > 0) {
-                    const currentId = ids.shift();
-                    const stt = nextStt++;
-                    
-                    idleSlot.state = 'starting';
-                    idleSlot.currentId = currentId;
-                    idleSlot.stt = stt;
-                    idleSlot.startTime = new Date();
-
-                    status.style.color = 'var(--warning)';
-                    status.innerText = `[Slot ${idleSlot.index}] Nạp câu ${stt}/${totalIds}: ${currentId}...`;
-                    progressText.innerText = `Nạp Slot ${idleSlot.index}: ${currentId}`;
-                    progressCount.innerText = `${successCount}/${totalIds}`;
-
-                    // Gửi Discord báo bắt đầu
-                    try {
-                        await fetch('http://localhost:5050/batch_item_start', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ stt: stt, id: currentId, total: totalIds })
-                        });
-                    } catch (e) {}
-
-                    try {
-                        const startRes = await fetch('http://localhost:5050/start_nblm_job', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                id: currentId,
-                                stt: stt,
-                                lms_tab: lms_tab,
-                                nblm_tab: idleSlot.tab,
-                                is_reedit: isReEdit,
-                                backup_folder: backupFolder
-                            })
-                        });
-                        const startData = await startRes.json();
-                        
-                        if (startData.status === 'skipped') {
-                            log(`[Slot ${idleSlot.index}] ⚠️ SKIP câu ${stt} - ${currentId}: ${startData.message}`, 'WARN');
-                            await logBatchItem(stt, currentId, 'Thất bại - Không thấy ảnh backup', '', 'N/A', startData.message, idleSlot.startTime);
-                            idleSlot.state = 'idle';
-                            idleSlot.currentId = null;
-                            textarea.value = ids.join('\n');
-                            document.getElementById('id_count_badge').innerText = ids.length + ' ID';
-                            progressBar.style.width = Math.round((nextStt - 1) / totalIds * 100) + '%';
-                            continue;
-                        } else if (startData.status === 'success') {
-                            idleSlot.state = 'generating';
-                            idleSlot.generateStartTime = Date.now();
-                            idleSlot.lastCheckTime = Date.now(); // Đánh dấu vừa tương tác nạp xong, đẩy slot này xuống cuối hàng đợi kiểm tra
-                            log(`[Slot ${idleSlot.index}] Đã nạp thành công ${currentId}. NBLM đang sinh câu trả lời...`);
-                        } else {
-                            throw new Error(startData.message || "Lỗi nạp câu");
-                        }
-                    } catch (err) {
-                        log(`[Slot ${idleSlot.index}] ❌ Lỗi khi nạp ${currentId}: ${err.message}`);
-                        // Ghi log thất bại
-                        await logBatchItem(stt, currentId, 'Thất bại', '', 'N/A', `Lỗi nạp NBLM: ${err.message}`, idleSlot.startTime);
-                        // Reset slot
-                        idleSlot.state = 'idle';
-                        idleSlot.currentId = null;
+                if (idleSlot) {
+                    let jobToRun = null;
+                    if (ids.length > 0) {
+                        const currentId = ids.shift();
+                        const stt = nextStt++;
+                        jobToRun = {
+                            id: currentId,
+                            stt: stt,
+                            isReEdit: isReEdit,
+                            backupFolder: backupFolder,
+                            round: 1,
+                            startTime: new Date()
+                        };
+                    } else if (autoRetry && retryQueue.length > 0) {
+                        const retryItem = retryQueue.shift();
+                        jobToRun = {
+                            id: retryItem.id,
+                            stt: retryItem.stt,
+                            isReEdit: true,
+                            backupFolder: effectiveBackupFolder,
+                            round: 2,
+                            startTime: retryItem.startTime || new Date()
+                        };
+                        log(`[Slot ${idleSlot.index}] 🔄 [Lượt 2 - ReEdit] Đẩy tự động câu lỗi ${jobToRun.stt} - ${jobToRun.id} vào Tab ${idleSlot.tab}...`, 'STATUS');
                     }
-                    
-                    // Cập nhật giao diện sau khi thay đổi danh sách
-                    textarea.value = ids.join('\n');
-                    document.getElementById('id_count_badge').innerText = ids.length + ' ID';
-                    progressBar.style.width = Math.round((nextStt - 1) / totalIds * 100) + '%';
-                    
-                    // Kéo màn hình xem tiến độ
-                    document.getElementById('batch_progress_wrapper').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    continue; // Quay lại nạp tiếp nếu còn slot rảnh
+
+                    if (jobToRun) {
+                        idleSlot.state = 'starting';
+                        idleSlot.currentJob = jobToRun;
+                        idleSlot.currentId = jobToRun.id;
+                        idleSlot.stt = jobToRun.stt;
+                        idleSlot.startTime = jobToRun.startTime;
+
+                        status.style.color = 'var(--warning)';
+                        const roundPrefix = jobToRun.round === 2 ? '[Lượt 2 ReEdit] ' : '';
+                        status.innerText = `[Slot ${idleSlot.index}] ${roundPrefix}Nạp câu ${jobToRun.stt}/${totalIds}: ${jobToRun.id}...`;
+                        progressText.innerText = `${roundPrefix}Slot ${idleSlot.index}: ${jobToRun.id}`;
+                        progressCount.innerText = `${successCount}/${totalIds}`;
+
+                        if (jobToRun.round === 1) {
+                            try {
+                                await fetch('http://localhost:5050/batch_item_start', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ stt: jobToRun.stt, id: jobToRun.id, total: totalIds })
+                                });
+                            } catch (e) { }
+                        }
+
+                        try {
+                            const defaultPrompt = document.getElementById('nblm_default_prompt_input') ? document.getElementById('nblm_default_prompt_input').value : '';
+                            const startRes = await fetch('http://localhost:5050/start_nblm_job', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    id: jobToRun.id,
+                                    stt: jobToRun.stt,
+                                    lms_tab: lms_tab,
+                                    nblm_tab: idleSlot.tab,
+                                    is_reedit: jobToRun.isReEdit,
+                                    backup_folder: jobToRun.backupFolder,
+                                    default_prompt: defaultPrompt
+                                })
+                            });
+                            const startData = await startRes.json();
+
+                            if (startData.status === 'skipped') {
+                                log(`[Slot ${idleSlot.index}] ⚠️ SKIP câu ${jobToRun.stt} - ${jobToRun.id}: ${startData.message}`, 'WARN');
+                                if (jobToRun.round === 2 || !autoRetry) {
+                                    await logBatchItem(jobToRun.stt, jobToRun.id, 'Thất bại - Không thấy ảnh backup', '', 'N/A', startData.message, idleSlot.startTime);
+                                    pendingFailures = pendingFailures.filter(pf => pf.id !== jobToRun.id);
+                                } else {
+                                    retryQueue.push({ stt: jobToRun.stt, id: jobToRun.id, startTime: idleSlot.startTime });
+                                    pendingFailures.push({ stt: jobToRun.stt, id: jobToRun.id, content: '' });
+                                    log(`[Slot ${idleSlot.index}] Đã thêm câu ${jobToRun.id} vào hàng đợi Lượt 2.`);
+                                }
+                                idleSlot.state = 'idle';
+                                idleSlot.currentJob = null;
+                                idleSlot.currentId = null;
+                                textarea.value = ids.join('\n');
+                                document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                                progressBar.style.width = Math.round((nextStt - 1) / totalIds * 100) + '%';
+                                continue;
+                            } else if (startData.status === 'success') {
+                                idleSlot.state = 'generating';
+                                idleSlot.generateStartTime = Date.now();
+                                idleSlot.lastCheckTime = Date.now();
+                                log(`[Slot ${idleSlot.index}] Đã nạp thành công ${jobToRun.id}. NBLM đang sinh câu trả lời...`);
+                            } else {
+                                throw new Error(startData.message || "Lỗi nạp câu");
+                            }
+                        } catch (err) {
+                            log(`[Slot ${idleSlot.index}] ❌ Lỗi khi nạp ${jobToRun.id}: ${err.message}`);
+                            if (jobToRun.round === 2 || !autoRetry) {
+                                await logBatchItem(jobToRun.stt, jobToRun.id, 'Thất bại', '', 'N/A', `Lỗi nạp NBLM: ${err.message}`, idleSlot.startTime);
+                                pendingFailures = pendingFailures.filter(pf => pf.id !== jobToRun.id);
+                            } else {
+                                retryQueue.push({ stt: jobToRun.stt, id: jobToRun.id, startTime: idleSlot.startTime });
+                                pendingFailures.push({ stt: jobToRun.stt, id: jobToRun.id, content: '' });
+                                log(`[Slot ${idleSlot.index}] ⚠️ Câu ${jobToRun.id} bị lỗi nạp. Đã đưa vào hàng đợi Lượt 2.`, 'WARN');
+                            }
+                            idleSlot.state = 'idle';
+                            idleSlot.currentJob = null;
+                            idleSlot.currentId = null;
+                        }
+
+                        textarea.value = ids.join('\n');
+                        document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                        progressBar.style.width = Math.round((nextStt - 1) / totalIds * 100) + '%';
+                        document.getElementById('batch_progress_wrapper').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        continue;
+                    }
                 }
 
                 // 2. Kiểm tra các slot bận (Tuần hoàn luân phiên - Round Robin)
                 let busySlots = slots.filter(s => s.state === 'generating');
                 if (busySlots.length > 0) {
-                    // Sắp xếp theo lần kiểm tra gần nhất (thời gian kiểm tra cũ nhất / chưa kiểm tra sẽ đứng đầu)
                     busySlots.sort((a, b) => (a.lastCheckTime || 0) - (b.lastCheckTime || 0));
-                    
+
                     let targetSlot = busySlots[0];
-                    targetSlot.lastCheckTime = Date.now(); // Cập nhật thời điểm vừa kiểm tra
-                    
+                    targetSlot.lastCheckTime = Date.now();
+
                     status.style.color = 'var(--warning)';
                     status.innerText = `Kiểm tra Slot ${targetSlot.index} (${targetSlot.currentId})...`;
-                    
+
                     try {
                         const checkRes = await fetch('http://localhost:5050/retrieve_nblm_job', {
                             method: 'POST',
@@ -1977,26 +2290,25 @@
                             })
                         });
                         const checkData = await checkRes.json();
-                        
+
                         if (checkData.status === 'success') {
-                            checksSinceLms = 0; // Reset đếm lượt LMS
+                            checksSinceLms = 0;
                             const outputText = checkData.notebook_output;
                             log(`[Slot ${targetSlot.index}] 💎 Đã nhận lời giải cho ${targetSlot.currentId}. Tiến hành điền LMS...`);
-                            
+
                             status.innerText = `[Slot ${targetSlot.index}] Điền LMS câu ${targetSlot.stt}: ${targetSlot.currentId}...`;
-                            
-                            // Phân tích cú pháp
+
                             const notebookInput = document.getElementById('notebook_input');
                             notebookInput.value = outputText;
                             parseNotebookOutput();
-                            
+
                             let fillOk = false;
                             let errorDetail = '';
                             let typeCode = 'N/A';
-                            
+
                             if (window.currentParsedData) {
                                 typeCode = window.currentParsedData.typeCode || 'N/A';
-                                
+
                                 const fillRes = await fetch('http://localhost:5050/fill_lms_job', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -2017,19 +2329,30 @@
                             } else {
                                 errorDetail = "Không thể phân tích cú pháp lời giải (Parse error)";
                             }
-                            
-                            const itemStatus = fillOk ? 'Thành công' : 'Thất bại';
-                            await logBatchItem(targetSlot.stt, targetSlot.currentId, itemStatus, outputText, typeCode, errorDetail, targetSlot.startTime);
-                            
-                            // Đặt slot về idle
+
+                            const job = targetSlot.currentJob || { round: 1 };
+                            if (fillOk) {
+                                await logBatchItem(targetSlot.stt, targetSlot.currentId, 'Thành công', outputText, typeCode, errorDetail, targetSlot.startTime);
+                                pendingFailures = pendingFailures.filter(pf => pf.id !== targetSlot.currentId);
+                            } else {
+                                if (job.round === 2 || !autoRetry) {
+                                    await logBatchItem(targetSlot.stt, targetSlot.currentId, 'Thất bại', outputText, typeCode, errorDetail, targetSlot.startTime);
+                                    pendingFailures = pendingFailures.filter(pf => pf.id !== targetSlot.currentId);
+                                } else {
+                                    retryQueue.push({ stt: targetSlot.stt, id: targetSlot.currentId, startTime: targetSlot.startTime });
+                                    pendingFailures.push({ stt: targetSlot.stt, id: targetSlot.currentId, content: outputText });
+                                    log(`[Slot ${targetSlot.index}] ⚠️ Câu ${targetSlot.currentId} bị lỗi (${errorDetail}). Đã đưa vào hàng đợi Lượt 2 ReEdit.`, 'WARN');
+                                }
+                            }
+
                             targetSlot.state = 'idle';
+                            targetSlot.currentJob = null;
                             targetSlot.currentId = null;
-                            
+
                         } else if (checkData.status === 'waiting') {
                             log(`[Slot ${targetSlot.index}] NBLM vẫn đang sinh kết quả cho ${targetSlot.currentId}.`);
                             checksSinceLms++;
-                            
-                            // Chuyển sang LMS 2 giây chống timeout nếu đã xoay vòng kiểm tra hết lượt các slot bận
+
                             if (checksSinceLms >= busySlots.length) {
                                 checksSinceLms = 0;
                                 log("Về tab LMS 2 giây để chống timeout session...");
@@ -2046,32 +2369,45 @@
                     } catch (err) {
                         checksSinceLms = 0;
                         log(`[Slot ${targetSlot.index}] ❌ Lỗi xử lý kết quả câu ${targetSlot.currentId}: ${err.message}`);
-                        await logBatchItem(targetSlot.stt, targetSlot.currentId, 'Thất bại', '', 'N/A', `Lỗi thu hoạch: ${err.message}`, targetSlot.startTime);
+                        const job = targetSlot.currentJob || { round: 1 };
+                        if (job.round === 2 || !autoRetry) {
+                            await logBatchItem(targetSlot.stt, targetSlot.currentId, 'Thất bại', '', 'N/A', `Lỗi thu hoạch: ${err.message}`, targetSlot.startTime);
+                            pendingFailures = pendingFailures.filter(pf => pf.id !== targetSlot.currentId);
+                        } else {
+                            retryQueue.push({ stt: targetSlot.stt, id: targetSlot.currentId, startTime: targetSlot.startTime });
+                            pendingFailures.push({ stt: targetSlot.stt, id: targetSlot.currentId, content: '' });
+                            log(`[Slot ${targetSlot.index}] ⚠️ Câu ${targetSlot.currentId} bị lỗi thu hoạch. Đã đưa vào hàng đợi Lượt 2 ReEdit.`, 'WARN');
+                        }
                         targetSlot.state = 'idle';
+                        targetSlot.currentJob = null;
                         targetSlot.currentId = null;
                     }
                 }
 
-                // Cập nhật tiến độ trên UI
                 progressCount.innerText = `${successCount}/${totalIds}`;
                 progressBar.style.width = Math.round(successCount / totalIds * 100) + '%';
-                
+
                 await new Promise(r => setTimeout(r, 1000));
             }
 
             // 3. Kết thúc batch
             const reason = wasStopped ? 'stopped' : 'completed';
             try {
-                await fetch('http://localhost:5050/batch_end', {
+                const endRes = await fetch('http://localhost:5050/batch_end', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         success_count: successCount,
                         total_count: totalIds,
-                        reason: reason
+                        reason: reason,
+                        pending_failures: pendingFailures
                     })
                 });
-            } catch (e) {}
+                const endData = await endRes.json();
+                if (endData && endData.failed_ids) {
+                    showFailedIdsSummary(endData.failed_ids);
+                }
+            } catch (e) { }
 
             if (wasStopped) {
                 progressText.innerText = `Đã dừng! ${successCount}/${totalIds} thành công`;
@@ -2102,7 +2438,7 @@
 
             const consoleEl = document.getElementById('log_console');
             if (!consoleEl) return;
-            
+
             if (consoleEl.innerHTML.includes('Hệ thống sẵn sàng') || consoleEl.innerHTML.includes('Nhật ký đã được làm sạch')) {
                 consoleEl.innerHTML = '';
             }
@@ -2110,7 +2446,7 @@
             const timestamp = timeStr || new Date().toLocaleTimeString('vi-VN');
             const logRow = document.createElement('div');
             logRow.style.wordBreak = 'break-all';
-            
+
             let levelColor = '#475569';
             let msgColor = '#0f172a';
             if (level === 'OK' || level === 'SUCCESS') levelColor = '#059669';
@@ -2142,7 +2478,7 @@
                 const res = await fetch(`http://localhost:5050/logs?after=${lastLogId}`);
                 const data = await res.json();
                 const logs = Array.isArray(data) ? data : (data && data.logs ? data.logs : []);
-                
+
                 if (logs && logs.length > 0) {
                     logs.forEach(log => {
                         if (log.id > lastLogId) {
