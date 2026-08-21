@@ -1655,19 +1655,23 @@
                 let rawAns = ansMatch[1].replace(/\$/g, '').trim();
                 const numBlanks = (deBai.match(/____/g) || []).length;
 
-                let ansParts = [];
-                if (numBlanks <= 1) {
-                    ansParts = [rawAns];
-                } else {
-                    ansParts = rawAns.split(/\s+và\s+|\s+and\s+/i).map(p => p.trim()).filter(Boolean);
-                    if (ansParts.length < numBlanks) {
-                        const commaSplitParts = [];
+                let ansParts = [rawAns];
+                if (numBlanks > 1) {
+                    const delims = [
+                        /\s+và\s+|\s+and\s+/i,
+                        /\//,
+                        /;/,
+                        /,/
+                    ];
+                    for (const delim of delims) {
+                        if (ansParts.length >= numBlanks) break;
+                        let newParts = [];
                         ansParts.forEach(part => {
-                            const subs = part.split(',').map(s => s.trim()).filter(Boolean);
-                            commaSplitParts.push(...subs);
+                            const subs = part.split(delim).map(s => s.trim()).filter(Boolean);
+                            newParts.push(...subs);
                         });
-                        if (commaSplitParts.length <= numBlanks) {
-                            ansParts = commaSplitParts;
+                        if (newParts.length > ansParts.length) {
+                            ansParts = newParts;
                         }
                     }
                 }
