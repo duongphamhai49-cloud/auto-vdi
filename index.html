@@ -1471,6 +1471,27 @@
                 return res;
             }
 
+            function fixIncompleteQuestion(debai) {
+                if (!debai) return debai;
+                const pattern = /(?:(?:Trong\s+(?:các|số\s+các)\s+)?(?:(khẳng định|phát biểu|mệnh đề)\s+)?(?:sau(?: đây)?,?\s+)?)?(khẳng định|phát biểu|mệnh đề)\s+(đúng|sai)(?:\s+là)?[\:\.]?$/i;
+                return debai.replace(pattern, (match, p1, noun, correctness) => {
+                    const cleanNoun = noun.toLowerCase();
+                    const cleanCorrectness = correctness.toLowerCase();
+                    return `Trong các ${cleanNoun} sau, ${cleanNoun} nào ${cleanCorrectness}?`;
+                }).trim();
+            }
+
+            function capitalizeFirstLetter(str) {
+                if (!str) return str;
+                const trimmed = str.trim();
+                if (!trimmed) return str;
+                const firstChar = trimmed.charAt(0);
+                if (/^[a-zàáảãạăằắẳẵặâầấẩẫậeèéẻẽẹêềếểễệiìíỉĩịoòóỏõọôồốổỗộơờớởỡợuùúủũụưừứửữựyỳýỷỹỵđ]/i.test(firstChar)) {
+                    return firstChar.toUpperCase() + trimmed.slice(1);
+                }
+                return trimmed;
+            }
+
             function extractSectionContent(text, startRegex, endRegex) {
                 if (!text) return '';
                 const startIdx = text.search(startRegex);
@@ -1645,6 +1666,13 @@
             }
 
             deBai = formatDeBaiParagraph(deBai, typeCode);
+
+            if (isMultipleChoice) {
+                deBai = fixIncompleteQuestion(deBai);
+            }
+            if (options.length === 4) {
+                options = options.map(opt => capitalizeFirstLetter(opt));
+            }
 
             let answerTitleStr = '';
             let answerContentStr = '';
