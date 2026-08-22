@@ -1278,7 +1278,7 @@
 
             function fixIncompleteQuestion(debai) {
                 if (!debai) return debai;
-                const pattern = /(?:(?:Trong\s+(?:các|số\s+các)\s+)?(?:(khẳng định|phát biểu|mệnh đề)\s+)?(?:sau(?: đây)?,?\s+)?)?(khẳng định|phát biểu|mệnh đề)\s+(đúng|sai)(?:\s+là)?[\:\.]?$/i;
+                const pattern = /(?:(?:Trong\s+(?:các|số\s+các)\s+)?(?:(khẳng định|phát biểu|mệnh đề)\s+)?(?:sau(?: đây)?,?\s+)?)?(khẳng định|phát biểu|mệnh đề)\s+(đúng|sai)(?:\s+là)?[\:\.\s]*$/i;
                 return debai.replace(pattern, (match, p1, noun, correctness) => {
                     const cleanNoun = noun.toLowerCase();
                     const cleanCorrectness = correctness.toLowerCase();
