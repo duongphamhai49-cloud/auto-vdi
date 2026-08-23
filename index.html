@@ -1308,12 +1308,12 @@
             }
 
             // Regex patterns
-            const qMatch = rawText.match(/### 1\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
+            const qMatch = rawText.match(/(?<!#)###(?!#)\s*1\..*?\n+```(?:latex)?\n+([\s\S]*?)\n+```/i);
 
             // Xác định vùng tìm kiếm đáp án (Ưu tiên vùng giữa mục 1 và mục 2, lấy đáp án ở vị trí cuối cùng trước mục 2)
             let targetText = rawText;
-            const sec1Idx = rawText.search(/###\s*(?:mục|câu)?\s*1\b/i);
-            const sec2Idx = rawText.search(/###\s*(?:mục|câu)?\s*2\b/i);
+            const sec1Idx = rawText.search(/(?<!#)###(?!#)\s*(?:mục|câu)?\s*1\b/i);
+            const sec2Idx = rawText.search(/(?<!#)###(?!#)\s*(?:mục|câu)?\s*2\b/i);
 
             if (sec1Idx !== -1) {
                 if (sec2Idx !== -1 && sec2Idx > sec1Idx) {
@@ -1529,9 +1529,9 @@
                 return content;
             }
 
-            const questionText = extractSectionContent(rawText, /###\s*(?:mục|câu)?\s*1\b/i, /###\s*(?:mục|câu)?\s*2\b/i);
-            const hintText = extractSectionContent(rawText, /###\s*(?:mục|câu)?\s*2\b/i, /###\s*(?:mục|câu)?\s*3\b/i);
-            const solText = extractSectionContent(rawText, /###\s*(?:mục|câu)?\s*3\b/i, /###\s*(?:mục|câu)?\s*4\b|\*\s*\*\*Độ khó|\n---\n/i);
+            const questionText = extractSectionContent(rawText, /(?<!#)###(?!#)\s*(?:mục|câu)?\s*1\b/i, /(?<!#)###(?!#)\s*(?:mục|câu)?\s*2\b/i);
+            const hintText = extractSectionContent(rawText, /(?<!#)###(?!#)\s*(?:mục|câu)?\s*2\b/i, /(?<!#)###(?!#)\s*(?:mục|câu)?\s*3\b/i);
+            const solText = extractSectionContent(rawText, /(?<!#)###(?!#)\s*(?:mục|câu)?\s*3\b/i, /(?<!#)###(?!#)\s*(?:mục|câu)?\s*4\b|\*\s*\*\*Độ khó/i);
             const diffMatch = rawText.match(/\*\s*\*\*Độ khó:\*\*\s*(.*)/i);
 
             let options = [];
