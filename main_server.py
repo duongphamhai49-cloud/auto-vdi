@@ -291,9 +291,19 @@ class ClipboardHelper:
     def write_base64_image(img_base64):
         """Giải mã ảnh base64 và lưu vào clipboard dưới định dạng CF_DIB."""
         try:
+            if not img_base64 or not isinstance(img_base64, str):
+                log("Dữ liệu base64 ảnh rỗng hoặc không đúng định dạng.", "ERROR")
+                return False
             if ',' in img_base64:
                 img_base64 = img_base64.split(',')[1]
+            img_base64 = img_base64.strip()
+            if not img_base64:
+                log("Nội dung chuỗi base64 sau khi bóc tách header bị rỗng.", "ERROR")
+                return False
             img_data = base64.b64decode(img_base64)
+            if len(img_data) == 0:
+                log("Dữ liệu sau khi giải mã base64 có kích thước 0 byte.", "ERROR")
+                return False
             img = Image.open(io.BytesIO(img_data))
             
             output = io.BytesIO()
@@ -819,10 +829,10 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 res_data = json.loads(post_data.decode('utf-8'))
                 session_id = res_data.get('session')
                 
-                # NẾU CÓ ẢNH, GHI THẲNG VÀO CLIPBOARD ĐỂ HỖ TRỢ PHÍM TẮT TEST THỦ CÔNG
-                if 'image' in res_data:
-                    ClipboardHelper.write_base64_image(res_data['image'])
-                    log("Đã lưu ảnh chụp thử nghiệm của Trình duyệt vào Clipboard.", "OK")
+                # NẾU CÓ ẢNH HỢP LỆ, GHI THẲNG VÀO CLIPBOARD ĐỂ HỖ TRỢ PHÍM TẮT TEST THỦ CÔNG
+                if 'image' in res_data and res_data['image']:
+                    if ClipboardHelper.write_base64_image(res_data['image']):
+                        log("Đã lưu ảnh chụp thử nghiệm của Trình duyệt vào Clipboard.", "OK")
                 
                 with lms_lock:
                     if session_id in lms_event_map:
@@ -830,6 +840,28 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         lms_event_map[session_id]['event'].set()
             except Exception as e:
                 log(f"Lỗi done lms: {e}", "ERROR")
+                
+            self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
+            return
+
+        if path == '/lms/dom-dump':
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                res_data = json.loads(post_data.decode('utf-8'))
+                dump_text = res_data.get('dump', '')
+                if dump_text:
+                    dump_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dom_dump.txt')
+                    with open(dump_path, 'w', encoding='utf-8') as f:
+                        f.write(dump_text)
+                    log(f"Đã lưu DOM dump vào: {dump_path}", "OK")
+            except Exception as e:
+                log(f"Lỗi lưu DOM dump: {e}", "ERROR")
                 
             self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
             return
@@ -929,10 +961,10 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 # Kiểm tra màu pixel tại GEMINI_SEND_PIXEL xem đã khớp với màu rảnh rỗi ban đầu chưa
                 log(f"Kiểm tra trạng thái load ảnh Gemini tại tọa độ {GUIHelper.GEMINI_SEND_PIXEL}...", "STATUS")
                 load_ok = False
-                for step in range(20): # Poll tối đa 10s (20 * 0.5s)
+                for step in range(40): # Poll tối đa 20s (40 * 0.5s)
                     try:
                         curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI LOAD CHECK {step+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
+                        log(f"[GEMINI LOAD CHECK {step+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
                         if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
                             load_ok = True
                             log(f"Phát hiện Gemini đã load ảnh xong (Màu {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})!", "OK")
@@ -942,7 +974,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
                 
                 if not load_ok:
-                    log("Không thấy màu Send rảnh rỗi khớp sau 10s, tiến hành bấm Enter cưỡng bức...", "WARN")
+                    log("Không thấy màu Send rảnh rỗi khớp sau 20s, tiến hành bấm Enter cưỡng bức...", "WARN")
 
                 # Bấm enter gửi ảnh
                 pyautogui.press('enter')
@@ -954,12 +986,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 
                 log(f"Bắt đầu quy trình kiểm tra Gemini đã phản hồi xong chưa (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
                 gemini_done = False
-                for poll_idx in range(20): # Poll tối đa 10s (20 * 0.5s) để đảm bảo Gemini sinh nội dung hoàn tất
+                for poll_idx in range(40): # Poll tối đa 20s (40 * 0.5s) để đảm bảo Gemini sinh nội dung hoàn tất
                     if STOP_FLAG:
                         raise Exception("Đã bị dừng bởi người dùng!")
                     try:
                         curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI DONE CHECK {poll_idx+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
+                        log(f"[GEMINI DONE CHECK {poll_idx+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
                         if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
                             gemini_done = True
                             log(f"Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})", "OK")
@@ -969,7 +1001,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
                 
                 if not gemini_done:
-                    log(f"Đã hết thời gian chờ 10s kiểm tra màu rảnh rỗi Gemini nhưng chưa khớp. Vẫn tiến hành quy trình lấy output...", "WARN")
+                    log(f"Đã hết thời gian chờ 20s kiểm tra màu rảnh rỗi Gemini nhưng chưa khớp. Vẫn tiến hành quy trình lấy output...", "WARN")
                 
                 # Lấy focus tại FCS_ON_GEM trước khi gửi phím End
                 log("Focus vào vùng Gemini (FCS_ON_GEM) để chuẩn bị copy...", "ACTION")
@@ -1369,10 +1401,10 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 
                 log("Kiểm tra trạng thái load ảnh bằng pixel check...", "STATUS")
                 load_ok = False
-                for step in range(20): # Poll tối đa 10s (20 * 0.5s)
+                for step in range(40): # Poll tối đa 20s (40 * 0.5s)
                     try:
                         curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI LOAD CHECK {step+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
+                        log(f"[GEMINI LOAD CHECK {step+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
                         if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
                             load_ok = True
                             log(f"Phát hiện Gemini đã load ảnh xong (Màu {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})!", "OK")
@@ -1382,7 +1414,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
                 
                 if not load_ok:
-                    log("Không thấy màu Send rảnh rỗi khớp sau 10s, tiến hành bấm Enter cưỡng bức...", "WARN")
+                    log("Không thấy màu Send rảnh rỗi khớp sau 20s, tiến hành bấm Enter cưỡng bức...", "WARN")
 
                 pyautogui.press('enter')
                 log("Đã gửi ảnh lên Gemini.", "OK")
@@ -1392,12 +1424,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 time.sleep(5.0)
                 
                 gemini_done = False
-                for poll_idx in range(20): # Poll tối đa 10s (20 * 0.5s)
+                for poll_idx in range(40): # Poll tối đa 20s (40 * 0.5s)
                     if STOP_FLAG:
                         raise Exception("Bị dừng bởi người dùng!")
                     try:
                         curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI DONE CHECK {poll_idx+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
+                        log(f"[GEMINI DONE CHECK {poll_idx+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
                         if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
                             gemini_done = True
                             log(f"Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})", "OK")
@@ -1407,7 +1439,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
                 
                 if not gemini_done:
-                    log(f"Đã hết thời gian chờ 10s kiểm tra màu rảnh rỗi Gemini nhưng chưa khớp. Vẫn tiến hành quy trình lấy output...", "WARN")
+                    log(f"Đã hết thời gian chờ 20s kiểm tra màu rảnh rỗi Gemini nhưng chưa khớp. Vẫn tiến hành quy trình lấy output...", "WARN")
                 
                 log("Focus vào vùng Gemini để chuẩn bị copy...", "ACTION")
                 GUIHelper.focus(GUIHelper.FCS_ON_GEM)

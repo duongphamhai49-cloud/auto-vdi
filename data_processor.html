@@ -1276,6 +1276,17 @@
                 return res;
             }
 
+            function cleanLatexTextIt(text) {
+                if (!text) return '';
+                let result = text;
+                let prev;
+                do {
+                    prev = result;
+                    result = result.replace(/\\textit\{([^{}]*)\}/gi, '$1');
+                } while (result !== prev);
+                return result;
+            }
+
             function fixIncompleteQuestion(debai) {
                 if (!debai) return debai;
                 const pattern = /(?:(?:Trong\s+(?:các|số\s+các)\s+)?(?:(khẳng định|phát biểu|mệnh đề)\s+)?(?:sau(?: đây)?,?\s+)?)?(khẳng định|phát biểu|mệnh đề)\s+(đúng|sai)(?:\s+là)?[\:\.\s]*$/i;
@@ -1330,6 +1341,7 @@
                 content = formatPrimeQuotes(content);
                 content = formatUnitsOfMeasurement(content);
                 content = formatLatexSymbols(content);
+                content = cleanLatexTextIt(content);
                 content = removeDocCitations(content);
                 return content;
             }

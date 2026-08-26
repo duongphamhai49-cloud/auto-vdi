@@ -22,12 +22,13 @@
     let currentSession = 0;
 
     // ==========================================
-    // BADGE TRẠNG THÁI
+    // BADGE TRẠNG THÁI (vị trí gốc)
     // ==========================================
     function createBadge() {
         if (document.getElementById('aet-findopen-badge')) return;
         badge = document.createElement('div');
         badge.id = 'aet-findopen-badge';
+        badge.setAttribute('data-html2canvas-ignore', 'true');
         badge.style.cssText = `
             position: fixed; top: 8px; right: 120px; z-index: 9999999;
             background: rgba(0,0,0,0.85); color: #3b82f6; padding: 6px 12px;
@@ -37,6 +38,205 @@
         `;
         badge.textContent = '🔵 LMS FindOpen Ready';
         document.body.appendChild(badge);
+
+        // Nút chụp ảnh test riêng biệt (nằm bên trái badge)
+        if (!document.getElementById('aet-btn-manual-cap')) {
+            const capBtn = document.createElement('button');
+            capBtn.id = 'aet-btn-manual-cap';
+            capBtn.setAttribute('data-html2canvas-ignore', 'true');
+            capBtn.textContent = '📷 Test Chụp';
+            capBtn.title = 'Bấm để chụp ảnh Canvas khu vực câu hỏi ngay lập tức và gửi về Server (không cần chạy lại từ đầu)';
+            capBtn.style.cssText = `
+                position: fixed; top: 7px; right: 330px; z-index: 9999999;
+                background: #8b5cf6; color: #ffffff; border: 1px solid #a78bfa;
+                padding: 5px 12px; border-radius: 16px; font-size: 12px; font-family: sans-serif; font-weight: bold;
+                cursor: pointer; outline: none; white-space: nowrap;
+                box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+                backdrop-filter: blur(8px); transition: all 0.2s ease;
+            `;
+            capBtn.onmouseenter = () => { capBtn.style.background = '#7c3aed'; capBtn.style.transform = 'scale(1.05)'; };
+            capBtn.onmouseleave = () => { capBtn.style.background = '#8b5cf6'; capBtn.style.transform = 'scale(1)'; };
+            capBtn.onclick = async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                log('▶️ Người dùng bấm nút [📷 Test Chụp]!');
+                capBtn.disabled = true;
+                capBtn.style.opacity = '0.6';
+                capBtn.textContent = '⏳ Đang chụp...';
+                try {
+                    await doCapture();
+                    log('✅ Chụp ảnh bằng nút thủ công thành công!');
+                    capBtn.textContent = '✅ Thành công!';
+                    capBtn.style.background = '#10b981';
+                    setTimeout(() => { capBtn.textContent = '📷 Test Chụp'; capBtn.style.background = '#8b5cf6'; }, 3000);
+                } catch (err) {
+                    console.error('❌ Lỗi nút chụp ảnh thủ công:', err);
+                    capBtn.textContent = '❌ Lỗi!';
+                    capBtn.style.background = '#ef4444';
+                    setTimeout(() => { capBtn.textContent = '📷 Test Chụp'; capBtn.style.background = '#8b5cf6'; }, 3000);
+                } finally {
+                    capBtn.disabled = false;
+                    capBtn.style.opacity = '1';
+                }
+            };
+            document.body.appendChild(capBtn);
+        }
+
+        // Nút quét DOM riêng biệt (nằm bên trái nút Test Chụp)
+        if (!document.getElementById('aet-btn-dom-dump')) {
+            const domBtn = document.createElement('button');
+            domBtn.id = 'aet-btn-dom-dump';
+            domBtn.setAttribute('data-html2canvas-ignore', 'true');
+            domBtn.textContent = '📋 Quét DOM';
+            domBtn.title = 'Quét cấu trúc DOM khu vực câu hỏi và gửi về Server để lưu file dom_dump.txt';
+            domBtn.style.cssText = `
+                position: fixed; top: 7px; right: 450px; z-index: 9999999;
+                background: #f59e0b; color: #ffffff; border: 1px solid #fbbf24;
+                padding: 5px 12px; border-radius: 16px; font-size: 12px; font-family: sans-serif; font-weight: bold;
+                cursor: pointer; outline: none; white-space: nowrap;
+                box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+                backdrop-filter: blur(8px); transition: all 0.2s ease;
+            `;
+            domBtn.onmouseenter = () => { domBtn.style.background = '#d97706'; domBtn.style.transform = 'scale(1.05)'; };
+            domBtn.onmouseleave = () => { domBtn.style.background = '#f59e0b'; domBtn.style.transform = 'scale(1)'; };
+            domBtn.onclick = async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                domBtn.disabled = true;
+                domBtn.style.opacity = '0.6';
+                domBtn.textContent = '⏳ Đang quét...';
+                try {
+                    // Hàm quét DOM tree với độ sâu giới hạn
+                    function dumpEl(el, depth, maxDepth) {
+                        if (!el || depth > maxDepth) return '';
+                        const indent = '  '.repeat(depth);
+                        const tag = el.tagName ? el.tagName.toLowerCase() : '#text';
+                        if (tag === '#text') return '';
+                        const id = el.id ? `#${el.id}` : '';
+                        const cls = el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '';
+                        const w = el.offsetWidth || 0;
+                        const h = el.offsetHeight || 0;
+                        const vis = (w > 0 && h > 0) ? '' : ' [HIDDEN]';
+                        const textSnippet = el.childNodes.length === 1 && el.childNodes[0].nodeType === 3 
+                            ? ` text="${el.textContent.trim().substring(0, 50)}"` : '';
+                        let result = `${indent}<${tag}${id}${cls}> (${w}x${h})${vis}${textSnippet}\n`;
+                        for (const child of el.children) {
+                            result += dumpEl(child, depth + 1, maxDepth);
+                        }
+                        return result;
+                    }
+
+                    let dump = '=== DOM DUMP (Full Scan) ===\n';
+                    dump += `URL: ${location.href}\n`;
+                    dump += `Thời gian: ${new Date().toLocaleString()}\n\n`;
+
+                    // 1. Quét toàn bộ body tree (depth giới hạn = 6, bỏ qua script/style/svg/noscript)
+                    dump += '--- BODY TREE (depth <= 6) ---\n';
+                    const skipTags = new Set(['script', 'style', 'svg', 'noscript', 'link', 'meta', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'g', 'defs', 'clippath', 'use', 'symbol']);
+                    function dumpTree(el, depth) {
+                        if (!el || depth > 6) return '';
+                        const tag = (el.tagName || '').toLowerCase();
+                        if (skipTags.has(tag)) return '';
+                        if (el.getAttribute && el.getAttribute('data-html2canvas-ignore') === 'true') return '';
+                        const indent = '  '.repeat(depth);
+                        const id = el.id ? `#${el.id}` : '';
+                        const cls = el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 5).join('.') : '';
+                        const w = el.offsetWidth || 0;
+                        const h = el.offsetHeight || 0;
+                        const vis = (w > 0 && h > 0) ? '' : ' [HIDDEN]';
+                        // Snippet of direct text (first text node only, max 60 chars)
+                        let textSnippet = '';
+                        for (const cn of el.childNodes) {
+                            if (cn.nodeType === 3 && cn.textContent.trim()) {
+                                textSnippet = ` text="${cn.textContent.trim().substring(0, 60)}"`;
+                                break;
+                            }
+                        }
+                        let result = `${indent}<${tag}${id}${cls}> (${w}x${h})${vis}${textSnippet}\n`;
+                        for (const child of el.children) {
+                            result += dumpTree(child, depth + 1);
+                        }
+                        return result;
+                    }
+                    dump += dumpTree(document.body, 0);
+
+                    // 2. Tìm tất cả phần tử chứa text "Câu hỏi" hoặc "đáp án"
+                    dump += '\n\n--- Phần tử chứa text "Câu hỏi" hoặc "đáp án" ---\n';
+                    const allEls = document.body.querySelectorAll('*');
+                    let matchCount = 0;
+                    allEls.forEach(el => {
+                        if (matchCount > 30) return;
+                        const tag = (el.tagName || '').toLowerCase();
+                        if (skipTags.has(tag)) return;
+                        // Check direct text only (not nested)
+                        let directText = '';
+                        for (const cn of el.childNodes) {
+                            if (cn.nodeType === 3) directText += cn.textContent;
+                        }
+                        directText = directText.trim();
+                        if (directText && (directText.includes('Câu hỏi') || directText.includes('đáp án'))) {
+                            const id = el.id ? `#${el.id}` : '';
+                            const cls = el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '';
+                            dump += `[MATCH] <${tag}${id}${cls}> (${el.offsetWidth}x${el.offsetHeight}) directText="${directText.substring(0, 80)}"\n`;
+                            // Parent chain (5 levels)
+                            let p = el.parentElement;
+                            let lvl = 1;
+                            while (p && p !== document.body && lvl <= 5) {
+                                const ptag = p.tagName.toLowerCase();
+                                const pid = p.id ? `#${p.id}` : '';
+                                const pcls = p.className && typeof p.className === 'string' ? '.' + p.className.trim().split(/\s+/).slice(0, 4).join('.') : '';
+                                dump += `  [Parent ${lvl}] <${ptag}${pid}${pcls}> (${p.offsetWidth}x${p.offsetHeight})\n`;
+                                p = p.parentElement;
+                                lvl++;
+                            }
+                            matchCount++;
+                        }
+                    });
+                    if (matchCount === 0) dump += '(Không tìm thấy)\n';
+
+                    // 3. Tìm các table/tr trên trang
+                    dump += '\n\n--- Tất cả TABLE và TR trên trang ---\n';
+                    const tables = document.querySelectorAll('table');
+                    dump += `Tables: ${tables.length}\n`;
+                    tables.forEach((tbl, i) => {
+                        const cls = tbl.className && typeof tbl.className === 'string' ? tbl.className : '';
+                        const trs = tbl.querySelectorAll('tr');
+                        dump += `[Table ${i}] class="${cls}" (${tbl.offsetWidth}x${tbl.offsetHeight}) rows=${trs.length}\n`;
+                    });
+
+                    // 4. Tìm phần tử có class chứa "question", "content", "detail"
+                    dump += '\n\n--- Phần tử có class chứa "question/content/detail/expanded" ---\n';
+                    let classMatchCount = 0;
+                    allEls.forEach(el => {
+                        if (classMatchCount > 40) return;
+                        const cls = el.className && typeof el.className === 'string' ? el.className : '';
+                        if (cls && (cls.includes('question') || cls.includes('content') || cls.includes('detail') || cls.includes('expanded'))) {
+                            const tag = el.tagName.toLowerCase();
+                            const id = el.id ? `#${el.id}` : '';
+                            dump += `<${tag}${id}> class="${cls.substring(0, 100)}" (${el.offsetWidth}x${el.offsetHeight}) children=${el.children.length}\n`;
+                            classMatchCount++;
+                        }
+                    });
+
+                    // Gửi dump về server
+                    await postJSON(`${SERVER}/lms/dom-dump`, { dump: dump });
+                    
+                    log('✅ Quét DOM thành công! Đã lưu vào dom_dump.txt');
+                    domBtn.textContent = '✅ Đã quét!';
+                    domBtn.style.background = '#10b981';
+                    setTimeout(() => { domBtn.textContent = '📋 Quét DOM'; domBtn.style.background = '#f59e0b'; }, 3000);
+                } catch (err) {
+                    console.error('❌ Lỗi quét DOM:', err);
+                    domBtn.textContent = '❌ Lỗi!';
+                    domBtn.style.background = '#ef4444';
+                    setTimeout(() => { domBtn.textContent = '📋 Quét DOM'; domBtn.style.background = '#f59e0b'; }, 3000);
+                } finally {
+                    domBtn.disabled = false;
+                    domBtn.style.opacity = '1';
+                }
+            };
+            document.body.appendChild(domBtn);
+        }
     }
 
     function setBadge(text, color) {
@@ -264,16 +464,77 @@
     // --- DO CAPTURE (DOM html2canvas -> base64) ---
     async function doCapture() {
         setBadge('📷 Chụp ảnh (Chuẩn bị)...', '#8b5cf6');
-        let target = document.querySelector('tr.ant-table-row');
-        if (!target) {
-            target = document.querySelector('.question-content, .question-detail, .content-detail, .ql-editor, [class*="question"]');
+        
+        // Tìm target chụp ảnh theo thứ tự ưu tiên, chỉ chọn phần tử đang hiển thị thực sự
+        let target = null;
+        let targetSource = 'none';
+        
+        // Ưu tiên 1: Khung câu hỏi question-panel (chứa header + đề bài + đáp án)
+        // Selector chính xác từ DOM dump: div.question-panel (580x383)
+        const questionPanel = document.querySelector('div.question-panel');
+        if (questionPanel && questionPanel.offsetWidth > 0 && questionPanel.offsetHeight > 0) {
+            target = questionPanel;
+            targetSource = 'div.question-panel';
         }
+        
+        // Ưu tiên 2: Nội dung câu hỏi (chỉ phần content, không có header)
         if (!target) {
-            target = document.querySelector('main, .main-content, #content, .content, [role="main"]');
+            const qContent = document.querySelector('div.question-panel__content');
+            if (qContent && qContent.offsetWidth > 0 && qContent.offsetHeight > 0) {
+                target = qContent;
+                targetSource = 'div.question-panel__content';
+            }
         }
+
+        // Ưu tiên 3: Khung chi tiết câu hỏi kiểu cũ (modal/panel/whitebox — backward compatibility)
+        if (!target) {
+            const detailAreas = Array.from(document.querySelectorAll('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question.mb-3, div.question.p-4, div.question, .whitebox'));
+            const detailArea = detailAreas.find(el => {
+                if (el.offsetWidth === 0 || el.offsetHeight === 0) return false;
+                return el.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1), .flex.flex-wrap.items-center, .ql-editor, img, .katex, .MathJax');
+            });
+            if (detailArea) {
+                target = detailArea;
+                targetSource = 'detail-area-legacy';
+            }
+        }
+        
+        // Ưu tiên 4: Dòng bảng kết quả tìm kiếm (tr.ant-table-row hoặc tw-table row)
+        if (!target) {
+            const trRow = document.querySelector('tr.ant-table-row') || document.querySelector('.tw-table tr:not(:first-child)');
+            if (trRow && trRow.offsetWidth > 0 && trRow.offsetHeight > 0) {
+                target = trRow;
+                targetSource = 'table-row';
+            }
+        }
+        
+        // Ưu tiên 5: Khung soạn thảo Quill (khi đang ở chế độ edit)
+        if (!target) {
+            const qlEditor = document.querySelector('.ql-editor, .wrapper-quill');
+            if (qlEditor && qlEditor.offsetWidth > 0 && qlEditor.offsetHeight > 0) {
+                target = qlEditor;
+                targetSource = '.ql-editor/.wrapper-quill';
+            }
+        }
+
+        // Ưu tiên 6: Nội dung chính (main/content)
+        if (!target) {
+            const mainEl = document.querySelector('main, .main-content, #content, .content, [role="main"]');
+            if (mainEl && mainEl.offsetWidth > 0 && mainEl.offsetHeight > 0) {
+                target = mainEl;
+                targetSource = 'main-fallback';
+            }
+        }
+
+        // Cuối cùng: document.body
         if (!target) {
             target = document.body;
+            targetSource = 'document.body';
         }
+
+        // Log chi tiết target đã chọn để chẩn đoán
+        const rect = target.getBoundingClientRect();
+        log(`[CAPTURE DEBUG] Target: ${targetSource} | Tag: ${target.tagName} | Class: ${target.className} | offsetW: ${target.offsetWidth} | offsetH: ${target.offsetHeight} | rectW: ${Math.round(rect.width)} | rectH: ${Math.round(rect.height)}`);
 
         if (!currentSession) {
             currentSession = Date.now();
@@ -363,12 +624,13 @@
 
         try {
             setBadge('📷 Chụp ảnh (Đang vẽ)...', '#8b5cf6');
+            log(`[CAPTURE DEBUG] Gọi html2canvas với target: ${target.tagName}.${target.className} (${target.offsetWidth}x${target.offsetHeight})`);
             const capturePromise = html2canvas(target, {
                 useCORS: true,
                 allowTaint: true,
-                scale: 1.0, // Chụp tỉ lệ 1-1 tăng tốc độ vẽ
-                imageTimeout: 15000, // Chờ tải ảnh ngoài tối đa 15s
-                logging: false,
+                scale: 1.0,
+                imageTimeout: 15000,
+                logging: true, // BẬT logging html2canvas để debug trong F12 Console
                 backgroundColor: '#ffffff',
             });
 
@@ -379,15 +641,26 @@
 
             const canvas = await Promise.race([capturePromise, timeoutPromise]);
             
+            log(`[CAPTURE DEBUG] html2canvas trả về canvas: ${canvas ? canvas.width + 'x' + canvas.height : 'null'}`);
+            
+            if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                throw new Error('Kích thước canvas bằng 0 (rỗng) - Target: ' + target.tagName + '.' + target.className + ' (' + target.offsetWidth + 'x' + target.offsetHeight + ')');
+            }
+
             setBadge('📷 Chụp ảnh (Gửi Server)...', '#8b5cf6');
 
             const base64 = canvas.toDataURL('image/png');
+            if (!base64 || base64 === 'data:,' || base64 === 'data:image/png;base64,' || base64.length < 100) {
+                throw new Error('Dữ liệu ảnh html2canvas bị rỗng (data:,)');
+            }
+
             await postJSON(`${SERVER}/lms/done`, {
                 event: 'lms_capture_done',
                 session: currentSession,
                 image: base64,
             });
             setBadge('✅ Đã chụp', '#10b981');
+            return base64;
         } catch (err) {
             warn("Lỗi doCapture: " + err.message);
             // Gửi báo lỗi về server để kích hoạt fallback ngay lập tức
@@ -397,6 +670,7 @@
                 error: err.message,
             });
             setBadge(`❌ Lỗi chụp: ${err.message}`, '#ef4444');
+            throw err;
         } finally {
             // Khôi phục lại overflow ban đầu
             modifiedElements.forEach(item => {

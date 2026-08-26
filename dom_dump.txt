@@ -1,0 +1,109 @@
+=== DOM DUMP (Full Scan) ===
+URL: https://aeglobal.lotuslms.com/admin/content-manager/folder/6944beb31f3038f3d70f4dfe
+Thời gian: 16:33:34 26/8/2026
+
+--- BODY TREE (depth <= 6) ---
+<body#page-top.home.body-bg.locked.theme-default-light> (1550x1094)
+  <div> (1550x1094)
+    <div#root> (1550x1094)
+      <section.ui-admin-layout.ant-layout> (1550x1094)
+        <header.ui-header-admin.ant-layout-header> (1550x45)
+          <div.d-none> (0x0) [HIDDEN]
+          <div.flex.self-center.d-md-none.wrap-hamburger-icon.m-r-10> (0x0) [HIDDEN]
+            <i.mi.menu.mi-menu> (0x0) [HIDDEN]
+          <div.flex.self-center.m-r-10.align-items-center> (226x30)
+            <a> (120x30)
+            <div.header-school-name.m-l-10> (95x21) text="Hệ thống LMS"
+          <div.flex-grow-1.m-r-10> (1014x44)
+          <div.flex.self-center.m-r-20.d-none.d-md-block> (66x21)
+            <a> (66x17) text="Trang chủ"
+          <div.flex-center.m-r-10> (0x44) [HIDDEN]
+          <div.flex.self-center> (54x32)
+            <div.ui-user-avatar> (54x32)
+          <div.sand-p-10> (71x44)
+            <div.cursor-pointer.whitespace-nowrap.ant-dropdown-trigger> (51x21)
+          <div.m-l-5.m-t-10> (44x34)
+            <button.ant-switch> (44x22)
+        <section.ant-layout.ant-layout-has-sider> (1550x1049)
+          <aside.ui-admin-left-menu-panel.ant-layout-sider.NEW_UI_JULY_2019-left-menu.border-right.ant-layout-sider> (80x1049)
+            <div.ant-layout-sider-children> (79x994)
+            <div.ant-layout-sider-trigger> (80x48)
+          <section.bg-muted-500.ant-layout> (1470x1049)
+            <div> (1463x1172)
+    <div#fb-root> (1550x0) [HIDDEN]
+  <div#custom-css> (1550x0) [HIDDEN]
+  <div#hidden-dom> (0x0) [HIDDEN]
+  <div#aet-test-scan-btn> (32x32) text="🔍"
+  <div#aet-copy-dom-btn> (32x32) text="📋"
+  <button> (182x48) text="⚡ AUTO FILL V2"
+  <div> (1550x0) [HIDDEN]
+    <div> (1550x0) [HIDDEN]
+      <div.ant-tooltip.ant-tooltip-placement-top.ant-tooltip-hidden> (0x0) [HIDDEN]
+        <div.ant-tooltip-content> (0x0) [HIDDEN]
+          <div.ant-tooltip-arrow> (0x0) [HIDDEN]
+          <div.ant-tooltip-inner> (0x0) [HIDDEN] text="Được chia sẻ với tôi"
+  <div> (1550x0) [HIDDEN]
+    <div> (1550x0) [HIDDEN]
+      <div.ant-tooltip.ant-tooltip-placement-top.ant-tooltip-hidden> (0x0) [HIDDEN]
+        <div.ant-tooltip-content> (0x0) [HIDDEN]
+          <div.ant-tooltip-arrow> (0x0) [HIDDEN]
+          <div.ant-tooltip-inner> (0x0) [HIDDEN] text="Đã copy"
+  <transover-popup> (0x0) [HIDDEN]
+
+
+--- Phần tử chứa text "Câu hỏi" hoặc "đáp án" ---
+[MATCH] <div#question-header-6a8d01408576df6bc0099aba.question-panel__header-text> (537x17) directText="Câu hỏi chọn một đáp án"
+  [Parent 1] <div.sand-p-10.question-panel__header> (580x37)
+  [Parent 2] <div#question-wrapper-id-6a8d01408576df6bc0099aba.question-panel.bg-white.m-b-10.font-size-medium> (580x383)
+  [Parent 3] <span> (580x383)
+  [Parent 4] <span> (0x0)
+  [Parent 5] <span> (580x425)
+
+
+--- Tất cả TABLE và TR trên trang ---
+Tables: 1
+[Table 0] class="tw-table tw-table-bordered " (1198x508) rows=2
+
+
+--- Phần tử có class chứa "question/content/detail/expanded" ---
+<main> class="ant-layout-content" (1463x1172) children=1
+<div> class="layout-content-slot" (0x0) children=1
+<div> class="m-t-10 content-manager-container" (1433x1092) children=1
+<div> class="d-flex align-items-center justify-content-between" (271x39) children=2
+<span> class="ant-tree-node-content-wrapper ant-tree-node-content-wrapper-normal" (223x24) children=2
+<span> class="ant-tree-node-content-wrapper ant-tree-node-content-wrapper-normal" (223x24) children=2
+<span> class="ant-tree-node-content-wrapper ant-tree-node-content-wrapper-normal" (223x24) children=2
+<span> class="ant-tree-node-content-wrapper ant-tree-node-content-wrapper-normal" (223x24) children=2
+<div> class="content-manager-container" (1138x1092) children=2
+<div> class="ant-tabs-content ant-tabs-content-animated ant-tabs-top-content" (1118x971) children=5
+<div> class="d-flex justify-content-end align-items-center flex-gap-10 m-b-10" (1118x39) children=1
+<div> class="question-bank-search__config" (0x0) children=0
+<div> class="d-flex justify-content-between m-t-20 m-b-20" (1118x39) children=2
+<div> class="d-flex align-items-center justify-content-between m-b-10" (1118x0) children=1
+<span> class="tw-table-th-content" (9x19) children=0
+<span> class="tw-table-th-content" (58x19) children=0
+<span> class="tw-table-th-content" (117x19) children=0
+<span> class="tw-table-th-content" (57x19) children=0
+<span> class="tw-table-th-content" (93x19) children=1
+<span> class="tw-table-th-content" (101x39) children=0
+<div#question-wrapper-id-6a8d01408576df6bc0099aba> class="question-panel   bg-white m-b-10 font-size-medium" (580x383) children=2
+<div> class="sand-p-10 question-panel__header    " (580x37) children=6
+<div#question-header-6a8d01408576df6bc0099aba> class="question-panel__header-text" (537x17) children=0
+<div#portals_question-in-video-time> class="question-panel__header-question-time" (0x0) children=0
+<div#question-time-submit-6a8d01408576df6bc0099aba> class="question-panel__header-question-time-submit m-r-15" (0x0) children=0
+<div> class="question-panel__score" (8x0) children=0
+<div#question-action-6a8d01408576df6bc0099aba> class="question-panel__header-tick" (0x4) children=0
+<div> class="question-panel__content p-b-10 notranslate m-l-15 m-r-15 m-b-20 m-t-20" (550x326) children=4
+<div> class="question-content m-b-20" (550x58) children=1
+<span> class="content-display" (550x48) children=1
+<div> class="mc-text-question" (550x238) children=1
+<label> class="mc-text-question__radio-answer display-panel   ant-radio-wrapper ant-radio-wrapper-disabled" (550x48) children=2
+<span> class="content-display" (245x22) children=1
+<label> class="mc-text-question__radio-answer display-panel mc-text-question__radio-answer--selected default-match " (550x49) children=2
+<span> class="content-display" (222x23) children=1
+<label> class="mc-text-question__radio-answer display-panel   ant-radio-wrapper ant-radio-wrapper-disabled" (550x48) children=2
+<span> class="content-display" (202x22) children=1
+<label> class="mc-text-question__radio-answer display-panel   ant-radio-wrapper ant-radio-wrapper-disabled" (550x48) children=2
+<span> class="content-display" (238x22) children=1
+<div> class="ant-tooltip-content" (0x0) children=2
+<div> class="ant-tooltip-content" (0x0) children=2
