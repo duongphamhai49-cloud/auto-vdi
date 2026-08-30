@@ -225,10 +225,85 @@
             transform: translateY(-5px) scale(1.1);
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         }
+
+        /* RED OVERLAY CẢNH BÁO MẤT MẠNG */
+        #network_alert_overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(185, 28, 28, 0.96);
+            z-index: 999999;
+            overflow: hidden;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 2rem;
+            font-family: system-ui, -apple-system, sans-serif;
+            backdrop-filter: blur(8px);
+        }
+
+        .network-alert-card {
+            background: rgba(0, 0, 0, 0.55);
+            border: 3px solid #fef08a;
+            padding: 3rem 3.5rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8);
+            max-width: 650px;
+            width: 90%;
+            animation: pulseRedBorder 1.2s infinite alternate ease-in-out;
+        }
+
+        @keyframes pulseRedBorder {
+            0% {
+                transform: scale(0.98);
+                box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+            }
+
+            100% {
+                transform: scale(1.02);
+                box-shadow: 0 0 60px rgba(254, 240, 138, 0.9);
+            }
+        }
+
+        #btn_stop_network_alert {
+            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            color: white;
+            font-size: 1.6rem;
+            font-weight: 800;
+            padding: 1.2rem 3rem;
+            border: 4px solid #fef08a;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            outline: none;
+            margin-top: 1.5rem;
+        }
+
+        #btn_stop_network_alert:hover {
+            transform: scale(1.06);
+            box-shadow: 0 15px 40px rgba(254, 240, 138, 0.7);
+            background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%);
+        }
     </style>
 </head>
 
 <body>
+
+    <!-- OVERLAY CẢNH BÁO MẤT MẠNG -->
+    <div id="network_alert_overlay">
+        <div class="network-alert-card">
+            <div style="font-size: 5.5rem; margin-bottom: 1rem; line-height: 1;">🚨</div>
+            <h1
+                style="font-size: 2.5rem; font-weight: 900; color: #fef08a; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 2px;">
+                NETWORK DISCONNECTED</h1>
+            <button id="btn_stop_network_alert" onclick="stopNetworkLossAlert()">
+                🔴 STOP
+            </button>
+        </div>
+    </div>
 
     <div class="header" style="margin-bottom: 1rem;">
         <h1 style="letter-spacing: 2px;">AUTO EDIT TOOL</h1>
@@ -376,7 +451,7 @@
 
                 <!-- NÚT CHẠY TỰ ĐỘNG (To nhất) -->
                 <button id="batchRunBtn" onclick="startBatchProcess()"
-                    style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 0.75rem 1.5rem; border: none; border-radius: 0.25rem; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; flex: 1; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-size: 1.1rem;">
+                    style="background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); padding: 0.75rem 1.5rem; border: none; border-radius: 0.25rem; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; flex: 1; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-size: 1.1rem;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
@@ -388,7 +463,24 @@
 
             <div
                 style="display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; justify-content: space-between;">
-                <span style="color: var(--text-secondary); font-size: 0.8rem;">📧 Tự động gửi Gmail khi xong/dừng</span>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="color: var(--text-secondary); font-size: 0.8rem;">📧 Tự động gửi Gmail khi
+                        xong/dừng</span>
+                    <div style="display: flex; align-items: center; gap: 0.35rem;">
+                        <!-- NÚT TEST ÂM THANH HOÀN TẤT (XANH LÁ - ICON PHÁO HOA 🎉 - 10S) -->
+                        <button type="button" id="testSoundBtn" onclick="toggleBatchCompletionSoundTest()"
+                            title="Test âm thanh hoàn tất (10s - Bấm lại để dừng)"
+                            style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-weight: bold; cursor: pointer; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                            🎉
+                        </button>
+                        <!-- NÚT TEST ÂM THANH MẤT MẠNG (ĐỎ - ICON CÒI 🚨 - 10S) -->
+                        <button type="button" id="testSirenBtn" onclick="toggleSirenTest()"
+                            title="Test âm thanh mất mạng (10s - Bấm lại để dừng)"
+                            style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-weight: bold; cursor: pointer; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                            🚨
+                        </button>
+                    </div>
+                </div>
                 <div id="search_status"
                     style="color: var(--text-secondary); font-size: 0.9rem; text-align: right; font-weight: bold;">Chưa
                     chạy...</div>
@@ -414,12 +506,15 @@
                 style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 0.75rem; margin-top: 0.75rem; flex-direction: column; gap: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span
-                        style="font-size: 0.85rem; font-weight: bold; color: #ef4444; display: flex; align-items: center; gap: 0.3rem;">
-                        ❌ Danh sách ID bị lỗi (không thể biên tập):
+                        style="font-size: 0.85rem; font-weight: bold; color: #ef4444; display: flex; align-items: center; gap: 0.4rem;">
+                        ⚠️ Danh sách ID chưa thành công:
+                        <span id="failed_ids_count_badge"
+                            style="background: #ef4444; color: white; font-size: 0.75rem; padding: 0.1rem 0.5rem; border-radius: 10px; font-weight: bold;">0
+                            ID</span>
                     </span>
                     <button type="button" onclick="copyFailedIdsList()"
                         style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                        📋 Copy danh sách ID lỗi
+                        📋 Copy danh sách ID chưa thành công
                     </button>
                 </div>
                 <textarea id="failed_ids_list_textarea" rows="4" readonly
@@ -501,7 +596,7 @@
 
     <script>
         // Khôi phục Prompt mặc định NBLM từ localStorage khi tải trang
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const savedPrompt = localStorage.getItem('nblm_default_prompt');
             if (savedPrompt !== null) {
                 const inp = document.getElementById('nblm_default_prompt_input');
@@ -570,9 +665,13 @@
             if (chkAutoRetry) chkAutoRetry.disabled = isLocked;
         }
 
+        let userManuallyStopped = false;
+
         function stopProcess(btn) {
+            userManuallyStopped = true;
             batchRunning = false; // Dừng ngay lập tức ở frontend
             setReEditLock(false);
+            stopBatchCompletionSound(); // Ngắt ngay âm thanh hoàn tất nếu đang phát
             const originalBg = btn.style.background;
             btn.style.background = '#7f1d1d'; // Đỏ sậm khi bấm
             document.getElementById('search_status').innerText = 'Đang huỷ quy trình...';
@@ -593,21 +692,329 @@
         }
 
         // ==============================================
-        // CHẠY TỰ ĐỘNG (BATCH PROCESS)
+        // CHẠY TỰ ĐỘNG (BATCH PROCESS) & CẢNH BÁO MẤT MẠNG
         // ==============================================
         let batchRunning = false;
+        let globalAllInitialIds = [];
+        let globalSuccessfulIds = new Set();
 
-        function showFailedIdsSummary(failedIds) {
+        let sirenAudioContext = null;
+        let sirenOscillator = null;
+        let sirenGain = null;
+        let sirenTimer = null;
+        let sirenCycleTimer = null;
+        let sirenAudioTimeout = null;
+
+        function startEmergencySirenAudio() {
+            try {
+                stopEmergencySirenAudioOnly();
+                sirenAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                sirenOscillator = sirenAudioContext.createOscillator();
+                sirenGain = sirenAudioContext.createGain();
+
+                sirenOscillator.type = 'sawtooth';
+                sirenOscillator.frequency.setValueAtTime(800, sirenAudioContext.currentTime);
+                sirenGain.gain.setValueAtTime(0.3, sirenAudioContext.currentTime);
+
+                sirenOscillator.connect(sirenGain);
+                sirenGain.connect(sirenAudioContext.destination);
+                sirenOscillator.start();
+
+                let high = true;
+                sirenTimer = setInterval(() => {
+                    if (sirenAudioContext && sirenOscillator) {
+                        const now = sirenAudioContext.currentTime;
+                        if (high) {
+                            sirenOscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+                        } else {
+                            sirenOscillator.frequency.exponentialRampToValueAtTime(600, now + 0.25);
+                        }
+                        high = !high;
+                    }
+                }, 300);
+            } catch (e) {
+                console.warn('Không thể khởi tạo Web Audio siren:', e);
+            }
+        }
+
+        function stopEmergencySirenAudioOnly() {
+            if (sirenTimer) {
+                clearInterval(sirenTimer);
+                sirenTimer = null;
+            }
+            if (sirenOscillator) {
+                try { sirenOscillator.stop(); } catch (e) { }
+                try { sirenOscillator.disconnect(); } catch (e) { }
+                sirenOscillator = null;
+            }
+            if (sirenAudioContext) {
+                try { sirenAudioContext.close(); } catch (e) { }
+                sirenAudioContext = null;
+            }
+        }
+
+        let sirenCycleCount = 0;
+
+        function startEmergencySirenCycle() {
+            stopEmergencySiren(); // Xóa sạch timer cũ nếu có
+            sirenCycleCount = 0;
+
+            function play10SecBurst() {
+                sirenCycleCount++;
+                startEmergencySirenAudio();
+                if (sirenAudioTimeout) clearTimeout(sirenAudioTimeout);
+                sirenAudioTimeout = setTimeout(() => {
+                    stopEmergencySirenAudioOnly();
+                }, 10000); // Âm thanh kêu trong 10 giây rồi ngắt
+
+                // Đã đủ 5 lần thì ngắt timer chu kỳ
+                if (sirenCycleCount >= 5) {
+                    if (sirenCycleTimer) {
+                        clearInterval(sirenCycleTimer);
+                        sirenCycleTimer = null;
+                    }
+                }
+            }
+
+            // Kêu 10s lần 1 lập tức
+            play10SecBurst();
+
+            // Chu kỳ: Kêu 10s + Nghỉ 60s = 70s tổng chu kỳ (Tối đa 5 lần)
+            sirenCycleTimer = setInterval(() => {
+                if (sirenCycleCount < 5) {
+                    play10SecBurst();
+                } else {
+                    if (sirenCycleTimer) {
+                        clearInterval(sirenCycleTimer);
+                        sirenCycleTimer = null;
+                    }
+                }
+            }, 70000);
+        }
+
+        function stopEmergencySiren() {
+            if (sirenCycleTimer) {
+                clearInterval(sirenCycleTimer);
+                sirenCycleTimer = null;
+            }
+            if (sirenAudioTimeout) {
+                clearTimeout(sirenAudioTimeout);
+                sirenAudioTimeout = null;
+            }
+            stopEmergencySirenAudioOnly();
+        }
+
+        let completionAudioCtx = null;
+        let completionAudioTimeout = null;
+
+        function stopBatchCompletionSound() {
+            if (completionAudioTimeout) {
+                clearTimeout(completionAudioTimeout);
+                completionAudioTimeout = null;
+            }
+            if (completionAudioCtx) {
+                try { completionAudioCtx.close(); } catch (e) { }
+                completionAudioCtx = null;
+            }
+        }
+
+        function playBatchCompletionSound(durationSeconds = 10.0) {
+            try {
+                stopBatchCompletionSound();
+                stopSirenTest();
+
+                completionAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const startTime = completionAudioCtx.currentTime;
+                const totalDuration = durationSeconds; // Mặc định kéo dài 10.0 giây
+
+                // Giai điệu chuông lặp tuần hoàn nhịp nhàng (C5 - G5 - A5 - F5)
+                const pattern = [523.25, 783.99, 880.00, 698.46];
+                const step = 0.25; // Mỗi 0.25 giây đổi 1 nốt
+
+                let t = 0;
+                let stepCount = 0;
+
+                while (t < totalDuration - 0.15) {
+                    const freq = pattern[stepCount % pattern.length];
+                    const osc = completionAudioCtx.createOscillator();
+                    const gain = completionAudioCtx.createGain();
+
+                    osc.type = 'triangle'; // Sound sóng tam giác ngân như chuông
+                    osc.frequency.setValueAtTime(freq, startTime + t);
+
+                    gain.gain.setValueAtTime(0, startTime + t);
+                    gain.gain.linearRampToValueAtTime(0.48, startTime + t + 0.03); // Tăng biên độ âm lượng cho to rõ bằng âm đỏ
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + t + step + 0.1);
+
+                    osc.connect(gain);
+                    gain.connect(completionAudioCtx.destination);
+
+                    osc.start(startTime + t);
+                    osc.stop(startTime + t + step + 0.12);
+
+                    t += step;
+                    stepCount++;
+                }
+
+                // Tự động ngắt hoàn toàn AudioContext sau đúng durationSeconds giây
+                completionAudioTimeout = setTimeout(() => {
+                    stopBatchCompletionSound();
+                }, durationSeconds * 1000);
+            } catch (e) {
+                console.warn('Không thể phát âm thanh hoàn tất batch:', e);
+            }
+        }
+
+        function toggleBatchCompletionSoundTest() {
+            if (completionAudioCtx) {
+                stopBatchCompletionSound();
+            } else {
+                playBatchCompletionSound(10.0);
+            }
+        }
+
+        let isTestingSiren = false;
+        let sirenTestTimeout = null;
+
+        function stopSirenTest() {
+            isTestingSiren = false;
+            if (sirenTestTimeout) {
+                clearTimeout(sirenTestTimeout);
+                sirenTestTimeout = null;
+            }
+            stopEmergencySirenAudioOnly();
+        }
+
+        function toggleSirenTest() {
+            if (isTestingSiren || sirenAudioContext) {
+                stopSirenTest();
+                stopEmergencySiren();
+            } else {
+                stopBatchCompletionSound();
+                isTestingSiren = true;
+                startEmergencySirenAudio();
+                sirenTestTimeout = setTimeout(() => {
+                    stopSirenTest();
+                }, 10000); // Phát 10s
+            }
+        }
+
+        function handleNetworkLoss() {
+            if (!batchRunning) return;
+            userManuallyStopped = true;
+            batchRunning = false;
+            stopBatchCompletionSound(); // Ngắt ngay bất kỳ âm hoàn tất nào
+
+            // Gửi lệnh dừng khẩn cấp về Python Server lập tức
+            fetch('http://localhost:5050/stop', { method: 'POST' }).catch(() => { });
+
+            const textarea = document.getElementById('id_list_input');
+            if ((!globalAllInitialIds || globalAllInitialIds.length === 0) && textarea && textarea.value.trim()) {
+                globalAllInitialIds = textarea.value.split('\n').map(id => id.trim()).filter(id => id !== '');
+            }
+
+            // Thu thập danh sách các câu chưa thành công
+            const remainingIds = globalAllInitialIds.filter(id => !globalSuccessfulIds.has(id));
+
+            // Hiển thị khung Danh sách ID chưa thành công ở dưới
+            showFailedIdsSummary();
+
+            // Log console UI
+            addConsoleLog(`🚨 MẤT KẾT NỐI INTERNET! Đã hủy quy trình. Có ${remainingIds.length} ID chưa thành công.`, 'ERROR');
+            const status = document.getElementById('search_status');
+            if (status) {
+                status.style.color = 'var(--error)';
+                status.innerText = `🚨 Đã hủy do MẤT MẠNG (${remainingIds.length} ID chưa thành công)`;
+            }
+
+            // Mở overlay đỏ & còi báo động theo chu kỳ (Kêu 10s - Nghỉ 60s)
+            const overlay = document.getElementById('network_alert_overlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
+            document.body.style.overflow = 'hidden';
+            startEmergencySirenCycle();
+
+            // Gửi báo cáo kết thúc tới Server để ghi History file + thông báo Discord/Gmail
+            try {
+                fetch('http://localhost:5050/batch_end', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        success_count: globalSuccessfulIds ? globalSuccessfulIds.size : 0,
+                        total_count: globalAllInitialIds.length,
+                        reason: 'network_loss',
+                        unfinished_ids: remainingIds
+                    })
+                }).catch(() => { });
+            } catch (e) { }
+        }
+
+        function stopNetworkLossAlert() {
+            userManuallyStopped = true;
+            batchRunning = false;
+            setReEditLock(false);
+            stopEmergencySiren();
+            stopBatchCompletionSound();
+
+            // Gửi lệnh dừng khẩn cấp về Python Server ngắt hoàn toàn mọi luồng lập tức
+            fetch('http://localhost:5050/stop', { method: 'POST' }).catch(() => { });
+
+            document.body.style.overflow = '';
+            const overlay = document.getElementById('network_alert_overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+
+            // Tính toán số lượng ID
+            const textarea = document.getElementById('id_list_input');
+            if ((!globalAllInitialIds || globalAllInitialIds.length === 0) && textarea && textarea.value.trim()) {
+                globalAllInitialIds = textarea.value.split('\n').map(id => id.trim()).filter(id => id !== '');
+            }
+
+            const successCount = globalSuccessfulIds ? globalSuccessfulIds.size : 0;
+            const remainingIds = globalAllInitialIds.filter(id => !globalSuccessfulIds.has(id));
+            const remainingCount = remainingIds.length;
+            const totalCount = globalAllInitialIds.length;
+
+            // Ghi log chi tiết thông số lúc mất mạng
+            addConsoleLog(`🚨 NETWORK DISCONNECTED: ✅ Completed: ${successCount} - 🔄 Remaining: ${remainingCount} - 📦 Total: ${totalCount}`, 'WARN');
+
+            // Reset nút về CHẠY TỰ ĐỘNG màu tím/hồng ban đầu
+            const btn = document.getElementById('batchRunBtn');
+            if (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> CHẠY TỰ ĐỘNG`;
+                btn.style.background = 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)';
+            }
+            const searchBtn = document.getElementById('searchNextIdBtn');
+            if (searchBtn) {
+                searchBtn.disabled = false;
+                searchBtn.style.opacity = '1';
+            }
+        }
+
+        window.addEventListener('offline', () => {
+            handleNetworkLoss();
+        });
+
+        function showFailedIdsSummary() {
             const summaryBox = document.getElementById('failed_ids_summary_box');
             const textarea = document.getElementById('failed_ids_list_textarea');
+            const countBadge = document.getElementById('failed_ids_count_badge');
             if (!summaryBox || !textarea) return;
 
-            if (failedIds && failedIds.length > 0) {
-                textarea.value = failedIds.join('\n');
+            const unfinishedIds = globalAllInitialIds.filter(id => !globalSuccessfulIds.has(id));
+
+            if (unfinishedIds && unfinishedIds.length > 0) {
+                textarea.value = unfinishedIds.join('\n');
+                if (countBadge) countBadge.innerText = unfinishedIds.length + ' ID';
                 summaryBox.style.display = 'flex';
-                addConsoleLog(`❌ Có ${failedIds.length} ID bị lỗi chốt cuối cùng: ${failedIds.join(', ')}`, 'ERROR');
+                addConsoleLog(`⚠️ Có ${unfinishedIds.length} ID chưa thành công: ${unfinishedIds.join(', ')}`, 'WARN');
             } else {
                 textarea.value = '';
+                if (countBadge) countBadge.innerText = '0 ID';
                 summaryBox.style.display = 'none';
                 addConsoleLog(`🎉 Tuyệt vời! Tất cả các câu trong phiếu đều biên tập thành công.`, 'OK');
             }
@@ -617,7 +1024,7 @@
             const textarea = document.getElementById('failed_ids_list_textarea');
             if (textarea && textarea.value.trim()) {
                 navigator.clipboard.writeText(textarea.value.trim()).then(() => {
-                    alert('Đã copy danh sách ID lỗi vào Clipboard!');
+                    alert('Đã copy danh sách ID chưa thành công vào Clipboard!');
                 });
             }
         }
@@ -642,6 +1049,14 @@
 
             const totalIds = ids.length;
 
+            globalAllInitialIds = [...ids];
+            globalSuccessfulIds.clear();
+
+            if (!navigator.onLine) {
+                handleNetworkLoss();
+                return;
+            }
+
             if (!confirm(`Bắt đầu chạy tự động ${totalIds} ID?\n📧 Gmail sẽ tự động gửi thông báo khi xong/dừng.`)) {
                 return;
             }
@@ -663,6 +1078,7 @@
 
             setReEditLock(true);
             batchRunning = true;
+            userManuallyStopped = false;
             let successCount = 0;
             let processedCount = 0;
             const btn = document.getElementById('batchRunBtn');
@@ -718,6 +1134,11 @@
             let wasStopped = false;
             for (let stt = 1; stt <= totalIds; stt++) {
                 if (!batchRunning) {
+                    wasStopped = true;
+                    break;
+                }
+                if (!navigator.onLine) {
+                    handleNetworkLoss();
                     wasStopped = true;
                     break;
                 }
@@ -791,6 +1212,7 @@
                                 if (pasteData.status === 'success') {
                                     idStatus = 'Thành công';
                                     successCount++;
+                                    globalSuccessfulIds.add(currentId);
                                 } else {
                                     errorDetail = `Loi dan LMS: ${pasteData.message}`;
                                 }
@@ -798,10 +1220,19 @@
                                 errorDetail = 'Khong parse duoc noi dung NBLM';
                             }
                         }
+                    } else if (searchData.status === 'network_error' || !navigator.onLine) {
+                        handleNetworkLoss();
+                        wasStopped = true;
+                        break;
                     } else {
                         errorDetail = `Loi search_id: ${searchData.message || 'Khong co noi dung'}`;
                     }
                 } catch (e) {
+                    if (!navigator.onLine || e.name === 'TypeError') {
+                        handleNetworkLoss();
+                        wasStopped = true;
+                        break;
+                    }
                     errorDetail = `Loi ket noi: ${e}`;
                 }
 
@@ -841,8 +1272,10 @@
                 }
 
                 // Cap nhat textarea (xoa ID da xu ly)
-                textarea.value = ids.slice(stt).join('\n');
-                document.getElementById('id_count_badge').innerText = (totalIds - stt) + ' ID';
+                if (batchRunning) {
+                    textarea.value = ids.slice(stt).join('\n');
+                    document.getElementById('id_count_badge').innerText = (totalIds - stt) + ' ID';
+                }
 
                 // Cap nhat tien do
                 const finalPct = Math.round(stt / totalIds * 100);
@@ -914,6 +1347,7 @@
                                     if (pasteData.status === 'success') {
                                         idStatus = 'Thành công';
                                         successCount++;
+                                        globalSuccessfulIds.add(item.id);
                                         addConsoleLog(`✅ [Lượt 2 - ReEdit] Sửa thành công câu ${item.id}!`, 'OK');
                                     } else {
                                         errorDetail = `Loi dan LMS: ${pasteData.message}`;
@@ -922,10 +1356,19 @@
                                     errorDetail = 'Khong parse duoc noi dung NBLM';
                                 }
                             }
+                        } else if (searchData.status === 'network_error' || !navigator.onLine) {
+                            handleNetworkLoss();
+                            wasStopped = true;
+                            break;
                         } else {
                             errorDetail = `Loi search_id: ${searchData.message || 'Khong co noi dung'}`;
                         }
                     } catch (e) {
+                        if (!navigator.onLine || e.name === 'TypeError') {
+                            handleNetworkLoss();
+                            wasStopped = true;
+                            break;
+                        }
                         errorDetail = `Loi ket noi: ${e}`;
                     }
 
@@ -954,9 +1397,18 @@
                 }
             }
 
+            userManuallyStopped = false;
+
             // 4. Kết thúc batch: ghi footer + TỰ ĐỘNG gửi Gmail
-            const reason = wasStopped ? 'stopped' : 'completed';
+            const reason = (wasStopped || userManuallyStopped) ? 'stopped' : 'completed';
+
+            // Kích hoạt âm thanh hoàn tất NGAY LẬP TỨC (Chỉ phát khi hoàn thành trọn vẹn, không dừng thủ công, không mất mạng)
+            if (!wasStopped && !userManuallyStopped && navigator.onLine) {
+                playBatchCompletionSound();
+            }
+
             try {
+                const unfinishedIds = globalAllInitialIds.filter(id => !globalSuccessfulIds.has(id));
                 const endRes = await fetch('http://localhost:5050/batch_end', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -964,6 +1416,7 @@
                         success_count: successCount,
                         total_count: totalIds,
                         reason: reason,
+                        unfinished_ids: unfinishedIds,
                         pending_failures: retryQueue.map(item => ({ stt: item.stt, id: item.id, content: '' }))
                     })
                 });
@@ -971,9 +1424,7 @@
                 if (endData.email_sent) {
                     batchLog(`📧 Đã tự động gửi email thông báo!`);
                 }
-                if (endData.failed_ids) {
-                    showFailedIdsSummary(endData.failed_ids);
-                }
+                showFailedIdsSummary();
             } catch (e) {
                 batchLog(`⚠️ Lỗi kết thúc batch: ${e}`);
             }
@@ -996,7 +1447,9 @@
             setReEditLock(false);
             btn.disabled = false;
             btn.style.opacity = '1';
+
             btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> CHẠY TỰ ĐỘNG`;
+            btn.style.background = 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)';
             if (searchBtn) {
                 searchBtn.disabled = false;
                 searchBtn.style.opacity = '1';
@@ -1097,6 +1550,7 @@
         document.getElementById('id_list_input').addEventListener('input', (e) => {
             const ids = e.target.value.split('\n').map(id => id.trim()).filter(id => id !== '');
             document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+            globalAllInitialIds = [...ids];
         });
 
         async function testRealSystem() {
@@ -1468,6 +1922,7 @@
                 res = res.replace(/\\implies\b/g, '\\Rightarrow');
                 res = res.replace(/\\iff\b/g, '\\Leftrightarrow');
                 res = res.replace(/\\vec(?![a-zA-Z])/g, '\\overrightarrow');
+                res = res.replace(/\{,\}/g, ',');
                 return res;
             }
 
@@ -1907,8 +2362,8 @@
             addField('Đề bài', deBai, '--btn-debai', 'ĐỀ BÀI', 'debai');
 
             if (options.length > 0) {
-                const labels = isTrueFalse 
-                    ? options.map((_, i) => `Khẳng định ${i + 1}`) 
+                const labels = isTrueFalse
+                    ? options.map((_, i) => `Khẳng định ${i + 1}`)
                     : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
                 const btnPrefix = isTrueFalse ? 'KĐ' : 'LC';
                 options.forEach((opt, idx) => {
@@ -2104,6 +2559,14 @@
             let ids = textarea.value.split('\n').map(id => id.trim()).filter(id => id !== '');
             const totalIds = ids.length;
 
+            globalAllInitialIds = [...ids];
+            globalSuccessfulIds.clear();
+
+            if (!navigator.onLine) {
+                handleNetworkLoss();
+                return;
+            }
+
             const isReEdit = document.getElementById('reedit_mode_checkbox').checked;
             const backupFolder = document.getElementById('reedit_folder_input').value.trim();
 
@@ -2195,6 +2658,11 @@
                     wasStopped = true;
                     break;
                 }
+                if (!navigator.onLine) {
+                    handleNetworkLoss();
+                    wasStopped = true;
+                    break;
+                }
 
                 // 1. Tìm slot rảnh -> Nạp câu Lượt 1 hoặc Lượt 2
                 let idleSlot = slots.find(s => s.state === 'idle');
@@ -2277,10 +2745,16 @@
                                 idleSlot.state = 'idle';
                                 idleSlot.currentJob = null;
                                 idleSlot.currentId = null;
-                                textarea.value = ids.join('\n');
-                                document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                                if (batchRunning) {
+                                    textarea.value = ids.join('\n');
+                                    document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                                }
                                 progressBar.style.width = Math.round((nextStt - 1) / totalIds * 100) + '%';
                                 continue;
+                            } else if (startData.status === 'network_error' || !navigator.onLine) {
+                                handleNetworkLoss();
+                                wasStopped = true;
+                                break;
                             } else if (startData.status === 'success') {
                                 idleSlot.state = 'generating';
                                 idleSlot.generateStartTime = Date.now();
@@ -2290,6 +2764,11 @@
                                 throw new Error(startData.message || "Lỗi nạp câu");
                             }
                         } catch (err) {
+                            if (!navigator.onLine || err.name === 'TypeError') {
+                                handleNetworkLoss();
+                                wasStopped = true;
+                                break;
+                            }
                             log(`[Slot ${idleSlot.index}] ❌ Lỗi khi nạp ${jobToRun.id}: ${err.message}`);
                             if (jobToRun.round === 2 || !autoRetry) {
                                 await logBatchItem(jobToRun.stt, jobToRun.id, 'Thất bại', '', 'N/A', `Lỗi nạp NBLM: ${err.message}`, idleSlot.startTime);
@@ -2304,8 +2783,10 @@
                             idleSlot.currentId = null;
                         }
 
-                        textarea.value = ids.join('\n');
-                        document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                        if (batchRunning) {
+                            textarea.value = ids.join('\n');
+                            document.getElementById('id_count_badge').innerText = ids.length + ' ID';
+                        }
                         progressBar.style.width = Math.round((nextStt - 1) / totalIds * 100) + '%';
                         document.getElementById('batch_progress_wrapper').scrollIntoView({ behavior: 'smooth', block: 'center' });
                         continue;
@@ -2366,6 +2847,7 @@
                                 if (fillData.status === 'success') {
                                     fillOk = true;
                                     successCount++;
+                                    globalSuccessfulIds.add(targetSlot.currentId);
                                     log(`[Slot ${targetSlot.index}] ✅ Điền LMS thành công câu ${targetSlot.currentId}!`);
                                 } else {
                                     errorDetail = fillData.message || "Lỗi điền LMS";
@@ -2435,8 +2917,15 @@
             }
 
             // 3. Kết thúc batch
-            const reason = wasStopped ? 'stopped' : 'completed';
+            const reason = (wasStopped || userManuallyStopped) ? 'stopped' : 'completed';
+
+            // Kích hoạt âm thanh hoàn tất NGAY LẬP TỨC (Chỉ phát khi hoàn thành trọn vẹn, không dừng thủ công, không mất mạng)
+            if (!wasStopped && !userManuallyStopped && navigator.onLine) {
+                playBatchCompletionSound();
+            }
+
             try {
+                const unfinishedIds = globalAllInitialIds.filter(id => !globalSuccessfulIds.has(id));
                 const endRes = await fetch('http://localhost:5050/batch_end', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2444,13 +2933,12 @@
                         success_count: successCount,
                         total_count: totalIds,
                         reason: reason,
+                        unfinished_ids: unfinishedIds,
                         pending_failures: pendingFailures
                     })
                 });
                 const endData = await endRes.json();
-                if (endData && endData.failed_ids) {
-                    showFailedIdsSummary(endData.failed_ids);
-                }
+                showFailedIdsSummary();
             } catch (e) { }
 
             if (wasStopped) {
@@ -2469,7 +2957,9 @@
             setReEditLock(false);
             btn.disabled = false;
             btn.style.opacity = '1';
+
             btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg> CHẠY TỰ ĐỘNG`;
+            btn.style.background = 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)';
             if (searchBtn) {
                 searchBtn.disabled = false;
                 searchBtn.style.opacity = '1';

@@ -1273,6 +1273,7 @@
                 res = res.replace(/\\implies\b/g, '\\Rightarrow');
                 res = res.replace(/\\iff\b/g, '\\Leftrightarrow');
                 res = res.replace(/\\vec(?![a-zA-Z])/g, '\\overrightarrow');
+                res = res.replace(/\{,\}/g, ',');
                 return res;
             }
 
@@ -1708,8 +1709,8 @@
             addField('Đề bài', deBai, '--btn-debai', 'ĐỀ BÀI', 'debai');
 
             if (options.length > 0) {
-                const labels = isTrueFalse 
-                    ? options.map((_, i) => `Khẳng định ${i + 1}`) 
+                const labels = isTrueFalse
+                    ? options.map((_, i) => `Khẳng định ${i + 1}`)
                     : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'];
                 const btnPrefix = isTrueFalse ? 'KĐ' : 'LC';
                 options.forEach((opt, idx) => {

@@ -3,6 +3,7 @@ import json
 import time
 import os
 import smtplib
+import socket
 import threading
 import requests
 import base64
@@ -16,6 +17,13 @@ import pyautogui
 import pyperclip
 import ctypes
 import tkinter as tk
+
+def is_internet_connected():
+    try:
+        socket.create_connection(("8.8.8.8", 53), timeout=2)
+        return True
+    except OSError:
+        return False
 
 # ==========================================
 # CẤU HÌNH THEO DÕI QUA DISCORD
@@ -450,12 +458,15 @@ def format_duration(seconds):
     parts.append(f"{secs} giây")
     return " ".join(parts)
 
+history_finalized = False
+
 def create_history_file(total_ids, custom_filename=None, is_reedit=False):
     """Tạo file history mới và ghi header, đồng thời tạo thư mục backup tương ứng (nếu không phải ReEdit)."""
-    global current_history_file, current_backup_dir, current_batch_start_time, current_failed_items, id_stt_map
+    global current_history_file, current_backup_dir, current_batch_start_time, current_failed_items, id_stt_map, history_finalized
     current_batch_start_time = time.time()
     current_failed_items = []
     id_stt_map = {}
+    history_finalized = False
     
     if custom_filename and custom_filename.strip():
         filename = custom_filename.strip()
@@ -592,15 +603,22 @@ def append_history_entry(stt, question_id, status, content):
     
     log(f"Đã ghi history: STT {stt} - {question_id} - {clean_status}", "INFO")
 
-def finalize_history(success_count, total_count):
+def finalize_history(success_count, total_count, unfinished_ids=None):
     """Ghi footer vào cuối file history."""
-    global current_history_file, current_batch_start_time, current_failed_items
-    if not current_history_file:
+    global current_history_file, current_batch_start_time, current_failed_items, history_finalized
+    if not current_history_file or history_finalized:
         return
+    history_finalized = True
         
     end_time = time.time()
     total_time_seconds = end_time - current_batch_start_time if current_batch_start_time > 0 else 0
     duration_str = format_duration(total_time_seconds)
+    
+    final_unfinished = []
+    if unfinished_ids and isinstance(unfinished_ids, list):
+        final_unfinished = [str(x).strip() for x in unfinished_ids if str(x).strip()]
+    elif current_failed_items:
+        final_unfinished = [item['id'] for item in current_failed_items]
     
     with open(current_history_file, 'a', encoding='utf-8') as f:
         f.write("\n")
@@ -609,12 +627,12 @@ def finalize_history(success_count, total_count):
         f.write(f"Tổng thời gian: {duration_str}\n")
         f.write(f"Hoàn thành lúc: {time.strftime('%d/%m/%Y %H:%M:%S')}\n")
         f.write("=" * 30 + "\n")
-        f.write("DANH SÁCH CÁC CÂU LỖI/THẤT BẠI (ĐỂ BIÊN TẬP LẠI):\n")
-        if not current_failed_items:
-            f.write("Không có câu nào bị lỗi.\n")
+        f.write("DANH SÁCH CÁC CÂU CHƯA THÀNH CÔNG (ĐỂ BIÊN TẬP LẠI):\n")
+        if not final_unfinished:
+            f.write("Không có câu nào chưa thành công.\n")
         else:
-            for item in current_failed_items:
-                f.write(f"{item['id']}\n")
+            for uid in final_unfinished:
+                f.write(f"{uid}\n")
         f.write("=" * 30 + "\n")
     
     log(f"Đã hoàn tất file history: {success_count}/{total_count}", "OK")
@@ -897,21 +915,19 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 return
             
             try:
+                img_loaded_from_backup = False
                 if is_reedit:
                     log(f"=== [ReEdit Mode] BẮT ĐẦU NẠP ẢNH BACKUP ID: {question_id} ===", "STATUS")
-                    img_ok = find_and_load_backup_image(backup_folder, question_id)
-                    if not img_ok:
-                        log(f"⚠️ KHÔNG TÌM THẤY ẢNH BACKUP CHO ID {question_id} -> BỎ QUA (SKIP)", "WARN")
-                        self.wfile.write(json.dumps({
-                            "status": "skipped",
-                            "message": f"Không tìm thấy ảnh backup cho ID {question_id} trong {backup_folder}"
-                        }).encode('utf-8'))
-                        return
-                    
+                    img_loaded_from_backup = find_and_load_backup_image(backup_folder, question_id)
+
+                if is_reedit and img_loaded_from_backup:
                     log("Gửi lệnh mở Edit (2 bút chì) cho Tampermonkey...", "STATUS")
                     session_id_edit, evt_edit = enqueue_lms_command('edit')
                 else:
-                    log(f"=== BẮT ĐẦU XỬ LÝ ID: {question_id} ===", "STATUS")
+                    if is_reedit:
+                        log(f"⚠️ Không tìm thấy ảnh backup cho ID {question_id} trong '{backup_folder}'. Tự động chuyển sang Tìm kiếm ID và Chụp ảnh trực tiếp trên LMS...", "WARN")
+                    else:
+                        log(f"=== BẮT ĐẦU XỬ LÝ ID: {question_id} ===", "STATUS")
                     
                     # 1. Gọi Tampermonkey qua DOM để tìm kiếm ID (Không scroll, click thẳng input)
                     log(f"Tìm kiếm ID {question_id} trên LMS...", "STATUS")
@@ -1290,7 +1306,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log(f"LỖI HỆ THỐNG TẠI SEARCH_ID: {e}", "ERROR")
                 if not STOP_FLAG:
                     fallback_cancel_routine()
-                self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
+                err_status = "network_error" if not is_internet_connected() else "error"
+                self.wfile.write(json.dumps({"status": err_status, "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
 
         elif path == '/start_nblm_job':
             content_length = int(self.headers.get('Content-Length', 0))
@@ -1327,18 +1344,18 @@ class CaptureHandler(BaseHTTPRequestHandler):
             
             try:
                 active_location = 'LMS'
+                img_loaded_from_backup = False
                 if is_reedit:
                     log(f"=== [ReEdit Mode] BẮT ĐẦU NẠP ẢNH BACKUP ID: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
-                    img_ok = find_and_load_backup_image(backup_folder, question_id)
-                    if not img_ok:
-                        log(f"⚠️ KHÔNG TÌM THẤY ẢNH BACKUP CHO ID {question_id} -> BỎ QUA (SKIP)", "WARN")
-                        self.wfile.write(json.dumps({
-                            "status": "skipped",
-                            "message": f"Không tìm thấy ảnh backup cho ID {question_id} trong {backup_folder}"
-                        }).encode('utf-8'))
-                        return
+                    img_loaded_from_backup = find_and_load_backup_image(backup_folder, question_id)
+
+                if is_reedit and img_loaded_from_backup:
+                    log("Đã nạp thành công ảnh backup từ máy vào Clipboard.", "OK")
                 else:
-                    log(f"=== BẮT ĐẦU NẠP ID SONG SONG: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
+                    if is_reedit:
+                        log(f"⚠️ Không tìm thấy ảnh backup cho ID {question_id} trong '{backup_folder}'. Tự động chuyển sang Tìm kiếm ID và Chụp ảnh trực tiếp trên LMS...", "WARN")
+                    else:
+                        log(f"=== BẮT ĐẦU NẠP ID SONG SONG: {question_id} vào NBLM Tab {nblm_tab} ===", "STATUS")
                     
                     # 1. Chuyển sang tab LMS và tìm kiếm
                     GUIHelper.switch_to_tab(lms_tab)
@@ -1556,7 +1573,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     # Lỗi ở LMS: Đã ở LMS rồi, không cần làm gì cả!
                 except Exception as ex:
                     log(f"Lỗi phục hồi vị trí: {ex}", "WARN")
-                self.wfile.write(json.dumps({"status": "error", "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
+                err_status = "network_error" if not is_internet_connected() else "error"
+                self.wfile.write(json.dumps({"status": err_status, "message": f"Lỗi: {str(e)}"}).encode('utf-8'))
 
         elif path == '/retrieve_nblm_job':
             content_length = int(self.headers.get('Content-Length', 0))
@@ -2010,70 +2028,135 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 
                 success_count = data.get('success_count', 0)
                 total_count = data.get('total_count', 0)
-                reason = data.get('reason', 'completed')  # 'completed' hoặc 'stopped'
+                reason = data.get('reason', 'completed')  # 'completed', 'stopped', hoặc 'network_loss'
                 pending_failures = data.get('pending_failures', [])
+                unfinished_ids = data.get('unfinished_ids', [])
                 
                 if pending_failures:
                     for pf in pending_failures:
                         append_history_entry(pf.get('stt', 0), pf.get('id', ''), "Thất bại", pf.get('content', ''))
                 
-                finalize_history(success_count, total_count)
+                final_unfinished = []
+                if unfinished_ids and isinstance(unfinished_ids, list):
+                    final_unfinished = [str(x).strip() for x in unfinished_ids if str(x).strip()]
+                elif current_failed_items:
+                    final_unfinished = [item['id'] for item in current_failed_items]
+                
+                finalize_history(success_count, total_count, unfinished_ids=final_unfinished)
                 
                 end_time = time.time()
                 total_time_seconds = end_time - current_batch_start_time if current_batch_start_time > 0 else 0
                 duration_str = format_duration(total_time_seconds)
                 
                 # Gửi tin nhắn Discord: Tổng kết phiên
-                status_text = "DA DUNG GIUA CHUNG" if reason == 'stopped' else "HOAN TAT"
-                failed_list_str = "Khong co cau nao bi loi."
-                if current_failed_items:
-                    failed_list_str = "\n".join([item['id'] for item in current_failed_items])
+                if reason == 'network_loss':
+                    status_text = "🚨 MAT KET NOI INTERNET"
+                elif reason == 'stopped':
+                    status_text = "⛔ DA DUNG GIUA CHUNG"
+                else:
+                    status_text = "🎉 HOAN TAT BIEN TAP"
+
+                failed_list_str = "Khong co cau nao chua thanh cong."
+                if final_unfinished:
+                    failed_list_str = "\n".join(final_unfinished)
                 
                 discord_msg = (
                     f"**== {status_text} ==**\n"
                     f"```\n"
-                    f"Ket qua    : {success_count}/{total_count}\n"
-                    f"Thanh cong : {success_count}\n"
-                    f"That bai   : {total_count - success_count}\n"
-                    f"Thoi gian  : {duration_str}\n"
-                    f"Hoan thanh : {time.strftime('%d/%m/%Y %H:%M:%S')}\n"
+                    f"Ket qua        : {success_count}/{total_count}\n"
+                    f"Thanh cong     : {success_count}\n"
+                    f"Chua thanh cong: {len(final_unfinished)}\n"
+                    f"Thoi gian      : {duration_str}\n"
+                    f"Hoan thanh     : {time.strftime('%d/%m/%Y %H:%M:%S')}\n"
                     f"```\n"
-                    f"**Danh sach cau loi (de bien tap lai):**\n"
+                    f"**Danh sach cau chua thanh cong (de bien tap lai):**\n"
                     f"```\n"
                     f"{failed_list_str}\n"
                     f"```"
                 )
                 send_discord(discord_msg)
                 
-                # Tự động gửi Gmail thông báo (GIỮ ICON cho email)
-                if reason == 'stopped':
+                # Tự động gửi Gmail thông báo
+                if reason == 'network_loss':
+                    subject = f"[Auto Edit Tool] 🚨 MẤT MẠNG - {success_count}/{total_count} ID - {time.strftime('%d/%m/%Y %H:%M')}"
+                    body = f"Quy trình đã bị HỦY do MẤT MẠNG INTERNET!\n\n"
+                elif reason == 'stopped':
                     subject = f"[Auto Edit Tool] ⛔ ĐÃ DỪNG - {success_count}/{total_count} ID - {time.strftime('%d/%m/%Y %H:%M')}"
                     body = f"Quy trình đã bị DỪNG giữa chừng!\n\n"
                 else:
-                    subject = f"[Auto Edit Tool] ✅ Hoàn tất {success_count}/{total_count} ID - {time.strftime('%d/%m/%Y %H:%M')}"
-                    body = f"Quy trình đã hoàn tất!\n\n"
+                    subject = f"[Auto Edit Tool] 🎉 HOÀN THÀNH - {success_count}/{total_count} ID - {time.strftime('%d/%m/%Y %H:%M')}"
+                    body = f"Quy trình biên tập tự động đã HOÀN THÀNH!\n\n"
                 
                 body += f"📊 Kết quả: {success_count}/{total_count}\n"
                 body += f"✅ Thành công: {success_count}\n"
-                body += f"❌ Thất bại: {total_count - success_count}\n"
+                body += f"⚠️ Chưa thành công: {len(final_unfinished)}\n"
                 body += f"⏱️ Tổng thời gian: {duration_str}\n"
                 body += f"⏰ Thời điểm: {time.strftime('%d/%m/%Y %H:%M:%S')}\n"
                 body += f"\n📁 File history: {current_history_file}\n"
                 
-                if current_failed_items:
-                    body += f"\n❌ Danh sách câu lỗi:\n"
-                    for item in current_failed_items:
-                        body += f"  - {item['id']}\n"
+                if final_unfinished:
+                    body += f"\n⚠️ DANH SÁCH CÁC CÂU CHƯA THÀNH CÔNG (ĐỂ BIÊN TẬP LẠI):\n"
+                    for uid in final_unfinished:
+                        body += f"  - {uid}\n"
                 
                 email_sent = send_gmail_notification(subject, body)
                 
-                failed_ids = [item['id'] for item in current_failed_items] if current_failed_items else []
                 self.wfile.write(json.dumps({
                     "status": "success",
                     "message": f"Hoàn tất {success_count}/{total_count}",
                     "email_sent": email_sent,
-                    "failed_ids": failed_ids
+                    "failed_ids": final_unfinished
                 }).encode('utf-8'))
+            except Exception as e:
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+        elif path == '/send_emergency_alert':
+            self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                post_data = self.rfile.read(content_length)
+                data = json.loads(post_data.decode('utf-8'))
+                
+                success_count = data.get('success_count', 0)
+                remaining_count = data.get('remaining_count', 0)
+                
+                log("🚨 XỬ LÝ CẢNH BÁO MẤT KẾT NỐI INTERNET...", "WARN")
+                
+                # Gửi Discord khẩn cấp
+                discord_msg = (
+                    f"**🚨 == CẢNH BÁO MẤT KẾT NỐI INTERNET == 🚨**\n"
+                    f"```\n"
+                    f"Trang thai  : TAM DUNG AN TOAN\n"
+                    f"Thanh cong : {success_count} cau\n"
+                    f"Con lai    : {remaining_count} cau\n"
+                    f"Thoi gian  : {time.strftime('%d/%m/%Y %H:%M:%S')}\n"
+                    f"```\n"
+                    f"**Tool da tu dong luu {remaining_count} cau chua xong vao Textbox de Tiep tuc khi co lai Wi-Fi.**"
+                )
+                try:
+                    send_discord(discord_msg)
+                except Exception as ex_d:
+                    log(f"Lỗi gửi Discord alert: {ex_d}", "WARN")
+                
+                # Gửi Gmail khẩn cấp
+                subject = f"[Auto Edit Tool] 🚨 CẢNH BÁO MẤT MẠNG - Đã hoàn thành {success_count} câu, còn lại {remaining_count} câu"
+                body = (
+                    f"🚨 PHÁT HIỆN MẤT KẾT NỐI INTERNET TRÊN LAPTOP!\n\n"
+                    f"Hệ thống đã tự động tạm dừng để bảo vệ dữ liệu.\n"
+                    f"📊 Số câu đã thành công: {success_count}\n"
+                    f"⏳ Số câu còn lại cần tiếp tục: {remaining_count}\n\n"
+                    f"⏰ Thời điểm phát hiện: {time.strftime('%d/%m/%Y %H:%M:%S')}\n\n"
+                    f"Danh sách các câu chưa xong đã được dọn và lưu sẵn trong ô Textbox trên giao diện index.html.\n"
+                    f"Vui lòng kiểm tra Wi-Fi và bấm 'TIẾP TỤC BẮT ĐẦU' sau khi kết nối lại."
+                )
+                try:
+                    send_gmail_notification(subject, body)
+                except Exception as ex_m:
+                    log(f"Lỗi gửi Email alert: {ex_m}", "WARN")
+                
+                self.wfile.write(json.dumps({"status": "success", "message": "Emergency alert processed"}).encode('utf-8'))
             except Exception as e:
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
         else:
