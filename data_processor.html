@@ -1309,6 +1309,43 @@
                 return trimmed;
             }
 
+            function formatSingleUppercaseLetters(text) {
+                if (!text) return '';
+
+                // Tách các khối math mode ($...$, $$...$$, \\[...\\], \\(...\\))
+                const mathRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[^\$\n]+?\$|\\\(.*?\\\))/g;
+                const parts = text.split(mathRegex);
+
+                // Ký tự in hoa đơn (1 chữ cái A-Z) đứng thô độc lập ngoài math mode
+                const singleLetterRegex = /(?<![\\\\a-zA-Z\d\u00C0-\u024F\u1EA0-\u1EFF])([A-Z])(?![a-zA-Z\d\u00C0-\u024F\u1EA0-\u1EFF])/g;
+
+                for (let i = 0; i < parts.length; i++) {
+                    if (i % 2 === 0) {
+                        // NẰM NGOÀI MATH MODE: Bọc $...$ cho chữ cái in hoa đơn độc lập
+                        parts[i] = parts[i].replace(singleLetterRegex, (match, letter, offset, fullStr) => {
+                            const beforeText = fullStr.substring(0, offset);
+                            const afterText = fullStr.substring(offset + match.length);
+
+                            // Bỏ qua nếu là nhãn phương án trắc nghiệm đầu dòng dạng A. B. C. D. hoặc A) B) C) D)
+                            const isLineStart = (offset === 0 || /\n\s*$/.test(beforeText));
+                            if (isLineStart && /^[\.\)]/.test(afterText)) {
+                                return match;
+                            }
+
+                            // Bỏ qua nếu là từ tiếng Việt viết hoa 1 chữ cái đặc biệt
+                            if (['Ý', 'Ở', 'Ổ', 'Ơ', 'Ờ', 'Ợ', 'Ư', 'Ừ', 'Ứ', 'Ử', 'Ữ', 'Ự'].includes(letter)) {
+                                return match;
+                            }
+
+                            return `$${letter}$`;
+                        });
+                    }
+                    // NẰM TRONG MATH MODE (i % 2 === 1): GIỮ NGUYÊN 100%!
+                }
+
+                return parts.join('');
+            }
+
             function extractSectionContent(text, startRegex, endRegex) {
                 if (!text) return '';
                 const startIdx = text.search(startRegex);
@@ -1339,6 +1376,7 @@
                 content = fixVietnameseTonePlacement(content);
                 content = formatLargeNumbers(content);
                 content = formatRomanNumerals(content);
+                content = formatSingleUppercaseLetters(content);
                 content = formatPrimeQuotes(content);
                 content = formatUnitsOfMeasurement(content);
                 content = formatLatexSymbols(content);
