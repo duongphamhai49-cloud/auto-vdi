@@ -82,6 +82,15 @@
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
         }
 
+        .img-upload-btn {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .img-upload-btn:hover {
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
+        }
+
         .card {
             background: var(--card-bg);
             border-radius: 0.5rem;
@@ -319,8 +328,8 @@
         <h1>DATA PROCESSOR</h1>
     </div>
 
-    <div class="file-upload-wrapper">
-        <label for="historyFile" class="file-upload-btn" title="Tải thêm file History (.txt)">
+    <div class="file-upload-wrapper" style="gap: 1rem; align-items: center;">
+        <label for="historyFile" class="file-upload-btn" title="Tải file History (.txt)">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -329,10 +338,42 @@
             </svg>
         </label>
         <input type="file" id="historyFile" class="file-upload-input" accept=".txt" multiple>
+
+        <label for="imageFolderInput" class="file-upload-btn img-upload-btn" title="Tải thư mục/file ảnh backups (tên file {STT}_{ID})">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+        </label>
+        <input type="file" id="imageFolderInput" class="file-upload-input" webkitdirectory directory multiple accept="image/*">
+    </div>
+
+    <!-- Image Lightbox Modal -->
+    <div id="imageModal" onclick="closeImageModal()" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px); cursor: zoom-out;">
+        <div style="position: relative; max-width: 90vw; max-height: 90vh;" onclick="event.stopPropagation()">
+            <img id="modalImg" src="" style="max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); object-fit: contain;">
+            <button onclick="closeImageModal()" style="position: absolute; top: -15px; right: -15px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-weight: bold; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✕</button>
+        </div>
     </div>
 
     <div id="card_container">
         <!-- Cards will be injected here -->
+    </div>
+
+    <!-- Khối hiển thị danh sách ID câu hỏi được đánh dấu 💥 -->
+    <div id="starred_ids_section" style="display: none; background: rgba(220, 38, 38, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.4); border-radius: 0.75rem; padding: 1.25rem; margin-top: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="color: #ef4444; font-weight: bold; font-size: 1.1rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span style="font-size: 1.3rem;">💥</span> DANH SÁCH ID ĐÁNH DẤU (<span id="starred_ids_count">0</span>)
+            </div>
+            <button id="btn_copy_starred_ids" onclick="copyStarredIds(this)" style="background: linear-gradient(135deg, #ef4444, #b91c1c); color: #ffffff; border: none; padding: 0.45rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: bold; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                COPY TOÀN BỘ ID
+            </button>
+        </div>
+        <textarea id="starred_ids_textarea" readonly rows="4" placeholder="Chưa có ID nào được đánh dấu..." style="background: rgba(20, 5, 5, 0.7); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-family: monospace; font-size: 0.95rem; line-height: 1.5; padding: 0.75rem; border-radius: 0.375rem; width: 100%; resize: vertical; outline: none; transition: border-color 0.2s;"></textarea>
     </div>
 
     <button id="scrollTopBtn" onclick="scrollToTop()" title="Lên đầu trang">
@@ -525,6 +566,126 @@
             return 0;
         }
 
+        window.questionImagesMap = new Map();
+
+        function openImageModal(url, id) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImg');
+            if (modal && modalImg) {
+                modalImg.src = url;
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function copyImageToClipboard(imgUrl, element, event) {
+            if (event) event.stopPropagation();
+
+            if (element) {
+                element.style.opacity = '0.4';
+                element.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    element.style.opacity = '1';
+                    element.style.transform = 'none';
+                }, 250);
+            }
+
+            try {
+                const response = await fetch(imgUrl);
+                const blob = await response.blob();
+
+                let pngBlob = blob;
+                if (blob.type !== 'image/png') {
+                    pngBlob = await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth || img.width;
+                            canvas.height = img.naturalHeight || img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            canvas.toBlob((b) => {
+                                if (b) resolve(b);
+                                else reject(new Error('Lỗi chuyển đổi ảnh PNG'));
+                            }, 'image/png');
+                        };
+                        img.onerror = () => reject(new Error('Không tải được file ảnh'));
+                        img.src = imgUrl;
+                    });
+                }
+
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': pngBlob })
+                ]);
+            } catch (err) {
+                console.error("Lỗi copy ảnh:", err);
+                alert("Lỗi copy ảnh vào Clipboard: " + (err.message || err));
+            }
+        }
+
+        window.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeImageModal();
+            }
+        });
+
+        const imageInputEl = document.getElementById('imageFolderInput');
+        if (imageInputEl) {
+            imageInputEl.addEventListener('change', function (e) {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+
+                let loadedImgCount = 0;
+                files.forEach((file) => {
+                    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif)$/i.test(file.name);
+                    if (!isImage) return;
+
+                    const baseName = file.name.replace(/\.[^/.]+$/, "").trim();
+                    if (!baseName) return;
+
+                    // Cú pháp: {STT}_{ID} -> ví dụ "01_ID12345.png" -> ID = "ID12345"
+                    let extractedId = baseName;
+                    if (baseName.includes('_')) {
+                        const parts = baseName.split('_');
+                        if (/^\d+$/.test(parts[0])) {
+                            extractedId = parts.slice(1).join('_').trim();
+                        }
+                    }
+
+                    const objectUrl = URL.createObjectURL(file);
+                    const imgObj = {
+                        url: objectUrl,
+                        fileName: file.name
+                    };
+
+                    if (extractedId) {
+                        if (window.questionImagesMap.has(extractedId)) {
+                            try { URL.revokeObjectURL(window.questionImagesMap.get(extractedId).url); } catch (err) { }
+                        }
+                        window.questionImagesMap.set(extractedId, imgObj);
+                    }
+                    if (baseName !== extractedId) {
+                        window.questionImagesMap.set(baseName, imgObj);
+                    }
+                    loadedImgCount++;
+                });
+
+                if (loadedImgCount > 0) {
+                    if (window.loadedFilesData && window.loadedFilesData.length > 0) {
+                        processHistoryContent(window.loadedFilesData);
+                    }
+                }
+                e.target.value = '';
+            });
+        }
+
         window.loadedFilesData = [];
 
         document.getElementById('historyFile').addEventListener('change', function (e) {
@@ -588,6 +749,59 @@
             if (countSpan) {
                 countSpan.textContent = errorCards.length;
             }
+            updateStarredIds();
+        }
+
+        function updateStarredIds() {
+            const errorBtns = document.querySelectorAll('.error-mark-btn[data-error="true"]');
+            const ids = [];
+            errorBtns.forEach(btn => {
+                const card = btn.closest('.card');
+                if (card) {
+                    const cardId = card.getAttribute('data-id');
+                    if (cardId && cardId.trim() !== '') {
+                        ids.push(cardId.trim());
+                    }
+                }
+            });
+
+            const uniqueIds = Array.from(new Set(ids));
+            const textarea = document.getElementById('starred_ids_textarea');
+            const countSpan = document.getElementById('starred_ids_count');
+            const section = document.getElementById('starred_ids_section');
+
+            if (section) {
+                section.style.display = uniqueIds.length > 0 ? 'block' : 'none';
+            }
+
+            if (textarea) {
+                textarea.value = uniqueIds.join('\n');
+            }
+            if (countSpan) {
+                countSpan.textContent = uniqueIds.length;
+            }
+        }
+
+        function copyStarredIds(btn) {
+            const textarea = document.getElementById('starred_ids_textarea');
+            if (!textarea || !textarea.value.trim()) {
+                alert("Chưa có ID nào được đánh dấu 💥 để copy!");
+                return;
+            }
+
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                const count = textarea.value.trim().split('\n').filter(Boolean).length;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = `<span style="font-size: 0.9rem;">✓</span> ĐÃ COPY ${count} ID!`;
+                btn.style.opacity = '0.8';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.style.opacity = '1';
+                }, 1500);
+            }).catch(err => {
+                console.error("Lỗi copy ID:", err);
+                alert("Không thể tự động copy ID vào Clipboard.");
+            });
         }
 
         function toggleFlag(btn, event, originalStatus) {
@@ -829,6 +1043,23 @@
                 const parsed = parseNotebookOutputLocal(entry.rawNotebookContent, validIndex);
                 const isSuccess = entry.status.toLowerCase().includes('thành công');
 
+                const imgData = (entry.id && window.questionImagesMap) ? window.questionImagesMap.get(entry.id.trim()) : null;
+                const imgBadge = imgData ? `<span style="font-size: 1.1rem; cursor: pointer; display: inline-flex; align-items: center; margin-left: 0.25rem;" title="Có ảnh backup: ${imgData.fileName}">🖼️</span>` : '';
+
+                const imgHtml = imgData ? `
+                <div class="backup-img-wrapper" style="display: flex; flex-direction: column; align-items: center; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(139, 92, 246, 0.4); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                    <div style="font-size: 0.75rem; color: #a78bfa; font-weight: bold; margin-bottom: 0.5rem; width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🖼️ Ảnh backup: <span style="color: #cbd5e1; font-weight: normal;">${imgData.fileName}</span></span>
+                        <div style="display: flex; gap: 0.4rem; align-items: center;">
+                            <span style="font-size: 0.7rem; color: #94a3b8; font-style: italic; margin-right: 0.25rem;">(Bấm vào ảnh để copy)</span>
+                            <button class="btn-copy-header" onclick="event.stopPropagation(); openImageModal('${imgData.url}', '${entry.id}')" style="background: rgba(255,255,255,0.1); color: #fff; padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: 4px;" title="Xem ảnh phóng to">
+                                🔍 Phóng to
+                            </button>
+                        </div>
+                    </div>
+                    <img src="${imgData.url}" onclick="copyImageToClipboard('${imgData.url}', this, event)" style="max-width: 100%; max-height: 380px; border-radius: 6px; cursor: pointer; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: all 0.2s ease;" onmouseover="this.style.transform='scale(1.01)'" onmouseout="this.style.transform='none'" title="Bấm vào đây để copy ảnh" alt="${entry.id}">
+                </div>` : '';
+
                 // Nút đánh dấu câu bị lỗi 💥 (mặc định mờ nhạt màu trắng 0.3)
                 const errorMarkBtn = `
                 <button class="error-mark-btn" data-error="false" onclick="toggleErrorMark(this, event)" style="cursor: pointer; background: none; border: none; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; opacity: 0.3; transition: all 0.2s ease;" title="Đánh dấu câu bị lỗi">
@@ -847,7 +1078,7 @@
                 let sttDisplay = entry.stt ? entry.stt.padStart(2, '0') : '?';
 
                 html += `
-                <div class="card">
+                <div class="card" data-id="${entry.id || ''}">
                     <div class="section-header" onclick="toggleCardBody(${validIndex})">
                         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             <span style="font-weight: bold; color: var(--accent); font-size: 1.1rem;">${sttDisplay}</span>
@@ -859,6 +1090,7 @@
                             <button class="btn-search-header" onclick="quickEditLMS('${entry.id}', this, event)" title="Tìm kiếm & Mở Edit ngay trên LMS">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </button>` : ''}
+                            ${imgBadge}
                             <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem; font-style: italic; opacity: 0.8;">(Từ: ${entry.fileName})</span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.75rem; padding-right: 0.5rem;">
@@ -868,6 +1100,7 @@
                     </div>
                     
                     <div class="section-body" id="card_body_${validIndex}">
+                        ${imgHtml}
                         <textarea rows="4" readonly style="margin-bottom: 0.5rem; resize: vertical; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.6);">${entry.rawNotebookContent}</textarea>
                         
                         <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -899,6 +1132,7 @@
                     fIconEl.style.opacity = '0.6';
                     fIconEl.style.color = '#ffffff';
                 }
+                updateStarredIds();
                 return;
             }
 
@@ -906,6 +1140,7 @@
 
             // Cập nhật số cờ đỏ
             updateFlaggedCount();
+            updateStarredIds();
 
             // Resize textareas
             setTimeout(() => {
@@ -1099,6 +1334,125 @@
             cleaned = cleaned.replace(/\s+([.,;:?!])/g, '$1');
             cleaned = cleaned.replace(/ {2,}/g, ' ');
             return cleaned;
+        }
+
+        function splitTextIntoSentences(text) {
+            if (!text || !text.trim()) return [];
+
+            // 1. Bảo vệ các khối toán Math Mode ($...$, $$...$$, \[...\], \(...\))
+            const mathBlocks = [];
+            const mathRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[^\$\n]+?\$|\\\(.*?\\\))/g;
+            let safeText = text.replace(mathRegex, (match) => {
+                mathBlocks.push(match);
+                return `___MATH_BLOCK_${mathBlocks.length - 1}___`;
+            });
+
+            // 2. Bảo vệ số thập phân, tỉ lệ, thời gian (dấu . hoặc : nằm giữa 2 chữ số)
+            const numProtectMap = [];
+            const numProtectRegex = /(?<=\d)[.:](?=\d)/g;
+            safeText = safeText.replace(numProtectRegex, (match) => {
+                numProtectMap.push(match);
+                return `___NUM_PROTECT_${numProtectMap.length - 1}___`;
+            });
+
+            // 3. Bảo vệ các từ viết tắt
+            const abbrMap = [];
+            const abbrRegex = /(?:\bv\.v\.?|\bt\.g\.?|(?:\b(?:TP|TS|ThS|BS|STT|Stt|NXB|tr|ha|kg|g|cm|mm|m|km))\.)/gi;
+            safeText = safeText.replace(abbrRegex, (match) => {
+                abbrMap.push(match);
+                return `___ABBR_${abbrMap.length - 1}___`;
+            });
+
+            // 4. Tách theo dấu ngắt câu: . ? ! : ;
+            const rawSentences = safeText.split(/(?<=[.?!:;]["'”’\)\]]*)\s+(?=[A-Za-z0-9\u00C0-\u024F\u1EA0-\u1EFF\\\$]|___MATH_BLOCK_|___ABBR_)/gu);
+
+            const sentences = [];
+            for (let s of rawSentences) {
+                let restored = s;
+                restored = restored.replace(/___ABBR_(\d+)___/g, (_, idx) => abbrMap[parseInt(idx)]);
+                restored = restored.replace(/___NUM_PROTECT_(\d+)___/g, (_, idx) => numProtectMap[parseInt(idx)]);
+                restored = restored.replace(/___MATH_BLOCK_(\d+)___/g, (_, idx) => mathBlocks[parseInt(idx)]);
+
+                const trimmed = restored.trim();
+                if (trimmed) {
+                    sentences.push(trimmed);
+                }
+            }
+            return sentences;
+        }
+
+        function formatSolutionSentencesLineByLine(text, typeCode) {
+            if (!text || !text.trim()) return text;
+
+            const rawLines = text.split('\n');
+            const processedLines = [];
+            const headerRegex = /^(?:[#*_\s]*)(Khẳng định\s*(?:\$[1-4A-Za-z]\$|\([1-4A-Za-z]\)|[1-4A-Za-z\d])|Phát biểu\s*(?:\$[1-4A-Za-z]\$|\([1-4A-Za-z]\)|[1-4A-Za-z\d])|Mệnh đề\s*(?:\$[1-4A-Za-z]\$|\([1-4A-Za-z]\)|[1-4A-Za-z\d])|[a-dA-D][\.\)])[\:\.\s]+(đúng|sai)[\.\:\s]*/i;
+
+            let i = 0;
+            while (i < rawLines.length) {
+                let line = rawLines[i].trim();
+                if (!line) {
+                    i++;
+                    continue;
+                }
+
+                if (typeCode === 'DUNG_SAI') {
+                    const headerMatch = line.match(headerRegex);
+                    if (headerMatch) {
+                        let headerStr = headerMatch[0].trim();
+                        if (!/[.?!:]$/.test(headerStr)) {
+                            headerStr += '.';
+                        }
+                        let restOfLine = line.substring(headerMatch[0].length).trim();
+
+                        // Nếu nhãn đứng 1 mình trên dòng, rút 1 câu đầu tiên ở dòng phía dưới lên ghép cùng
+                        if (!restOfLine && i + 1 < rawLines.length) {
+                            let j = i + 1;
+                            while (j < rawLines.length && !rawLines[j].trim()) {
+                                j++;
+                            }
+                            if (j < rawLines.length) {
+                                const nextLine = rawLines[j].trim();
+                                const nextSentences = splitTextIntoSentences(nextLine);
+                                if (nextSentences.length > 0) {
+                                    restOfLine = nextSentences[0];
+                                    const remainingSentences = nextSentences.slice(1);
+                                    if (remainingSentences.length > 0) {
+                                        rawLines[j] = remainingSentences.join(' ');
+                                    } else {
+                                        rawLines[j] = ''; // Đã tiêu thụ dòng này
+                                    }
+                                }
+                            }
+                        }
+
+                        if (restOfLine) {
+                            const sentences = splitTextIntoSentences(restOfLine);
+                            if (sentences.length > 0) {
+                                processedLines.push(`${headerStr} ${sentences[0]}`);
+                                for (let k = 1; k < sentences.length; k++) {
+                                    processedLines.push(sentences[k]);
+                                }
+                            } else {
+                                processedLines.push(headerStr);
+                            }
+                        } else {
+                            processedLines.push(headerStr);
+                        }
+                        i++;
+                        continue;
+                    }
+                }
+
+                // Dòng bình thường (không phải nhãn DUNG_SAI)
+                const sentences = splitTextIntoSentences(line);
+                for (let s of sentences) {
+                    processedLines.push(s);
+                }
+                i++;
+            }
+
+            return processedLines.filter(line => line.trim() !== '').join('\n');
         }
 
         function parseNotebookOutputLocal(rawText, index) {
@@ -1701,12 +2055,15 @@
                 }
             }
 
+            const formattedHint = formatSolutionSentencesLineByLine(hintText, typeCode);
+            const formattedSol = formatSolutionSentencesLineByLine(solText, typeCode);
+
             window.allParsedData[index] = {
                 typeCode: typeCode,
                 difficulty: diffMatch ? diffMatch[1].trim() : '',
                 debai: deBai,
-                goiy: hintText,
-                loigiai: solText,
+                goiy: formattedHint,
+                loigiai: formattedSol,
                 options: options,
                 correct_answer: parsedAnswerData
             };
@@ -1756,8 +2113,8 @@
                 });
             }
 
-            if (hintText) addField('Gợi ý', hintText, '--btn-goiy', 'GỢI Ý', 'goiy');
-            if (solText) addField('Lời giải chi tiết', solText, '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
+            if (formattedHint) addField('Gợi ý', formattedHint, '--btn-goiy', 'GỢI Ý', 'goiy');
+            if (formattedSol) addField('Lời giải chi tiết', formattedSol, '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
 
             // Chèn Đề bài đầy đủ lên TOP LIST của phần Xem chi tiết
             const fullPromptVal = formatFullPrompt({ typeCode, debai: deBai, options });

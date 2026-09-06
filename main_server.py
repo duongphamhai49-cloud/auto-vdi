@@ -970,54 +970,69 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 GUIHelper.focus(GUIHelper.GEMINI_CHATBOX)
                 pyautogui.hotkey('ctrl', 'v')
                 
-                # Chờ đúng 3s để Gemini load ảnh xong theo yêu cầu
-                log("Chờ đúng 3s để Gemini load ảnh...", "STATUS")
+                # Chờ đúng 3s để Gemini hiển thị ảnh lên ô chat
+                log("Chờ 3s ban đầu để Gemini hiển thị ảnh lên ô chat...", "STATUS")
                 time.sleep(3.0)
                 
-                # Kiểm tra màu pixel tại GEMINI_SEND_PIXEL xem đã khớp với màu rảnh rỗi ban đầu chưa
-                log(f"Kiểm tra trạng thái load ảnh Gemini tại tọa độ {GUIHelper.GEMINI_SEND_PIXEL}...", "STATUS")
-                load_ok = False
-                for step in range(40): # Poll tối đa 20s (40 * 0.5s)
-                    try:
-                        curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI LOAD CHECK {step+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
-                        if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
-                            load_ok = True
-                            log(f"Phát hiện Gemini đã load ảnh xong (Màu {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})!", "OK")
-                            break
-                    except Exception as e:
-                        log(f"Lỗi khi đọc màu pixel Gemini: {e}", "WARN")
-                    time.sleep(0.5)
-                
-                if not load_ok:
-                    log("Không thấy màu Send rảnh rỗi khớp sau 20s, tiến hành bấm Enter cưỡng bức...", "WARN")
-
-                # Bấm enter gửi ảnh
-                pyautogui.press('enter')
-                log("Đã gửi ảnh lên Gemini.", "OK")
-                
-                # 5. Đợi Gemini xử lý xong (5s sau khi nhấn Enter + check màu rảnh rỗi)
-                log("Chờ Gemini xử lý phản hồi (nghỉ 5s ban đầu)...", "STATUS")
-                time.sleep(5.0)
-                
-                log(f"Bắt đầu quy trình kiểm tra Gemini đã phản hồi xong chưa (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
-                gemini_done = False
-                for poll_idx in range(40): # Poll tối đa 20s (40 * 0.5s) để đảm bảo Gemini sinh nội dung hoàn tất
+                # Bấm Enter và kiểm tra nút Send đã chuyển sang MÀU HOẠT ĐỘNG (Stop icon / khác màu rảnh rỗi) chưa.
+                # Spam Enter mỗi 0.5s trong tối đa 10s (20 chu kỳ) cho đến khi nút chuyển màu hoạt động.
+                log(f"Kiểm tra và gửi lệnh Enter đến khi Gemini chuyển sang MÀU HOẠT ĐỘNG (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
+                gemini_active = False
+                for step in range(20): # 20 * 0.5s = 10s max
                     if STOP_FLAG:
                         raise Exception("Đã bị dừng bởi người dùng!")
                     try:
                         curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI DONE CHECK {poll_idx+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
+                        # Kiểm tra xem màu hiện tại ĐÃ KHÁC với màu rảnh rỗi ban đầu chưa
+                        is_idle = pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20)
+                        log(f"[GEMINI SEND CHECK {step+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Đang Rảnh Rỗi: {is_idle}", "STATUS")
+                        if not is_idle:
+                            gemini_active = True
+                            log(f"✅ Phát hiện Gemini đã chuyển sang MÀU HOẠT ĐỘNG (Màu {curr_color})! Đã nhận lệnh gửi thành công.", "OK")
+                            break
+                    except Exception as e:
+                        log(f"Lỗi khi đọc màu pixel Gemini: {e}", "WARN")
+                    
+                    # Nếu vẫn còn ở màu Rảnh Rỗi -> Thử bấm Enter lần nữa
+                    log(f"Gemini chưa nhận lệnh (vẫn màu rảnh rỗi), thử bấm Enter lượt {step+1}/20...", "ACTION")
+                    pyautogui.press('enter')
+                    time.sleep(0.5)
+
+                if not gemini_active:
+                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
+                    time.sleep(0.2)
+                    pyautogui.press('f5')
+                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    raise Exception("Timeout Gemini không chuyển sang trạng thái hoạt động sau 10s!")
+
+                # 5. Đợi Gemini xử lý xong (Dừng 5s ban đầu rồi mới bắt đầu Done Check 60s)
+                log("Chờ Gemini xử lý phản hồi (dừng 5s ban đầu)...", "STATUS")
+                time.sleep(5.0)
+                
+                log(f"Bắt đầu quy trình kiểm tra Gemini đã phản hồi xong chưa (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
+                gemini_done = False
+                for poll_idx in range(120): # Poll tối đa 60s (120 * 0.5s)
+                    if STOP_FLAG:
+                        raise Exception("Đã bị dừng bởi người dùng!")
+                    try:
+                        curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
+                        log(f"[GEMINI DONE CHECK {poll_idx+1}/120] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
                         if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
                             gemini_done = True
-                            log(f"Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})", "OK")
+                            log(f"✅ Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} đã quay về màu rảnh rỗi {gemini_dynamic_idle_color})", "OK")
                             break
                     except Exception as e:
                         log(f"Lỗi kiểm tra pixel Gemini: {e}", "WARN")
                     time.sleep(0.5)
                 
                 if not gemini_done:
-                    log(f"Đã hết thời gian chờ 20s kiểm tra màu rảnh rỗi Gemini nhưng chưa khớp. Vẫn tiến hành quy trình lấy output...", "WARN")
+                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
+                    time.sleep(0.2)
+                    pyautogui.press('f5')
+                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    raise Exception("Timeout Gemini phản hồi quá 60s!")
                 
                 # Lấy focus tại FCS_ON_GEM trước khi gửi phím End
                 log("Focus vào vùng Gemini (FCS_ON_GEM) để chuẩn bị copy...", "ACTION")
@@ -1413,50 +1428,69 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 GUIHelper.focus(GUIHelper.GEMINI_CHATBOX)
                 pyautogui.hotkey('ctrl', 'v')
                 
-                log("Chờ đúng 3s để Gemini load ảnh...", "STATUS")
+                # Chờ đúng 3s để Gemini hiển thị ảnh lên ô chat
+                log("Chờ 3s ban đầu để Gemini hiển thị ảnh lên ô chat...", "STATUS")
                 time.sleep(3.0)
                 
-                log("Kiểm tra trạng thái load ảnh bằng pixel check...", "STATUS")
-                load_ok = False
-                for step in range(40): # Poll tối đa 20s (40 * 0.5s)
+                # Bấm Enter và kiểm tra nút Send đã chuyển sang MÀU HOẠT ĐỘNG (Stop icon / khác màu rảnh rỗi) chưa.
+                # Spam Enter mỗi 0.5s trong tối đa 10s (20 chu kỳ) cho đến khi nút chuyển màu hoạt động.
+                log(f"Kiểm tra và gửi lệnh Enter đến khi Gemini chuyển sang MÀU HOẠT ĐỘNG (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
+                gemini_active = False
+                for step in range(20): # 20 * 0.5s = 10s max
+                    if STOP_FLAG:
+                        raise Exception("Đã bị dừng bởi người dùng!")
                     try:
                         curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI LOAD CHECK {step+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
-                        if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
-                            load_ok = True
-                            log(f"Phát hiện Gemini đã load ảnh xong (Màu {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})!", "OK")
+                        # Kiểm tra xem màu hiện tại ĐÃ KHÁC với màu rảnh rỗi ban đầu chưa
+                        is_idle = pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20)
+                        log(f"[GEMINI SEND CHECK {step+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Đang Rảnh Rỗi: {is_idle}", "STATUS")
+                        if not is_idle:
+                            gemini_active = True
+                            log(f"✅ Phát hiện Gemini đã chuyển sang MÀU HOẠT ĐỘNG (Màu {curr_color})! Đã nhận lệnh gửi thành công.", "OK")
                             break
                     except Exception as e:
                         log(f"Lỗi khi đọc màu pixel Gemini: {e}", "WARN")
+                    
+                    # Nếu vẫn còn ở màu Rảnh Rỗi -> Thử bấm Enter lần nữa
+                    log(f"Gemini chưa nhận lệnh (vẫn màu rảnh rỗi), thử bấm Enter lượt {step+1}/20...", "ACTION")
+                    pyautogui.press('enter')
                     time.sleep(0.5)
-                
-                if not load_ok:
-                    log("Không thấy màu Send rảnh rỗi khớp sau 20s, tiến hành bấm Enter cưỡng bức...", "WARN")
 
-                pyautogui.press('enter')
-                log("Đã gửi ảnh lên Gemini.", "OK")
-                
-                # Chờ Gemini phản hồi
-                log("Chờ Gemini xử lý phản hồi (nghỉ 5s)...", "STATUS")
+                if not gemini_active:
+                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
+                    time.sleep(0.2)
+                    pyautogui.press('f5')
+                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    raise Exception("Timeout Gemini không chuyển sang trạng thái hoạt động sau 10s!")
+
+                # 5. Đợi Gemini xử lý xong (Dừng 5s ban đầu rồi mới bắt đầu Done Check 60s)
+                log("Chờ Gemini xử lý phản hồi (dừng 5s ban đầu)...", "STATUS")
                 time.sleep(5.0)
                 
+                log(f"Bắt đầu quy trình kiểm tra Gemini đã phản hồi xong chưa (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
                 gemini_done = False
-                for poll_idx in range(40): # Poll tối đa 20s (40 * 0.5s)
+                for poll_idx in range(120): # Poll tối đa 60s (120 * 0.5s)
                     if STOP_FLAG:
-                        raise Exception("Bị dừng bởi người dùng!")
+                        raise Exception("Đã bị dừng bởi người dùng!")
                     try:
                         curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI DONE CHECK {poll_idx+1}/40] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
+                        log(f"[GEMINI DONE CHECK {poll_idx+1}/120] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
                         if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
                             gemini_done = True
-                            log(f"Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} khớp màu đã lưu {gemini_dynamic_idle_color})", "OK")
+                            log(f"✅ Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} đã quay về màu rảnh rỗi {gemini_dynamic_idle_color})", "OK")
                             break
                     except Exception as e:
                         log(f"Lỗi kiểm tra pixel Gemini: {e}", "WARN")
                     time.sleep(0.5)
                 
                 if not gemini_done:
-                    log(f"Đã hết thời gian chờ 20s kiểm tra màu rảnh rỗi Gemini nhưng chưa khớp. Vẫn tiến hành quy trình lấy output...", "WARN")
+                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
+                    time.sleep(0.2)
+                    pyautogui.press('f5')
+                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    raise Exception("Timeout Gemini phản hồi quá 60s!")
                 
                 log("Focus vào vùng Gemini để chuẩn bị copy...", "ACTION")
                 GUIHelper.focus(GUIHelper.FCS_ON_GEM)

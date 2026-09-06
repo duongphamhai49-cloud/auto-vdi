@@ -709,6 +709,9 @@
             try {
                 stopEmergencySirenAudioOnly();
                 sirenAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (sirenAudioContext.state === 'suspended') {
+                    try { sirenAudioContext.resume(); } catch (e) { }
+                }
                 sirenOscillator = sirenAudioContext.createOscillator();
                 sirenGain = sirenAudioContext.createGain();
 
@@ -807,6 +810,21 @@
         let completionAudioCtx = null;
         let completionAudioTimeout = null;
 
+        function unlockAudioContext() {
+            try {
+                if (!completionAudioCtx || completionAudioCtx.state === 'closed') {
+                    completionAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (completionAudioCtx.state === 'suspended') {
+                    completionAudioCtx.resume();
+                }
+            } catch (e) { }
+        }
+
+        // Đăng ký mở khóa AudioContext trên sự kiện tương tác của người dùng
+        document.addEventListener('click', unlockAudioContext, { capture: true, passive: true });
+        document.addEventListener('keydown', unlockAudioContext, { capture: true, passive: true });
+
         function stopBatchCompletionSound() {
             if (completionAudioTimeout) {
                 clearTimeout(completionAudioTimeout);
@@ -818,12 +836,21 @@
             }
         }
 
-        function playBatchCompletionSound(durationSeconds = 10.0) {
+        async function playBatchCompletionSound(durationSeconds = 10.0) {
             try {
                 stopBatchCompletionSound();
                 stopSirenTest();
 
                 completionAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                if (completionAudioCtx.state === 'suspended') {
+                    try {
+                        await completionAudioCtx.resume();
+                    } catch (resErr) {
+                        console.warn('Không thể tự động kích hoạt AudioContext:', resErr);
+                    }
+                }
+
                 const startTime = completionAudioCtx.currentTime;
                 const totalDuration = durationSeconds; // Mặc định kéo dài 10.0 giây
 
@@ -843,7 +870,7 @@
                     osc.frequency.setValueAtTime(freq, startTime + t);
 
                     gain.gain.setValueAtTime(0, startTime + t);
-                    gain.gain.linearRampToValueAtTime(0.48, startTime + t + 0.03); // Tăng biên độ âm lượng cho to rõ bằng âm đỏ
+                    gain.gain.linearRampToValueAtTime(0.55, startTime + t + 0.03); // Tăng biên độ âm lượng cho to rõ bằng âm đỏ
                     gain.gain.exponentialRampToValueAtTime(0.001, startTime + t + step + 0.1);
 
                     osc.connect(gain);
@@ -856,6 +883,8 @@
                     stepCount++;
                 }
 
+                addConsoleLog('🔔 Đã kích hoạt chuông thông báo hoàn tất biên tập!', 'OK');
+
                 // Tự động ngắt hoàn toàn AudioContext sau đúng durationSeconds giây
                 completionAudioTimeout = setTimeout(() => {
                     stopBatchCompletionSound();
@@ -866,6 +895,7 @@
         }
 
         function toggleBatchCompletionSoundTest() {
+            unlockAudioContext();
             if (completionAudioCtx) {
                 stopBatchCompletionSound();
             } else {
@@ -1060,6 +1090,8 @@
             if (!confirm(`Bắt đầu chạy tự động ${totalIds} ID?\n📧 Gmail sẽ tự động gửi thông báo khi xong/dừng.`)) {
                 return;
             }
+
+            unlockAudioContext();
 
             const isReEdit = document.getElementById('reedit_mode_checkbox').checked;
             const backupFolder = document.getElementById('reedit_folder_input').value.trim();
@@ -1743,6 +1775,125 @@
             return cleaned;
         }
 
+        function splitTextIntoSentences(text) {
+            if (!text || !text.trim()) return [];
+
+            // 1. Bảo vệ các khối toán Math Mode ($...$, $$...$$, \[...\], \(...\))
+            const mathBlocks = [];
+            const mathRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[^\$\n]+?\$|\\\(.*?\\\))/g;
+            let safeText = text.replace(mathRegex, (match) => {
+                mathBlocks.push(match);
+                return `___MATH_BLOCK_${mathBlocks.length - 1}___`;
+            });
+
+            // 2. Bảo vệ số thập phân, tỉ lệ, thời gian (dấu . hoặc : nằm giữa 2 chữ số)
+            const numProtectMap = [];
+            const numProtectRegex = /(?<=\d)[.:](?=\d)/g;
+            safeText = safeText.replace(numProtectRegex, (match) => {
+                numProtectMap.push(match);
+                return `___NUM_PROTECT_${numProtectMap.length - 1}___`;
+            });
+
+            // 3. Bảo vệ các từ viết tắt
+            const abbrMap = [];
+            const abbrRegex = /(?:\bv\.v\.?|\bt\.g\.?|(?:\b(?:TP|TS|ThS|BS|STT|Stt|NXB|tr|ha|kg|g|cm|mm|m|km))\.)/gi;
+            safeText = safeText.replace(abbrRegex, (match) => {
+                abbrMap.push(match);
+                return `___ABBR_${abbrMap.length - 1}___`;
+            });
+
+            // 4. Tách theo dấu ngắt câu: . ? ! : ;
+            const rawSentences = safeText.split(/(?<=[.?!:;]["'”’\)\]]*)\s+(?=[A-Za-z0-9\u00C0-\u024F\u1EA0-\u1EFF\\\$]|___MATH_BLOCK_|___ABBR_)/gu);
+
+            const sentences = [];
+            for (let s of rawSentences) {
+                let restored = s;
+                restored = restored.replace(/___ABBR_(\d+)___/g, (_, idx) => abbrMap[parseInt(idx)]);
+                restored = restored.replace(/___NUM_PROTECT_(\d+)___/g, (_, idx) => numProtectMap[parseInt(idx)]);
+                restored = restored.replace(/___MATH_BLOCK_(\d+)___/g, (_, idx) => mathBlocks[parseInt(idx)]);
+
+                const trimmed = restored.trim();
+                if (trimmed) {
+                    sentences.push(trimmed);
+                }
+            }
+            return sentences;
+        }
+
+        function formatSolutionSentencesLineByLine(text, typeCode) {
+            if (!text || !text.trim()) return text;
+
+            const rawLines = text.split('\n');
+            const processedLines = [];
+            const headerRegex = /^(?:[#*_\s]*)(Khẳng định\s*(?:\$[1-4A-Za-z]\$|\([1-4A-Za-z]\)|[1-4A-Za-z\d])|Phát biểu\s*(?:\$[1-4A-Za-z]\$|\([1-4A-Za-z]\)|[1-4A-Za-z\d])|Mệnh đề\s*(?:\$[1-4A-Za-z]\$|\([1-4A-Za-z]\)|[1-4A-Za-z\d])|[a-dA-D][\.\)])[\:\.\s]+(đúng|sai)[\.\:\s]*/i;
+
+            let i = 0;
+            while (i < rawLines.length) {
+                let line = rawLines[i].trim();
+                if (!line) {
+                    i++;
+                    continue;
+                }
+
+                if (typeCode === 'DUNG_SAI') {
+                    const headerMatch = line.match(headerRegex);
+                    if (headerMatch) {
+                        let headerStr = headerMatch[0].trim();
+                        if (!/[.?!:]$/.test(headerStr)) {
+                            headerStr += '.';
+                        }
+                        let restOfLine = line.substring(headerMatch[0].length).trim();
+
+                        // Nếu nhãn đứng 1 mình trên dòng, rút 1 câu đầu tiên ở dòng phía dưới lên ghép cùng
+                        if (!restOfLine && i + 1 < rawLines.length) {
+                            let j = i + 1;
+                            while (j < rawLines.length && !rawLines[j].trim()) {
+                                j++;
+                            }
+                            if (j < rawLines.length) {
+                                const nextLine = rawLines[j].trim();
+                                const nextSentences = splitTextIntoSentences(nextLine);
+                                if (nextSentences.length > 0) {
+                                    restOfLine = nextSentences[0];
+                                    const remainingSentences = nextSentences.slice(1);
+                                    if (remainingSentences.length > 0) {
+                                        rawLines[j] = remainingSentences.join(' ');
+                                    } else {
+                                        rawLines[j] = ''; // Đã tiêu thụ dòng này
+                                    }
+                                }
+                            }
+                        }
+
+                        if (restOfLine) {
+                            const sentences = splitTextIntoSentences(restOfLine);
+                            if (sentences.length > 0) {
+                                processedLines.push(`${headerStr} ${sentences[0]}`);
+                                for (let k = 1; k < sentences.length; k++) {
+                                    processedLines.push(sentences[k]);
+                                }
+                            } else {
+                                processedLines.push(headerStr);
+                            }
+                        } else {
+                            processedLines.push(headerStr);
+                        }
+                        i++;
+                        continue;
+                    }
+                }
+
+                // Dòng bình thường (không phải nhãn DUNG_SAI)
+                const sentences = splitTextIntoSentences(line);
+                for (let s of sentences) {
+                    processedLines.push(s);
+                }
+                i++;
+            }
+
+            return processedLines.filter(line => line.trim() !== '').join('\n');
+        }
+
         function parseNotebookOutput() {
             window.currentParsedData = null; // Reset
             const textarea = document.getElementById('notebook_input');
@@ -2354,12 +2505,15 @@
                 }
             }
 
+            const formattedHint = formatSolutionSentencesLineByLine(hintText, typeCode);
+            const formattedSol = formatSolutionSentencesLineByLine(solText, typeCode);
+
             window.currentParsedData = {
                 typeCode: typeCode,
                 difficulty: diffMatch ? diffMatch[1].trim() : '',
                 debai: deBai,
-                goiy: hintText,
-                loigiai: solText,
+                goiy: formattedHint,
+                loigiai: formattedSol,
                 options: options,
                 correct_answer: parsedAnswerData
             };
@@ -2409,8 +2563,8 @@
                 });
             }
 
-            if (hintText) addField('Gợi ý', hintText, '--btn-goiy', 'GỢI Ý', 'goiy');
-            if (solText) addField('Lời giải chi tiết', solText, '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
+            if (formattedHint) addField('Gợi ý', formattedHint, '--btn-goiy', 'GỢI Ý', 'goiy');
+            if (formattedSol) addField('Lời giải chi tiết', formattedSol, '--btn-loigiai', 'LỜI GIẢI', 'loigiai');
 
             // Chèn Đề bài đầy đủ lên TOP LIST của phần Xem chi tiết
             const fullPromptVal = formatFullPrompt({ typeCode, debai: deBai, options });
@@ -2593,6 +2747,7 @@
         }
 
         async function startThreeNblmProcess() {
+            unlockAudioContext();
             const textarea = document.getElementById('id_list_input');
             let ids = textarea.value.split('\n').map(id => id.trim()).filter(id => id !== '');
             const totalIds = ids.length;
