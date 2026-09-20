@@ -2169,8 +2169,9 @@
                 if (codeBlockMatch) {
                     content = codeBlockMatch[1];
                 } else {
-                    content = sub.replace(/(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*.*?(?:\n|$)/gi, '');
+                    content = sub;
                 }
+                content = content.replace(/(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*.*?(?:\n|$)/gi, '');
 
                 content = cleanBlankLines(content);
                 content = fixVietnameseTonePlacement(content);

@@ -886,6 +886,28 @@
             processHistoryContent(window.loadedFilesData);
         }
 
+        function copyFileNameNoExt(fileName, btn, event) {
+            if (event) event.stopPropagation();
+            if (!fileName) return;
+
+            // Loại bỏ phần mở rộng file (đuôi .txt)
+            const nameNoExt = fileName.replace(/\.[^/.]+$/, "");
+
+            navigator.clipboard.writeText(nameNoExt).then(() => {
+                if (btn) {
+                    btn.style.opacity = '0.4';
+                    btn.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        btn.style.opacity = '1';
+                        btn.style.transform = 'none';
+                    }, 200);
+                }
+            }).catch(err => {
+                console.error("Lỗi copy tên file:", err);
+                alert("Không thể copy tên file vào Clipboard.");
+            });
+        }
+
         function processHistoryContent(filesData) {
             const container = document.getElementById('card_container');
             container.innerHTML = '';
@@ -952,8 +974,11 @@
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                             </svg>
                         </button>
-                        <div style="color: var(--accent); font-weight: bold; font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; padding-right: 25px; word-break: break-all;">
-                            📁 ${fileName}
+                        <div style="color: var(--accent); font-weight: bold; font-size: 0.95rem; margin-bottom: 0.75rem; text-align: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; padding-right: 25px; word-break: break-all; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                            <span>📁 ${fileName}</span>
+                            <button class="btn-copy-header" onclick="copyFileNameNoExt('${fileName.replace(/'/g, "\\'")}', this, event)" title="Copy tên file history (không có đuôi .txt)">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
                         </div>
                         <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 0.75rem;">
                             <div style="text-align: center;">
@@ -1091,7 +1116,12 @@
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </button>` : ''}
                             ${imgBadge}
-                            <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem; font-style: italic; opacity: 0.8;">(Từ: ${entry.fileName})</span>
+                            <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem; font-style: italic; opacity: 0.8; display: inline-flex; align-items: center; gap: 0.25rem;">
+                                (Từ: ${entry.fileName})
+                                <button class="btn-copy-header" onclick="copyFileNameNoExt('${entry.fileName.replace(/'/g, "\\'")}', this, event)" title="Copy tên file history (không có đuôi .txt)">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.75rem; padding-right: 0.5rem;">
                             ${errorMarkBtn}
@@ -1723,8 +1753,9 @@
                 if (codeBlockMatch) {
                     content = codeBlockMatch[1];
                 } else {
-                    content = sub.replace(/(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*.*?(?:\n|$)/gi, '');
+                    content = sub;
                 }
+                content = content.replace(/(?:_|\*\*|\*)?Đáp án:(?:_|\*\*|\*)?\s*.*?(?:\n|$)/gi, '');
 
                 content = cleanBlankLines(content);
                 content = fixVietnameseTonePlacement(content);

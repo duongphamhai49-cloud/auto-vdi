@@ -669,6 +669,7 @@ def send_gmail_notification(subject, body):
         log(f"Lỗi gửi email: {str(e)}", "ERROR")
         return False
 
+
 # ==========================================
 # CƠ CHẾ DỪNG KHẨN CẤP
 # ==========================================
