@@ -105,11 +105,12 @@ NBLM_SEND_BTN_X = 889
 NBLM_SEND_BTN_Y = 922
 NBLM_SEND_BTN = (NBLM_SEND_BTN_X, NBLM_SEND_BTN_Y)     # Tọa độ nút gửi của NotebookLM
 
-NBLM_CHECK_PIXEL = (887, 956)   # Tọa độ pixel kiểm tra của NotebookLM
+NBLM_CHECK_PIXEL = (878, 945)   # Tọa độ pixel kiểm tra của NotebookLM chính (thay 887,956 -> 878,945)
+NBLM_PROCESSING_PIXEL = (888, 938) # Tọa độ pixel kiểm tra riêng cho trạng thái processing (888, 938)
+NBLM_PROCESSING_COLOR = (0, 0, 0)   # Màu đen (0, 0, 0) khi đang xử lý tại NBLM_PROCESSING_PIXEL
 NBLM_IDLE_COLOR = (235, 235, 235) # Màu gốc của nút gửi NBLM khi đã phản hồi xong
 NBLM_INPUT_LOADED_COLOR = (66, 88, 241) # Màu nút gửi khi nạp input xong
-NBLM_PROCESSING_COLOR = (207, 57, 47)  # Màu nút gửi khi đang xử lý
-NBLM_COPY_REGION = (354, 447, 598, 455)    # Vùng tìm ảnh copy NotebookLM mới
+NBLM_COPY_REGION = (300, 350, 700, 600)    # Vùng tìm ảnh copy NotebookLM mở rộng linh hoạt
 
 # 4. Các cấu hình phụ và tìm kiếm
 SEARCH_BOX_REGION = (328, 334, 247, 59) # Từ (328,334) đến (575,393)
@@ -147,6 +148,7 @@ class GUIHelper:
     NBLM_CHATBOX = NBLM_CHATBOX
     NBLM_SEND_BTN = NBLM_SEND_BTN
     NBLM_CHECK_PIXEL = NBLM_CHECK_PIXEL
+    NBLM_PROCESSING_PIXEL = NBLM_PROCESSING_PIXEL
     NBLM_IDLE_COLOR = NBLM_IDLE_COLOR
     NBLM_INPUT_LOADED_COLOR = NBLM_INPUT_LOADED_COLOR
     NBLM_PROCESSING_COLOR = NBLM_PROCESSING_COLOR
@@ -260,9 +262,30 @@ class GUIHelper:
 
     @classmethod
     def check_nblm_done(cls, target_color=None):
-        """Kiểm tra xem NotebookLM đã phản hồi xong chưa dựa vào màu pixel tại (850, 945)."""
+        """Kiểm tra xem NotebookLM đã phản hồi xong chưa dựa vào màu pixel tại NBLM_CHECK_PIXEL (878, 945)."""
         color = target_color if target_color else cls.NBLM_IDLE_COLOR
-        return pyautogui.pixelMatchesColor(cls.NBLM_CHECK_PIXEL[0], cls.NBLM_CHECK_PIXEL[1], color, tolerance=10)
+        return pyautogui.pixelMatchesColor(cls.NBLM_CHECK_PIXEL[0], cls.NBLM_CHECK_PIXEL[1], color, tolerance=12)
+
+    @classmethod
+    def check_nblm_processing(cls):
+        """Kiểm tra xem NotebookLM có đang ở trạng thái Processing không dựa vào NBLM_PROCESSING_PIXEL (888, 938) có màu (0,0,0)."""
+        try:
+            return pyautogui.pixelMatchesColor(cls.NBLM_PROCESSING_PIXEL[0], cls.NBLM_PROCESSING_PIXEL[1], cls.NBLM_PROCESSING_COLOR, tolerance=15)
+        except Exception:
+            return False
+
+    @classmethod
+    def locate_copy_button(cls, region=None, confidence=0.75):
+        """Tìm nút Copy NotebookLM ưu tiên ảnh mới notebooklm_copy_new.png trước, sau đó fallback về notebooklm_copy.png."""
+        search_region = region if region else cls.NBLM_COPY_REGION
+        for img_name in ['images/notebooklm_copy_new.png', 'images/notebooklm_copy.png', 'notebooklm_copy_new.png', 'notebooklm_copy.png']:
+            try:
+                pos = pyautogui.locateCenterOnScreen(img_name, region=search_region, confidence=confidence)
+                if pos:
+                    return pos
+            except Exception:
+                pass
+        return None
 
     @classmethod
     def cancel_modal(cls):
@@ -1214,11 +1237,12 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         if STOP_FLAG:
                             raise Exception("Bị dừng bởi người dùng!")
                         
-                        if GUIHelper.check_nblm_done(nblm_idle_color):
+                        is_proc = GUIHelper.check_nblm_processing()
+                        if not is_proc:
                             stable_matches += 1
-                            if stable_matches >= 4:
+                            if stable_matches >= 3:
                                 nblm_done = True
-                                log("Màu nút Send của NotebookLM đã ổn định (Idle)!", "OK")
+                                log("Màu nút Send của NotebookLM đã hết trạng thái Processing (Đã phản hồi xong)!", "OK")
                                 break
                         else:
                             stable_matches = 0
@@ -1239,12 +1263,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                         log("Tìm nút Copy NotebookLM (Lần 1)...", "SEARCH")
                         nblm_copy_pos = None
                         for _ in range(30):
-                            try:
-                                nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
-                                if nblm_copy_pos:
-                                    break
-                            except Exception:
-                                pass
+                            nblm_copy_pos = GUIHelper.locate_copy_button()
+                            if nblm_copy_pos:
+                                break
                             time.sleep(0.1)
                         
                         if not nblm_copy_pos:
@@ -1254,12 +1275,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                             
                             log("Tìm nút Copy NotebookLM (Lần 2)...", "SEARCH")
                             for _ in range(30):
-                                try:
-                                    nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
-                                    if nblm_copy_pos:
-                                        break
-                                except Exception:
-                                    pass
+                                nblm_copy_pos = GUIHelper.locate_copy_button()
+                                if nblm_copy_pos:
+                                    break
                                 time.sleep(0.1)
                         
                         if nblm_copy_pos:
@@ -1646,26 +1664,19 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     if STOP_FLAG:
                         raise Exception("Bị dừng bởi người dùng!")
                         
-                    is_idle = GUIHelper.check_nblm_done(GUIHelper.NBLM_IDLE_COLOR)
-                    is_processing = pyautogui.pixelMatchesColor(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1], GUIHelper.NBLM_PROCESSING_COLOR, tolerance=15)
-                    is_input_loaded = pyautogui.pixelMatchesColor(GUIHelper.NBLM_CHECK_PIXEL[0], GUIHelper.NBLM_CHECK_PIXEL[1], GUIHelper.NBLM_INPUT_LOADED_COLOR, tolerance=15)
+                    is_processing = GUIHelper.check_nblm_processing()
                         
-                    if is_idle:
+                    if not is_processing:
                         stable_matches += 1
-                        if stable_matches >= 3: # khớp liên tục 0.6s
+                        if stable_matches >= 2: # không còn màu đen processing trong 0.4s
                             nblm_done = True
-                            log(f"NotebookLM Tab {nblm_tab} đã PHẢN HỒI XONG (Khớp màu Xám Rảnh {GUIHelper.NBLM_IDLE_COLOR})!", "OK")
+                            log(f"NotebookLM Tab {nblm_tab} đã PHẢN HỒI XONG (Không còn màu Đen tại {GUIHelper.NBLM_PROCESSING_PIXEL})!", "OK")
                             break
                     else:
                         stable_matches = 0
                         # Log trạng thái mỗi 1 giây (5 lượt kiểm tra) để console gọn gàng
                         if attempt % 5 == 0:
-                            if is_processing:
-                                log(f"NotebookLM Tab {nblm_tab} đang ĐANG XỬ LÝ (Màu Đỏ {GUIHelper.NBLM_PROCESSING_COLOR})...", "STATUS")
-                            elif is_input_loaded:
-                                log(f"NotebookLM Tab {nblm_tab} ĐÃ NHẬN INPUT (Màu Xanh {GUIHelper.NBLM_INPUT_LOADED_COLOR})...", "STATUS")
-                            else:
-                                log(f"NotebookLM Tab {nblm_tab} đang bận hoặc đổi màu...", "STATUS")
+                            log(f"NotebookLM Tab {nblm_tab} đang ĐANG XỬ LÝ (Màu Đen tại {GUIHelper.NBLM_PROCESSING_PIXEL})...", "STATUS")
                     time.sleep(0.2)
                 
                 if not nblm_done:
@@ -1687,12 +1698,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 log(f"Tìm nút Copy NotebookLM Tab {nblm_tab} (Lần 1)...", "SEARCH")
                 nblm_copy_pos = None
                 for _ in range(30):
-                    try:
-                        nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
-                        if nblm_copy_pos:
-                            break
-                    except Exception:
-                        pass
+                    nblm_copy_pos = GUIHelper.locate_copy_button()
+                    if nblm_copy_pos:
+                        break
                     time.sleep(0.1)
                 
                 if not nblm_copy_pos:
@@ -1702,12 +1710,9 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     
                     log(f"Tìm nút Copy NotebookLM Tab {nblm_tab} (Lần 2)...", "SEARCH")
                     for _ in range(30):
-                        try:
-                            nblm_copy_pos = pyautogui.locateCenterOnScreen('images/notebooklm_copy.png', region=GUIHelper.NBLM_COPY_REGION, confidence=0.8)
-                            if nblm_copy_pos:
-                                break
-                        except Exception:
-                            pass
+                        nblm_copy_pos = GUIHelper.locate_copy_button()
+                        if nblm_copy_pos:
+                            break
                         time.sleep(0.1)
                 
                 if nblm_copy_pos:
