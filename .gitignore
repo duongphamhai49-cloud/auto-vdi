@@ -9,3 +9,8 @@ __pycache__/
 .idea/
 
 backup_v1/
+
+# Bỏ qua các file parse cá nhân
+parse_thanhmeo.html
+parse_kly.html
+
