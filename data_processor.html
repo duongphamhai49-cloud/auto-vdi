@@ -319,13 +319,417 @@
             opacity: 1 !important;
             transform: scale(1.1);
         }
+
+        /* ============================================================
+           TRA CỨU ĐỘNG TỪ — MODAL POPUP STYLES
+           ============================================================ */
+        .verb-search-btn {
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(99,102,241,0.15));
+            border: 1.5px solid rgba(99,102,241,0.4);
+            color: #a5b4fc;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            flex-shrink: 0;
+        }
+        .verb-search-btn:hover {
+            background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(99,102,241,0.3));
+            border-color: #818cf8;
+            transform: translateY(-2px) scale(1.1) !important;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.5);
+            color: #c7d2fe;
+        }
+        .verb-search-btn:active { transform: scale(0.93) !important; }
+
+        /* Backdrop */
+        #verbBackdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            background: rgba(5, 8, 20, 0.7);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            transition: opacity 0.22s ease, visibility 0.22s ease;
+        }
+        #verbBackdrop.verb-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* Modal dialog */
+        #verbModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            z-index: 9999;
+            width: min(580px, 94vw);
+            max-height: 78vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.07);
+            transition: transform 0.25s cubic-bezier(0.34,1.4,0.64,1), opacity 0.22s ease;
+        }
+        #verbModal.verb-hidden {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.92);
+            pointer-events: none;
+        }
+
+        /* Modal header gradient */
+        .verb-modal-header {
+            background: linear-gradient(135deg, #1a2340 0%, #16192e 60%, #1a1d35 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            padding: 1rem 1.1rem 0.85rem;
+            flex-shrink: 0;
+        }
+        .verb-modal-title-row {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            margin-bottom: 0.8rem;
+        }
+        .verb-modal-title {
+            font-weight: 800;
+            font-size: 1rem;
+            background: linear-gradient(90deg, #818cf8, #a5b4fc, #7dd3fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            flex: 1;
+        }
+        .verb-close-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.18s ease;
+            flex-shrink: 0;
+        }
+        .verb-close-btn:hover {
+            background: rgba(239,68,68,0.2);
+            border-color: rgba(239,68,68,0.5);
+            color: #fca5a5;
+            transform: scale(1.1) !important;
+            box-shadow: none !important;
+        }
+
+        /* Search + tabs in header */
+        .verb-search-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .verb-search-wrap {
+            position: relative;
+            flex: 1;
+        }
+        .verb-search-wrap svg {
+            position: absolute;
+            left: 0.6rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.3);
+            pointer-events: none;
+        }
+        .verb-search-input {
+            width: 100%;
+            background: rgba(0,0,0,0.35);
+            border: 1.5px solid rgba(255,255,255,0.1);
+            color: #e2e8f0;
+            padding: 0.45rem 0.8rem 0.45rem 2.05rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        .verb-search-input::placeholder { color: rgba(255,255,255,0.28); }
+        .verb-search-input:focus { border-color: rgba(129,140,248,0.65); }
+
+        /* Level tabs */
+        .verb-level-tabs {
+            display: flex;
+            gap: 0.28rem;
+            flex-shrink: 0;
+        }
+        .verb-tab {
+            padding: 0.36rem 0.7rem;
+            border-radius: 0.4rem;
+            border: 1.5px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.42);
+            font-size: 0.75rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.16s ease;
+            letter-spacing: 0.5px;
+        }
+        .verb-tab:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); transform: translateY(-1px) !important; box-shadow: none !important; }
+        /* M1 = Green, M2 = Pure Yellow, M3 = Pure Red */
+        .verb-tab.active-m1 { background: rgba(34,197,94,0.25); border-color: #22c55e; color: #4ade80; }
+        .verb-tab.active-m2 { background: rgba(234,179,8,0.25); border-color: #eab308; color: #fde047; }
+        .verb-tab.active-m3 { background: rgba(239,68,68,0.25); border-color: #ef4444; color: #fca5a5; }
+
+        /* Verb list */
+        .verb-list {
+            flex: 1;
+            overflow-y: auto;
+            background: #0d1120;
+            padding: 0.6rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .verb-list::-webkit-scrollbar { width: 6px; }
+        .verb-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 3px; }
+        .verb-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        .verb-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
+
+        /* Compact verb row */
+        .verb-card {
+            flex-shrink: 0;
+            border-radius: 0.45rem;
+            overflow: hidden;
+            border-left: 3px solid transparent;
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid rgba(255,255,255,0.04);
+            border-right: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .verb-card-m1 { border-left: 3.5px solid #22c55e !important; }
+        .verb-card-m2 { border-left: 3.5px solid #eab308 !important; }
+        .verb-card-m3 { border-left: 3.5px solid #ef4444 !important; }
+        .verb-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0.45rem 0.65rem;
+            cursor: pointer;
+            background: rgba(255,255,255,0.025);
+            transition: background 0.14s;
+            user-select: none;
+            -webkit-user-select: none;
+            min-height: 38px;
+            flex-shrink: 0;
+        }
+        .verb-card-header:hover { background: rgba(255,255,255,0.065); }
+
+        /* Level Pill Badges */
+        .verb-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 0.12rem 0.45rem;
+            border-radius: 1rem;
+            flex-shrink: 0;
+            letter-spacing: 0.4px;
+        }
+        .verb-badge-m1 {
+            background: rgba(34,197,94,0.22);
+            border: 1px solid #22c55e;
+            color: #4ade80;
+        }
+        .verb-badge-m2 {
+            background: rgba(234,179,8,0.22);
+            border: 1px solid #eab308;
+            color: #fde047;
+        }
+        .verb-badge-m3 {
+            background: rgba(239,68,68,0.22);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+
+        .verb-name {
+            flex: 1;
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: #f8fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .verb-card-header:hover .verb-name { color: #a5b4fc; }
+
+        /* Copy Button Base Framed Style */
+        .verb-copy-btn {
+            cursor: pointer;
+            padding: 0.22rem 0.55rem;
+            border-radius: 0.35rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            transition: all 0.16s ease;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* M1 Copy Button - Green */
+        .verb-copy-m1 {
+            color: #4ade80;
+            border: 1px solid rgba(74,222,128,0.3);
+            background: rgba(34,197,94,0.12);
+        }
+        .verb-copy-m1:hover {
+            background: rgba(34,197,94,0.22) !important;
+            border-color: #22c55e !important;
+            color: #86efac !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(34,197,94,0.35) !important;
+        }
+
+        /* M2 Copy Button - Yellow */
+        .verb-copy-m2 {
+            color: #fde047;
+            border: 1px solid rgba(253,224,71,0.3);
+            background: rgba(234,179,8,0.12);
+        }
+        .verb-copy-m2:hover {
+            background: rgba(234,179,8,0.22) !important;
+            border-color: #eab308 !important;
+            color: #fef08a !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(234,179,8,0.35) !important;
+        }
+
+        /* M3 Copy Button - Red */
+        .verb-copy-m3 {
+            color: #fca5a5;
+            border: 1px solid rgba(252,165,165,0.3);
+            background: rgba(239,68,68,0.12);
+        }
+        .verb-copy-m3:hover {
+            background: rgba(239,68,68,0.22) !important;
+            border-color: #ef4444 !important;
+            color: #fecaca !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(239,68,68,0.35) !important;
+        }
+        .verb-copy-btn:active { transform: scale(0.92) !important; }
+
+        .verb-toggle-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #cbd5e1;
+            cursor: pointer;
+            padding: 0.22rem 0.45rem;
+            border-radius: 0.35rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            transition: all 0.16s ease;
+            flex-shrink: 0;
+        }
+        .verb-toggle-btn:hover {
+            background: rgba(129,140,248,0.2);
+            border-color: #818cf8;
+            color: #818cf8;
+            transform: translateY(-1px) !important;
+        }
+        .verb-toggle-btn svg { transition: transform 0.2s ease; }
+        .verb-toggle-btn.open svg { transform: rotate(180deg); }
+
+        /* Description body */
+        .verb-card-body {
+            padding: 0.6rem 0.82rem 0.65rem 1.8rem;
+            font-size: 0.84rem;
+            color: #e2e8f0;
+            line-height: 1.62;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            background: rgba(15,23,42,0.6);
+            display: none;
+        }
+        .verb-card-body.open { display: block; }
+        .verb-example {
+            display: block;
+            margin-top: 0.4rem;
+            font-style: italic;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .verb-no-result {
+            text-align: center;
+            color: rgba(255,255,255,0.35);
+            padding: 3rem 1rem;
+            font-size: 0.88rem;
+        }
+        /* Count badge */
+        .verb-count {
+            font-size: 0.7rem;
+            padding: 0.12rem 0.45rem;
+            border-radius: 1rem;
+            background: rgba(129,140,248,0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(129,140,248,0.2);
+            font-weight: 700;
+        }
     </style>
 </head>
 
 <body>
 
-    <div class="header">
+    <div class="header" style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
         <h1>DATA PROCESSOR</h1>
+        <button id="verbSearchOpenBtn" onclick="openVerbOverlay()" class="verb-search-btn" title="Tra cứu động từ">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </button>
+    </div>
+
+    <!-- BACKDROP -->
+    <div id="verbBackdrop" class="verb-hidden" onclick="closeVerbOverlay()"></div>
+
+    <!-- MODAL TRA CỨU ĐỘNG TỪ -->
+    <div id="verbModal" class="verb-hidden">
+        <!-- Header gradient -->
+        <div class="verb-modal-header">
+            <div class="verb-modal-title-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span class="verb-modal-title">Tra Cứu Động Từ</span>
+                <span class="verb-count" id="verbCount">27</span>
+                <button class="verb-close-btn" onclick="closeVerbOverlay()" title="Đóng (ESC)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="verb-search-row">
+                <div class="verb-search-wrap">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="verbSearchInput" class="verb-search-input" placeholder="Tìm động từ..." oninput="renderVerbCards()">
+                </div>
+                <div class="verb-level-tabs">
+                    <button class="verb-tab" id="vTabM1" onclick="toggleVerbTab('M1')">M1</button>
+                    <button class="verb-tab" id="vTabM2" onclick="toggleVerbTab('M2')">M2</button>
+                    <button class="verb-tab" id="vTabM3" onclick="toggleVerbTab('M3')">M3</button>
+                </div>
+            </div>
+        </div>
+        <div id="verbList" class="verb-list"></div>
     </div>
 
     <div class="file-upload-wrapper" style="gap: 1rem; align-items: center;">
@@ -2228,6 +2632,277 @@
         function scrollToTop() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        // ==============================================
+        // TRA CỨU ĐỘNG TỪ
+        // ==============================================
+        const VERB_DATA = [
+            // ── MỨC 1 ──
+            {
+                id: 'v01', name: 'Nhận ra/Nhận dạng', level: 'M1',
+                description: 'Sử dụng trong câu hỏi trắc nghiệm. Nhận diện, nhận biết, phát hiện đặc điểm, tính chất hay định nghĩa từ một biểu thức, đồ thị, hình vẽ. Không yêu cầu đưa ra giá trị cụ thể. Chỉ dùng khi học sinh cần chỉ ra thông tin rõ ràng, quen thuộc.',
+                example: 'Ví dụ: Nhận dạng được tứ giác qua hình vẽ; Nhận ra đồ thị của hàm số là một đường thẳng.'
+            },
+            {
+                id: 'v02', name: 'Nêu tên', level: 'M1',
+                description: 'Gọi tên đúng một đối tượng, khái niệm, định lý từ mô tả hoặc hình vẽ. Mức độ yêu cầu thấp, học sinh chỉ cần tái hiện tên gọi chính xác.',
+                example: ''
+            },
+            {
+                id: 'v03', name: 'Xác định/Tìm kiếm', level: 'M1',
+                description: 'Dùng khi cần chỉ rõ, nêu cụ thể một giá trị, điểm, nghiệm, vị trí… từ một đề bài, tình huống đã cho.',
+                example: 'Ví dụ: Xác định điểm thuộc đường thẳng, điểm không thuộc đường thẳng; Xác định vị trí của điểm A so với đường tròn; Xác định tọa độ 2 điểm thuộc đồ thị hàm số và viết phương trình; Xác định dấu kết quả của phép nhân, phép chia số nguyên.'
+            },
+            {
+                id: 'v04', name: 'Mô tả/Liệt kê', level: 'M1',
+                description: 'Trọng tâm của hành vi làm bài nằm ở việc mô tả chính xác ý nghĩa của các khái niệm, đặc điểm (không phải là so sánh hay nhận ra, phân biệt giữa các lựa chọn).',
+                example: 'Ví dụ: Mô tả được những đặc điểm, tính chất của hình vuông.'
+            },
+            {
+                id: 'v05', name: 'Phát biểu/Diễn đạt lại', level: 'M1',
+                description: 'Từ dữ liệu cho trước trong đề bài, để tìm ra đáp án đúng thì cần diễn đạt hoặc phát biểu lại theo cách khác với ý nghĩa tương đương.',
+                example: ''
+            },
+            {
+                id: 'v06', name: 'So sánh', level: 'M1',
+                description: 'Bản chất của hành vi là so sánh, tìm ra điểm giống – khác, lớn – bé giữa hai đối tượng.',
+                example: 'Ví dụ: So sánh hai số nguyên âm; So sánh các giá trị tìm được trong các phương án.'
+            },
+            {
+                id: 'v07', name: 'Áp dụng', level: 'M1',
+                description: 'Bản chất của hành vi là áp dụng trực tiếp, chỉ cần dùng duy nhất một bước. Thay đúng giá trị vào biểu thức, công thức, định lí đã có để tìm kết quả.',
+                example: 'Ví dụ: Áp dụng công thức tính diện tích hình thoi; Áp dụng giá trị lượng giác của góc để tính A.'
+            },
+            // ── MỨC 2 ──
+            {
+                id: 'v08', name: 'Kiểm chứng', level: 'M2',
+                description: 'Gán động từ này cho tất cả các câu hỏi đúng sai dạng bảng. Kiểm tra tính đúng/sai của một mệnh đề, phát biểu bằng cách đối chiếu với kiến thức đã biết hoặc tính toán đơn giản.',
+                example: ''
+            },
+            {
+                id: 'v09', name: 'Giải thích/Suy luận', level: 'M2',
+                description: 'Đưa ra lý do, giải thích tại sao, hoặc suy luận từ thông tin đã cho để rút ra kết luận trung gian.',
+                example: ''
+            },
+            {
+                id: 'v10', name: 'Dự đoán', level: 'M2',
+                description: 'Dự báo kết quả, xu hướng dựa trên quy luật hoặc dữ liệu đã có.',
+                example: ''
+            },
+            {
+                id: 'v11', name: 'Lựa chọn', level: 'M2',
+                description: 'Dùng cho dạng câu trắc nghiệm, khi cần tư tư chọn phương án phù hợp, hợp lí nhất trong các tình huống tương tự hoặc có nhiều lựa chọn gần đúng.',
+                example: 'Ví dụ: Để tìm tập hợp A∩B∪C, ta cần thực hiện các bước nào sau đây một cách hợp lí nhất?'
+            },
+            {
+                id: 'v12', name: 'Phân biệt/Phân loại', level: 'M2',
+                description: 'Dùng khi đề bài yêu cầu nhận biết, so sánh, chỉ ra được sự khác biệt trong đặc điểm, bản chất giữa các đối tượng, khái niệm.',
+                example: 'Ví dụ: Phân biệt được miền biểu diễn chứa bờ hay không.'
+            },
+            {
+                id: 'v13', name: 'Sắp xếp', level: 'M2',
+                description: 'Để tìm ra kết quả cần thiết lập một thứ tự cụ thể cho nhiều đối tượng (từ 3 trở lên) theo tiêu chí từ trong đề bài.',
+                example: 'Ví dụ: Tính độ dài các vectơ và sắp xếp độ dài vectơ theo thứ tự tăng dần.'
+            },
+            {
+                id: 'v14', name: 'Biến đổi/Khai triển', level: 'M2',
+                description: 'Thực hiện thao tác biến đổi hoặc khai triển biểu thức, toán tử, tập hợp để đơn giản hoá hoặc đưa về dạng cần thiết.',
+                example: 'Ví dụ: Khai triển biểu thức (x−3)⁴; Biến đổi các biểu thức đa thức để rút gọn.'
+            },
+            {
+                id: 'v15', name: 'Tính toán', level: 'M2',
+                description: 'Gán động từ này cho tất cả các câu hỏi cần tính toán. Thực hiện các phép tính theo yêu cầu của bài.',
+                example: ''
+            },
+            {
+                id: 'v16', name: 'Ước lượng', level: 'M2',
+                description: 'Nhấn mạnh vào hành vi so sánh kết quả với khoảng đã cho. Dùng khi cần xác định khoảng phù hợp từ giá trị tính toán được.',
+                example: 'Ví dụ: Xác định số lần vi khuẩn nhân đôi và nhân nhẩm ước lượng tổng số vi khuẩn.'
+            },
+            {
+                id: 'v17', name: 'Áp dụng (quy trình nhiều bước)', level: 'M2',
+                description: 'Dùng khi phải thực hiện một chuỗi các thao tác khác nhau, liên quan đến phương pháp, các bước làm bài cần biến đổi phức tạp.',
+                example: 'Ví dụ: Áp dụng công thức tính giá trị trung bình và phương sai; Áp dụng phương pháp viết phương trình đường thẳng đi qua hai điểm cho trước.'
+            },
+            {
+                id: 'v18', name: 'Biểu diễn', level: 'M2',
+                description: 'Thể hiện kết quả dưới dạng đồ thị, hình vẽ, sơ đồ trực quan.',
+                example: 'Ví dụ: Biểu diễn được miền nghiệm của bất phương trình bậc nhất hai ẩn trên mặt phẳng tọa độ.'
+            },
+            {
+                id: 'v19', name: 'Đưa ra minh chứng/lí lẽ', level: 'M2',
+                description: 'Cung cấp ví dụ cụ thể, bằng chứng, hoặc lập luận để chứng minh một khẳng định.',
+                example: ''
+            },
+            // ── MỨC 3 ──
+            {
+                id: 'v20', name: 'Phân tích', level: 'M3',
+                description: 'Phải có bước suy luận, xử lí các dữ liệu đã cho từ thao tác ban đầu và từ đó rút ra được kết luận để tìm kết quả.',
+                example: 'Ví dụ: Phân tích số liệu từ bảng biểu để nhận ra vấn đề hoặc quy luật; Phân tích chuyển động của quả bóng dựa trên đồ thị, từ đó tìm điểm thuộc đồ thị, viết phương trình.'
+            },
+            {
+                id: 'v21', name: 'Tổng hợp/Lập luận nhiều bước', level: 'M3',
+                description: 'Là chuỗi suy luận qua nhiều bước phức tạp để đi đến kết quả.',
+                example: 'Ví dụ: Lập luận nhiều bước để giải quyết bài toán thực tiễn.'
+            },
+            {
+                id: 'v22', name: 'Đánh giá', level: 'M3',
+                description: 'Khi đề bài yêu cầu đánh giá một vấn đề nào đó, tìm phương án tối ưu nhất.',
+                example: 'Ví dụ: Đánh giá giải pháp để tìm phương án tối ưu (đánh giá Min, Max của biểu thức).'
+            },
+            {
+                id: 'v23', name: 'Vận dụng', level: 'M3',
+                description: 'Nhận diện mô hình toán học từ tình huống thực tế, mô hình hoá và sử dụng kiến thức toán học để giải quyết bài toán.',
+                example: 'Ví dụ: Vận dụng quy tắc đếm để giải quyết bài toán thực tiễn.'
+            },
+            {
+                id: 'v24', name: 'Khái quát', level: 'M3',
+                description: 'Rút ra tính chất tổng quát, quy luật, biểu thức hoặc kết luận có tính bao quát từ nhiều trường hợp cụ thể.',
+                example: 'Ví dụ: Khái quát được số hạng tổng quát của dãy số.'
+            },
+            {
+                id: 'v25', name: 'Phát hiện (vấn đề có tính mới)', level: 'M3',
+                description: 'Phát hiện được quy luật, điểm khác biệt hay vấn đề mới chưa được gợi ý trực tiếp trong đề bài.',
+                example: 'Ví dụ: Phát hiện được quy luật, điểm khác biệt trong chuỗi số hoặc hình học.'
+            },
+            {
+                id: 'v26', name: 'Mở rộng/Liên hệ', level: 'M3',
+                description: 'Mở rộng hoặc liên hệ từ các kết quả thống kê để rút ra các kết luận có ý nghĩa hoặc áp dụng sang bối cảnh khác.',
+                example: ''
+            },
+            {
+                id: 'v27', name: 'Tạo ra/Đề xuất', level: 'M3',
+                description: 'Tạo ra một công thức, phương án, giải pháp mới dựa trên phân tích và dữ liệu có trong đề bài.',
+                example: 'Ví dụ: Tạo ra phép tính từ các số và dấu cho trước; Tạo ra hàm số T.'
+            }
+        ];
+
+        const verbState = {
+            open: false,
+            query: '',
+            activeLevels: new Set(),
+            openCards: new Set()
+        };
+
+        function normVerb(str) {
+            return str.toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        function openVerbOverlay() {
+            document.getElementById('verbBackdrop').classList.remove('verb-hidden');
+            document.getElementById('verbModal').classList.remove('verb-hidden');
+            verbState.open = true;
+            const input = document.getElementById('verbSearchInput');
+            if (input) input.value = verbState.query;
+            renderVerbCards();
+            setTimeout(() => { if (input) input.focus(); }, 60);
+        }
+
+        function closeVerbOverlay() {
+            document.getElementById('verbBackdrop').classList.add('verb-hidden');
+            document.getElementById('verbModal').classList.add('verb-hidden');
+            verbState.open = false;
+        }
+
+        function toggleVerbTab(level) {
+            if (verbState.activeLevels.has(level)) verbState.activeLevels.delete(level);
+            else verbState.activeLevels.add(level);
+            updateVerbTabStyles();
+            renderVerbCards();
+        }
+
+        function updateVerbTabStyles() {
+            const tabMap = { M1: 'active-m1', M2: 'active-m2', M3: 'active-m3' };
+            ['M1', 'M2', 'M3'].forEach(lvl => {
+                const tab = document.getElementById('vTab' + lvl);
+                if (tab) tab.classList.toggle(tabMap[lvl], verbState.activeLevels.has(lvl));
+            });
+        }
+
+        function renderVerbCards() {
+            const input = document.getElementById('verbSearchInput');
+            if (input) verbState.query = input.value;
+            const q = normVerb(verbState.query);
+            const list = document.getElementById('verbList');
+            if (!list) return;
+
+            const filtered = VERB_DATA.filter(v => {
+                const levelOk = verbState.activeLevels.size === 0 || verbState.activeLevels.has(v.level);
+                const searchOk = !q || normVerb(v.name).includes(q);
+                return levelOk && searchOk;
+            });
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="verb-no-result">Không tìm thấy động từ nào phù hợp.</div>';
+                return;
+            }
+
+            // Update count
+            const countEl = document.getElementById('verbCount');
+            if (countEl) countEl.textContent = filtered.length;
+
+            list.innerHTML = filtered.map(v => {
+                const badgeCls = v.level === 'M1' ? 'verb-badge-m1' : v.level === 'M2' ? 'verb-badge-m2' : 'verb-badge-m3';
+                const cardLvlCls = v.level === 'M1' ? 'verb-card-m1' : v.level === 'M2' ? 'verb-card-m2' : 'verb-card-m3';
+                const copyLvlCls = v.level === 'M1' ? 'verb-copy-m1' : v.level === 'M2' ? 'verb-copy-m2' : 'verb-copy-m3';
+                const isOpen = verbState.openCards.has(v.id);
+                const toggleClass = isOpen ? 'verb-toggle-btn open' : 'verb-toggle-btn';
+                const hasDesc = v.description || v.example;
+                const exampleHtml = v.example ? `<em class="verb-example">${v.example}</em>` : '';
+                return `
+                    <div class="verb-card ${cardLvlCls}" id="vcard-${v.id}">
+                        <div class="verb-card-header" onclick="toggleVerbDesc('${v.id}')">
+                            <span class="verb-badge ${badgeCls}">${v.level}</span>
+                            <span class="verb-name" title="${v.name}">${v.name}</span>
+                            <button class="verb-copy-btn ${copyLvlCls}" onclick="event.stopPropagation(); copyVerbName('${v.name.replace(/'/g, "\\'")}')" title="Sao chép tên động từ">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span>Copy</span>
+                            </button>
+                            ${hasDesc ? `<button class="${toggleClass}" onclick="event.stopPropagation(); toggleVerbDesc('${v.id}')" title="Xem mô tả">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>` : ''}
+                        </div>
+                        ${hasDesc ? `<div class="verb-card-body ${isOpen ? 'open' : ''}" id="vbody-${v.id}">
+                            ${v.description}${exampleHtml}
+                        </div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleVerbDesc(id) {
+            if (verbState.openCards.has(id)) verbState.openCards.delete(id);
+            else verbState.openCards.add(id);
+            const body = document.getElementById('vbody-' + id);
+            const btn = document.querySelector(`#vcard-${id} .verb-toggle-btn`);
+            if (body) body.classList.toggle('open', verbState.openCards.has(id));
+            if (btn) btn.classList.toggle('open', verbState.openCards.has(id));
+        }
+
+        function copyVerbName(name) {
+            navigator.clipboard.writeText(name).then(() => {
+                document.querySelectorAll('.verb-card').forEach(card => {
+                    const nameEl = card.querySelector('.verb-name');
+                    if (nameEl && nameEl.textContent.trim() === name) {
+                        const btn = card.querySelector('.verb-copy-btn');
+                        if (btn) {
+                            btn.style.color = 'var(--success)';
+                            btn.style.transform = 'scale(1.3)';
+                            setTimeout(() => { btn.style.color = ''; btn.style.transform = ''; }, 500);
+                        }
+                    }
+                });
+            }).catch(() => {});
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && verbState.open) closeVerbOverlay();
+        });
     </script>
 </body>
 
