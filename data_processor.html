@@ -1977,7 +1977,7 @@
             function formatLargeNumbers(text) {
                 if (!text) return '';
                 let normalized = text.replace(/(\d+)\\\s+(?=\d)/g, '$1');
-                return normalized.replace(/(?<![&#A-Za-z0-9])\b\d{5,}\b/g, (match) => {
+                return normalized.replace(/(?<![&#A-Za-z0-9])\b\d{4,}\b/g, (match) => {
                     return match.replace(/\B(?=(\d{3})+(?!\d))/g, '\\ ');
                 });
             }
