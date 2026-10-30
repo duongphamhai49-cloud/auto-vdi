@@ -10,7 +10,10 @@ echo Dang mo cac tab tai lieu chinh (Ben trai)...
 start chrome --new-window --window-position=0,0 --window-size=500,500 --profile-directory="Profile 5" ^
  "https://docs.google.com/spreadsheets/d/11qQUShH6VodnRmDTRX3k0y2hutwvAgPJcq89us1qkzQ/edit?gid=0#gid=0" ^
  "https://aeglobal.lotuslms.com/admin/content-manager/folder/690173da0de3cd4f2808c80e" ^
- "https://notebooklm.google.com/notebook/6b86d189-b723-44cb-81b8-e9fca8bcfcb3"
+ "https://notebooklm.google.com/notebook/6b86d189-b723-44cb-81b8-e9fca8bcfcb3" ^
+ "https://gemini.google.com/app/2fcd233553d06463?hl=vi" ^
+ "https://gemini.google.com/app/e90b0e72fe989f11?hl=vi" ^
+ "https://www.overleaf.com/project/6a3d53e326609fd6528ac42d"
 timeout /t 1 >nul
 
 echo Dang mo Gemini (Goc phai tren)...
