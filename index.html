@@ -1989,8 +1989,15 @@
             function formatLargeNumbers(text) {
                 if (!text) return '';
                 let normalized = text.replace(/(\d+)\\\s+(?=\d)/g, '$1');
-                return normalized.replace(/(?<![&#A-Za-z0-9])\b\d{4,}\b/g, (match) => {
-                    return match.replace(/\B(?=(\d{3})+(?!\d))/g, '\\ ');
+                return normalized.replace(/(?<![&#A-Za-z0-9])\b(\d+)(?:([.,]|\{,\})(\d+))?(?![A-Za-z0-9])/g, (match, intPart, sep, decPart) => {
+                    let formattedInt = intPart;
+                    if (intPart.length >= 5) {
+                        formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '\\ ');
+                    }
+                    if (sep && decPart) {
+                        return formattedInt + sep + decPart;
+                    }
+                    return formattedInt;
                 });
             }
 
