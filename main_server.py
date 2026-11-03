@@ -288,6 +288,34 @@ class GUIHelper:
         return None
 
     @classmethod
+    def invoke_gemini_skill(cls, skill_name="ocr-question"):
+        """Gọi skill trên Gemini: gõ @ -> đợi 0.5s -> dán tên skill -> nhấn Enter."""
+        log(f"Gọi skill '{skill_name}' trên Gemini...", "ACTION")
+        pyautogui.write('@')
+        time.sleep(0.5)
+        ClipboardHelper.copy_text(skill_name)
+        pyautogui.hotkey('ctrl', 'v')
+        time.sleep(0.3)
+        pyautogui.press('enter')
+        log(f"Đã chọn skill '{skill_name}' thành công.", "OK")
+
+    @classmethod
+    def new_gemini_chat(cls, delay=0.5):
+        """Đợi 0.5s sau khi copy rồi mở đoạn chat mới trên Gemini bằng phím tắt Ctrl + Shift + O."""
+        if delay > 0:
+            log(f"Đợi {delay}s sau khi copy trước khi mở chat mới...", "STATUS")
+            time.sleep(delay)
+        log("Mở đoạn chat mới trên Gemini (Ctrl + Shift + O)...", "ACTION")
+        pyautogui.hotkey('ctrl', 'shift', 'o')
+        time.sleep(0.3)
+
+    @classmethod
+    def refresh_gemini_f5(cls):
+        """Mở đoạn chat mới trên Gemini (Ctrl + Shift + O) khi gặp sự cố/timeout."""
+        log("Khôi phục Gemini bằng cách mở đoạn chat mới (Ctrl + Shift + O)...", "ACTION")
+        cls.new_gemini_chat(delay=0.1)
+
+    @classmethod
     def cancel_modal(cls):
         """Quy trình hủy/đóng modal soạn thảo LMS an toàn bằng phím ESC."""
         log("Bắt đầu quy trình đóng modal hủy bỏ (Cancel)...", "ACTION")
@@ -995,8 +1023,14 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 pyautogui.hotkey('ctrl', 'v')
                 
                 # Chờ đúng 3s để Gemini hiển thị ảnh lên ô chat
-                log("Chờ 3s ban đầu để Gemini hiển thị ảnh lên ô chat...", "STATUS")
-                time.sleep(3.0)
+                start_gemini_load = time.time()
+                # Trong thời gian đợi ảnh load (3s), gọi skill ocr-question
+                GUIHelper.invoke_gemini_skill("ocr-question")
+                elapsed = time.time() - start_gemini_load
+                remaining_wait = max(0.5, 3.0 - elapsed)
+                log(f"Chờ nốt {remaining_wait:.1f}s cho ảnh load hoàn tất lên ô chat...", "STATUS")
+                time.sleep(remaining_wait)
+
                 
                 # Bấm Enter và kiểm tra nút Send đã chuyển sang MÀU HOẠT ĐỘNG (Stop icon / khác màu rảnh rỗi) chưa.
                 # Spam Enter mỗi 0.5s trong tối đa 10s (20 chu kỳ) cho đến khi nút chuyển màu hoạt động.
@@ -1023,11 +1057,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
 
                 if not gemini_active:
-                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
                     GUIHelper.focus(GUIHelper.FCS_ON_GEM)
                     time.sleep(0.2)
-                    pyautogui.press('f5')
-                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    # (Đã thay bằng GUIHelper)
+                    GUIHelper.refresh_gemini_f5()
                     raise Exception("Timeout Gemini không chuyển sang trạng thái hoạt động sau 10s!")
 
                 # 5. Đợi Gemini xử lý xong (Dừng 5s ban đầu rồi mới bắt đầu Done Check 60s)
@@ -1051,11 +1085,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
                 
                 if not gemini_done:
-                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
                     GUIHelper.focus(GUIHelper.FCS_ON_GEM)
                     time.sleep(0.2)
-                    pyautogui.press('f5')
-                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    # (Đã thay bằng GUIHelper)
+                    GUIHelper.refresh_gemini_f5()
                     raise Exception("Timeout Gemini phản hồi quá 60s!")
                 
                 # Lấy focus tại FCS_ON_GEM trước khi gửi phím End
@@ -1100,10 +1134,10 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log("Đã click nút Copy của Gemini.", "OK")
                     msg_extra = "Đã gửi Gemini | Đã Copy kết quả Gemini."
                     
-                    # Refresh Gemini
+                    # Mở đoạn chat mới trên Gemini (Ctrl+Shift+O)
                     time.sleep(0.5)
-                    pyautogui.press('f5')
-                    log("Đã bấm F5 tải lại Gemini.", "ACTION")
+                    # (Đã thay bằng GUIHelper)
+                    GUIHelper.new_gemini_chat()
                 else:
                     raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
 
@@ -1448,8 +1482,14 @@ class CaptureHandler(BaseHTTPRequestHandler):
                 pyautogui.hotkey('ctrl', 'v')
                 
                 # Chờ đúng 3s để Gemini hiển thị ảnh lên ô chat
-                log("Chờ 3s ban đầu để Gemini hiển thị ảnh lên ô chat...", "STATUS")
-                time.sleep(3.0)
+                start_gemini_load = time.time()
+                # Trong thời gian đợi ảnh load (3s), gọi skill ocr-question
+                GUIHelper.invoke_gemini_skill("ocr-question")
+                elapsed = time.time() - start_gemini_load
+                remaining_wait = max(0.5, 3.0 - elapsed)
+                log(f"Chờ nốt {remaining_wait:.1f}s cho ảnh load hoàn tất lên ô chat...", "STATUS")
+                time.sleep(remaining_wait)
+
                 
                 # Bấm Enter và kiểm tra nút Send đã chuyển sang MÀU HOẠT ĐỘNG (Stop icon / khác màu rảnh rỗi) chưa.
                 # Spam Enter mỗi 0.5s trong tối đa 10s (20 chu kỳ) cho đến khi nút chuyển màu hoạt động.
@@ -1476,11 +1516,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
 
                 if not gemini_active:
-                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
                     GUIHelper.focus(GUIHelper.FCS_ON_GEM)
                     time.sleep(0.2)
-                    pyautogui.press('f5')
-                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    # (Đã thay bằng GUIHelper)
+                    GUIHelper.refresh_gemini_f5()
                     raise Exception("Timeout Gemini không chuyển sang trạng thái hoạt động sau 10s!")
 
                 # 5. Đợi Gemini xử lý xong (Dừng 5s ban đầu rồi mới bắt đầu Done Check 60s)
@@ -1504,11 +1544,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     time.sleep(0.5)
                 
                 if not gemini_done:
-                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành F5 reset Gemini và chuyển câu này sang Lượt 2...", "WARN")
+                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
                     GUIHelper.focus(GUIHelper.FCS_ON_GEM)
                     time.sleep(0.2)
-                    pyautogui.press('f5')
-                    log("Đã bấm F5 làm mới trang Gemini.", "ACTION")
+                    # (Đã thay bằng GUIHelper)
+                    GUIHelper.refresh_gemini_f5()
                     raise Exception("Timeout Gemini phản hồi quá 60s!")
                 
                 log("Focus vào vùng Gemini để chuẩn bị copy...", "ACTION")
@@ -1545,8 +1585,8 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     pyautogui.click(copy_pos)
                     log("Đã click nút Copy của Gemini.", "OK")
                     time.sleep(0.5)
-                    pyautogui.press('f5')
-                    log("Đã F5 làm sạch Gemini.", "ACTION")
+                    # (Đã thay bằng GUIHelper)
+                    GUIHelper.new_gemini_chat()
                 else:
                     raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
 
