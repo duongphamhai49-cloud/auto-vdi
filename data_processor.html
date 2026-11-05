@@ -346,6 +346,404 @@
         }
         .verb-search-btn:active { transform: scale(0.93) !important; }
 
+        /* ============================================================
+           QUICK FLOATING TOOLBAR (ICON-ONLY & SOLID COLORS)
+           ============================================================ */
+        .quick-floating-toolbar {
+            position: fixed;
+            top: 14px;
+            right: 18px;
+            z-index: 9997;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(15, 23, 42, 0.88);
+            padding: 5px 8px;
+            border-radius: 26px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: all 0.25s ease;
+        }
+
+        .quick-tool-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            transition: all 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+            user-select: none;
+            flex-shrink: 0;
+            color: #ffffff;
+        }
+
+        .quick-tool-btn:hover {
+            transform: translateY(-2px) scale(1.1);
+        }
+
+        .quick-tool-btn:active {
+            transform: scale(0.92) !important;
+        }
+
+        .math-sym {
+            font-size: 15px;
+            font-weight: 800;
+            font-family: 'Cambria Math', 'Times New Roman', serif;
+            display: inline-block;
+            line-height: 1;
+            color: #ffffff;
+        }
+
+        .emoji-sym {
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        /* 1. Nút Tra cứu động từ (Kính lúp - Tím Indigo) */
+        .btn-solid-search {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            box-shadow: 0 3px 10px rgba(79, 70, 229, 0.45);
+        }
+        .btn-solid-search:hover {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            box-shadow: 0 5px 16px rgba(99, 102, 241, 0.65);
+        }
+
+        /* 2. Nút Đúng/Sai (Cái cân - Xanh dương Sky) */
+        .btn-solid-dungsai {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            box-shadow: 0 3px 10px rgba(2, 132, 199, 0.45);
+        }
+        .btn-solid-dungsai:hover {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            box-shadow: 0 5px 16px rgba(14, 165, 233, 0.65);
+        }
+
+        /* 3. Nút Số tự nhiên ℕ (Xanh lá Emerald) */
+        .btn-solid-tunhien {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            box-shadow: 0 3px 10px rgba(5, 150, 105, 0.45);
+        }
+        .btn-solid-tunhien:hover {
+            background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+            box-shadow: 0 5px 16px rgba(16, 185, 129, 0.65);
+        }
+
+        /* 4. Nút Số nguyên ℤ (Cam vàng Amber) */
+        .btn-solid-nguyen {
+            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+            box-shadow: 0 3px 10px rgba(217, 119, 6, 0.45);
+        }
+        .btn-solid-nguyen:hover {
+            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            box-shadow: 0 5px 16px rgba(245, 158, 11, 0.65);
+        }
+
+        /* 5. Nút Số thập phân ℝ (Đỏ hồng Rose) */
+        .btn-solid-thapphan {
+            background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%);
+            box-shadow: 0 3px 10px rgba(225, 29, 72, 0.45);
+        }
+        .btn-solid-thapphan:hover {
+            background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
+            box-shadow: 0 5px 16px rgba(244, 63, 94, 0.65);
+        }
+
+        /* 6. Nút Kéo thả 🧩 (Tím hồng Purple) */
+        .btn-solid-keotha {
+            background: linear-gradient(135deg, #9333ea 0%, #a855f7 100%);
+            box-shadow: 0 3px 10px rgba(147, 51, 234, 0.45);
+        }
+        .btn-solid-keotha:hover {
+            background: linear-gradient(135deg, #a855f7 0%, #c084fc 100%);
+            box-shadow: 0 5px 16px rgba(168, 85, 247, 0.65);
+        }
+
+        /* 7. Nút Cài đặt ⚙️ (Xám Slate) */
+        .btn-solid-config {
+            background: linear-gradient(135deg, #475569 0%, #64748b 100%);
+            box-shadow: 0 3px 10px rgba(71, 85, 105, 0.4);
+        }
+        .btn-solid-config:hover {
+            background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+            box-shadow: 0 5px 16px rgba(148, 163, 184, 0.6);
+        }
+
+        /* Dropdown wrapper & menu */
+        .quick-dropdown-wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        .quick-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+            min-width: 280px;
+            max-width: 360px;
+            padding: 6px;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 9999;
+            animation: ddSlideIn 0.15s ease forwards;
+        }
+
+        .quick-dropdown-menu.show {
+            display: flex;
+        }
+
+        @keyframes ddSlideIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dd-header {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 8px 3px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 2px;
+        }
+
+        .dd-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 6px 9px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            transition: all 0.15s ease;
+            color: #f1f5f9;
+        }
+
+        .dd-item:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .dd-badge {
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            display: inline-block;
+            align-self: flex-start;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+        }
+        .dd-badge.round { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.35); }
+        .dd-badge.dec1 { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.35); }
+        .dd-badge.dec2 { background: rgba(168, 85, 247, 0.2); color: #c084fc; border-color: rgba(168, 85, 247, 0.35); }
+        .dd-badge.dec3 { background: rgba(236, 72, 153, 0.2); color: #f472b6; border-color: rgba(236, 72, 153, 0.35); }
+
+        .dd-text {
+            font-size: 11px;
+            line-height: 1.4;
+            color: #cbd5e1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .dd-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 4px 8px 2px 8px;
+            margin-top: 2px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .dd-footer span {
+            font-size: 10.5px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+        .dd-footer span:hover {
+            color: #818cf8;
+            text-decoration: underline;
+        }
+
+        /* Toast thông báo chép thành công */
+        .quick-toast {
+            position: fixed;
+            top: 65px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1.5px solid #10b981;
+            color: #f1f5f9;
+            padding: 7px 14px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(16, 185, 129, 0.3);
+            z-index: 100000;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+            pointer-events: none;
+            max-width: min(400px, 90vw);
+        }
+        .quick-toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* Modal Chỉnh Sửa Câu Lệnh Mẫu */
+        .prompt-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 8, 20, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 10000;
+        }
+        .prompt-modal-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 1rem;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+            width: min(600px, 94vw);
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            z-index: 10001;
+            overflow: hidden;
+        }
+        .prompt-modal-header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 13px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .prompt-modal-close {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .prompt-modal-close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+        .prompt-modal-body {
+            padding: 14px 18px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .prompt-edit-group {
+            margin-bottom: 14px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .prompt-group-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+            display: block;
+        }
+        .prompt-field-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .prompt-field-row:last-child { margin-bottom: 0; }
+        .prompt-field-tag {
+            font-size: 11px;
+            font-weight: 600;
+            width: 70px;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+        .prompt-input {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 12px;
+            padding: 6px 10px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .prompt-input:focus { border-color: #818cf8; }
+
+        .prompt-modal-footer {
+            background: #0f172a;
+            padding: 11px 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn-prompt-reset {
+            background: transparent;
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            padding: 5px 11px;
+            font-size: 11.5px;
+            cursor: pointer;
+        }
+        .btn-prompt-reset:hover { background: rgba(239, 68, 68, 0.15); }
+        .btn-prompt-cancel {
+            background: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 11.5px;
+            cursor: pointer;
+        }
+        .btn-prompt-save {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 15px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+        }
+        .btn-prompt-save:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
         /* Backdrop */
         #verbBackdrop {
             position: fixed;
@@ -778,6 +1176,194 @@
             </button>
         </div>
         <textarea id="starred_ids_textarea" readonly rows="4" placeholder="Chưa có ID nào được đánh dấu..." style="background: rgba(20, 5, 5, 0.7); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-family: monospace; font-size: 0.95rem; line-height: 1.5; padding: 0.75rem; border-radius: 0.375rem; width: 100%; resize: vertical; outline: none; transition: border-color 0.2s;"></textarea>
+    </div>
+
+    <!-- THANH CÔNG CỤ NỔI GÓC TRÊN PHẢI (TRA CỨU ĐỘNG TỪ & CÂU LỆNH NHANH) -->
+    <div id="quickToolbar" class="quick-floating-toolbar">
+        <!-- 1. Tra cứu động từ (Kính lúp tròn tím) -->
+        <button id="verbFloatingBtn" onclick="openVerbOverlay()" class="quick-tool-btn btn-solid-search" title="Tra cứu động từ">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </button>
+
+        <!-- 2. Đúng / Sai (Cái cân ⚖️) -->
+        <button class="quick-tool-btn btn-solid-dungsai" onclick="copyQuickPrompt('dung_sai')" title="Chép: Xét tính đúng sai của các khẳng định sau:">
+            <span class="emoji-sym">⚖️</span>
+        </button>
+
+        <!-- 3. Số tự nhiên (ℕ) -->
+        <div class="quick-dropdown-wrap">
+            <button class="quick-tool-btn btn-solid-tunhien" onclick="toggleQuickDropdown('dd_tu_nhien', event)" title="Mẫu câu Số tự nhiên (ℕ)">
+                <span class="math-sym">ℕ</span>
+            </button>
+            <div id="dd_tu_nhien" class="quick-dropdown-menu">
+                <div class="dd-header" style="color: #34d399;">ℕ Số tự nhiên</div>
+                <button class="dd-item" onclick="copyQuickPrompt('tu_nhien_1')">
+                    <span class="dd-badge">Chuẩn</span>
+                    <span class="dd-text" id="label_tu_nhien_1">Điền số tự nhiên thích hợp vào chỗ trống:</span>
+                </button>
+                <button class="dd-item" onclick="copyQuickPrompt('tu_nhien_2')">
+                    <span class="dd-badge round">Làm tròn đơn vị</span>
+                    <span class="dd-text" id="label_tu_nhien_2">Điền số tự nhiên thích hợp vào chỗ trống, làm tròn kết quả đến hàng đơn vị:</span>
+                </button>
+                <div class="dd-footer">
+                    <span onclick="openPromptConfigModal()">✏️ Chỉnh sửa câu mẫu</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Số nguyên (ℤ) -->
+        <div class="quick-dropdown-wrap">
+            <button class="quick-tool-btn btn-solid-nguyen" onclick="toggleQuickDropdown('dd_nguyen', event)" title="Mẫu câu Số nguyên (ℤ)">
+                <span class="math-sym">ℤ</span>
+            </button>
+            <div id="dd_nguyen" class="quick-dropdown-menu">
+                <div class="dd-header" style="color: #fbbf24;">ℤ Số nguyên</div>
+                <button class="dd-item" onclick="copyQuickPrompt('nguyen_1')">
+                    <span class="dd-badge">Chuẩn</span>
+                    <span class="dd-text" id="label_nguyen_1">Điền số nguyên thích hợp vào chỗ trống:</span>
+                </button>
+                <button class="dd-item" onclick="copyQuickPrompt('nguyen_2')">
+                    <span class="dd-badge round">Làm tròn đơn vị</span>
+                    <span class="dd-text" id="label_nguyen_2">Điền số nguyên thích hợp vào chỗ trống, làm tròn kết quả đến hàng đơn vị:</span>
+                </button>
+                <div class="dd-footer">
+                    <span onclick="openPromptConfigModal()">✏️ Chỉnh sửa câu mẫu</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Số thập phân (ℝ) -->
+        <div class="quick-dropdown-wrap">
+            <button class="quick-tool-btn btn-solid-thapphan" onclick="toggleQuickDropdown('dd_thap_phan', event)" title="Mẫu câu Số thập phân (ℝ)">
+                <span class="math-sym">ℝ</span>
+            </button>
+            <div id="dd_thap_phan" class="quick-dropdown-menu">
+                <div class="dd-header" style="color: #fb7185;">ℝ Số thập phân</div>
+                <button class="dd-item" onclick="copyQuickPrompt('thap_phan_1')">
+                    <span class="dd-badge">Chuẩn (dấu phẩy)</span>
+                    <span class="dd-text" id="label_thap_phan_1">Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân:</span>
+                </button>
+                <button class="dd-item" onclick="copyQuickPrompt('thap_phan_2')">
+                    <span class="dd-badge dec1">Làm tròn hàng 1</span>
+                    <span class="dd-text" id="label_thap_phan_2">Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân, làm tròn kết quả đến hàng thập phân thứ nhất:</span>
+                </button>
+                <button class="dd-item" onclick="copyQuickPrompt('thap_phan_3')">
+                    <span class="dd-badge dec2">Làm tròn hàng 2</span>
+                    <span class="dd-text" id="label_thap_phan_3">Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân, làm tròn kết quả đến hàng thập phân thứ hai:</span>
+                </button>
+                <button class="dd-item" onclick="copyQuickPrompt('thap_phan_4')">
+                    <span class="dd-badge dec3">Làm tròn hàng 3</span>
+                    <span class="dd-text" id="label_thap_phan_4">Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân, làm tròn kết quả đến hàng thập phân thứ ba:</span>
+                </button>
+                <div class="dd-footer">
+                    <span onclick="openPromptConfigModal()">✏️ Chỉnh sửa câu mẫu</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Kéo thả (🧩 Đặt ở cuối trước Cài đặt) -->
+        <button class="quick-tool-btn btn-solid-keotha" onclick="copyQuickPrompt('keo_tha')" title="Chép: Kéo ô thích hợp thả vào vị trí tương ứng để hoàn thành các câu sau:">
+            <span class="emoji-sym">🧩</span>
+        </button>
+
+        <!-- 7. Cài đặt chỉnh sửa (⚙️) -->
+        <button class="quick-tool-btn btn-solid-config" onclick="openPromptConfigModal()" title="Chỉnh sửa câu lệnh mẫu">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- TOAST THÔNG BÁO COPY THÀNH CÔNG -->
+    <div id="quickPromptToast" class="quick-toast">
+        <span style="color: #10b981;">✅</span>
+        <span id="toastMsg">Đã copy!</span>
+    </div>
+
+    <!-- MODAL CHỈNH SỬA CÂU LỆNH MẪU -->
+    <div id="promptConfigBackdrop" class="prompt-modal-backdrop" onclick="closePromptConfigModal()" style="display: none;"></div>
+    <div id="promptConfigModal" class="prompt-modal-dialog" style="display: none;">
+        <div class="prompt-modal-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.15rem;">✏️</span>
+                <span style="font-weight: 700; font-size: 1.05rem; color: #fff;">Chỉnh Sửa Câu Lệnh Mẫu</span>
+            </div>
+            <button class="prompt-modal-close" onclick="closePromptConfigModal()">✕</button>
+        </div>
+        <div class="prompt-modal-body">
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">Bạn có thể chỉnh sửa nội dung từng câu lệnh dưới đây. Dữ liệu sẽ được tự động lưu trên trình duyệt.</p>
+            
+            <div class="prompt-edit-group">
+                <label class="prompt-group-title" style="color: #38bdf8;">⚖️ Đúng / Sai</label>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Đúng/Sai</span>
+                    <input type="text" id="edit_dung_sai" class="prompt-input">
+                </div>
+            </div>
+
+            <div class="prompt-edit-group">
+                <label class="prompt-group-title" style="color: #34d399;">ℕ Số tự nhiên</label>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Chuẩn</span>
+                    <input type="text" id="edit_tu_nhien_1" class="prompt-input">
+                </div>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Làm tròn</span>
+                    <input type="text" id="edit_tu_nhien_2" class="prompt-input">
+                </div>
+            </div>
+
+            <div class="prompt-edit-group">
+                <label class="prompt-group-title" style="color: #fbbf24;">ℤ Số nguyên</label>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Chuẩn</span>
+                    <input type="text" id="edit_nguyen_1" class="prompt-input">
+                </div>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Làm tròn</span>
+                    <input type="text" id="edit_nguyen_2" class="prompt-input">
+                </div>
+            </div>
+
+            <div class="prompt-edit-group">
+                <label class="prompt-group-title" style="color: #fb7185;">ℝ Số thập phân</label>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Chuẩn</span>
+                    <input type="text" id="edit_thap_phan_1" class="prompt-input">
+                </div>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Hàng 1</span>
+                    <input type="text" id="edit_thap_phan_2" class="prompt-input">
+                </div>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Hàng 2</span>
+                    <input type="text" id="edit_thap_phan_3" class="prompt-input">
+                </div>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Hàng 3</span>
+                    <input type="text" id="edit_thap_phan_4" class="prompt-input">
+                </div>
+            </div>
+
+            <div class="prompt-edit-group">
+                <label class="prompt-group-title" style="color: #c084fc;">🧩 Kéo thả</label>
+                <div class="prompt-field-row">
+                    <span class="prompt-field-tag">Kéo thả</span>
+                    <input type="text" id="edit_keo_tha" class="prompt-input">
+                </div>
+            </div>
+        </div>
+        <div class="prompt-modal-footer">
+            <button class="btn-prompt-reset" onclick="resetDefaultPrompts()">🔄 Khôi phục gốc</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-prompt-cancel" onclick="closePromptConfigModal()">Hủy</button>
+                <button class="btn-prompt-save" onclick="saveCustomPrompts()">💾 Lưu Thay Đổi</button>
+            </div>
+        </div>
     </div>
 
     <button id="scrollTopBtn" onclick="scrollToTop()" title="Lên đầu trang">
@@ -2629,10 +3215,9 @@
 
         window.addEventListener('scroll', () => {
             const btn = document.getElementById('scrollTopBtn');
-            if (window.scrollY > 300) {
-                btn.classList.add('visible');
-            } else {
-                btn.classList.remove('visible');
+            if (btn) {
+                if (window.scrollY > 300) btn.classList.add('visible');
+                else btn.classList.remove('visible');
             }
         });
 
@@ -2907,8 +3492,143 @@
             }).catch(() => {});
         }
 
+        // ==============================================
+        // QUẢN LÝ CÂU LỆNH NHANH (QUICK PROMPTS)
+        // ==============================================
+        const DEFAULT_QUICK_PROMPTS = {
+            dung_sai: "Xét tính đúng sai của các khẳng định sau:",
+            keo_tha: "Kéo ô thích hợp thả vào vị trí tương ứng để hoàn thành các câu sau:",
+            tu_nhien_1: "Điền số tự nhiên thích hợp vào chỗ trống:",
+            tu_nhien_2: "Điền số tự nhiên thích hợp vào chỗ trống, làm tròn kết quả đến hàng đơn vị:",
+            nguyen_1: "Điền số nguyên thích hợp vào chỗ trống:",
+            nguyen_2: "Điền số nguyên thích hợp vào chỗ trống, làm tròn kết quả đến hàng đơn vị:",
+            thap_phan_1: "Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân:",
+            thap_phan_2: "Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân, làm tròn kết quả đến hàng thập phân thứ nhất:",
+            thap_phan_3: "Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân, làm tròn kết quả đến hàng thập phân thứ hai:",
+            thap_phan_4: "Điền số thập phân thích hợp vào chỗ trống, sử dụng dấu phẩy để ngăn cách giữa phần nguyên và phần thập phân, làm tròn kết quả đến hàng thập phân thứ ba:"
+        };
+
+        let quickPrompts = {};
+
+        function loadQuickPrompts() {
+            try {
+                const saved = localStorage.getItem('aet_quick_prompts');
+                if (saved) {
+                    quickPrompts = Object.assign({}, DEFAULT_QUICK_PROMPTS, JSON.parse(saved));
+                } else {
+                    quickPrompts = Object.assign({}, DEFAULT_QUICK_PROMPTS);
+                }
+            } catch(e) {
+                quickPrompts = Object.assign({}, DEFAULT_QUICK_PROMPTS);
+            }
+            updateDropdownLabels();
+        }
+
+        function updateDropdownLabels() {
+            for (const key in quickPrompts) {
+                const el = document.getElementById('label_' + key);
+                if (el) el.textContent = quickPrompts[key];
+            }
+        }
+
+        function copyQuickPrompt(key) {
+            const text = quickPrompts[key] || DEFAULT_QUICK_PROMPTS[key] || '';
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                showQuickToast(`Đã copy: "${text.substring(0, 42)}${text.length > 42 ? '...' : ''}"`);
+            }).catch(() => {
+                showQuickToast('Lỗi khi copy vào Clipboard!');
+            });
+            closeAllQuickDropdowns();
+        }
+
+        let toastTimer = null;
+        function showQuickToast(msg) {
+            const toast = document.getElementById('quickPromptToast');
+            const msgEl = document.getElementById('toastMsg');
+            if (!toast || !msgEl) return;
+            msgEl.textContent = msg;
+            toast.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 1800);
+        }
+
+        function toggleQuickDropdown(id, e) {
+            if (e) e.stopPropagation();
+            const target = document.getElementById(id);
+            const isOpen = target && target.classList.contains('show');
+            closeAllQuickDropdowns();
+            if (!isOpen && target) {
+                target.classList.add('show');
+            }
+        }
+
+        function closeAllQuickDropdowns() {
+            document.querySelectorAll('.quick-dropdown-menu').forEach(m => m.classList.remove('show'));
+        }
+
+        window.addEventListener('click', function(e) {
+            if (!e.target.closest('.quick-dropdown-wrap')) {
+                closeAllQuickDropdowns();
+            }
+        });
+
+        function openPromptConfigModal() {
+            closeAllQuickDropdowns();
+            for (const key in DEFAULT_QUICK_PROMPTS) {
+                const input = document.getElementById('edit_' + key);
+                if (input) input.value = quickPrompts[key] || DEFAULT_QUICK_PROMPTS[key];
+            }
+            document.getElementById('promptConfigBackdrop').style.display = 'block';
+            document.getElementById('promptConfigModal').style.display = 'flex';
+        }
+
+        function closePromptConfigModal() {
+            document.getElementById('promptConfigBackdrop').style.display = 'none';
+            document.getElementById('promptConfigModal').style.display = 'none';
+        }
+
+        function saveCustomPrompts() {
+            for (const key in DEFAULT_QUICK_PROMPTS) {
+                const input = document.getElementById('edit_' + key);
+                if (input) {
+                    quickPrompts[key] = input.value.trim() || DEFAULT_QUICK_PROMPTS[key];
+                }
+            }
+            try {
+                localStorage.setItem('aet_quick_prompts', JSON.stringify(quickPrompts));
+            } catch(e) {}
+            updateDropdownLabels();
+            closePromptConfigModal();
+            showQuickToast('💾 Đã lưu thay đổi câu lệnh!');
+        }
+
+        function resetDefaultPrompts() {
+            if (!confirm('Khôi phục lại tất cả câu lệnh mẫu về ban đầu?')) return;
+            quickPrompts = Object.assign({}, DEFAULT_QUICK_PROMPTS);
+            try {
+                localStorage.removeItem('aet_quick_prompts');
+            } catch(e) {}
+            for (const key in quickPrompts) {
+                const input = document.getElementById('edit_' + key);
+                if (input) input.value = quickPrompts[key];
+            }
+            updateDropdownLabels();
+            showQuickToast('🔄 Đã khôi phục câu lệnh gốc!');
+        }
+
+        // Khởi tạo tải câu lệnh mẫu
+        loadQuickPrompts();
+
+        // Xử lý phím Escape để đóng popup
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && verbState.open) closeVerbOverlay();
+            if (e.key === 'Escape') {
+                if (verbState.open) closeVerbOverlay();
+                closePromptConfigModal();
+                closeAllQuickDropdowns();
+            }
         });
     </script>
 </body>
