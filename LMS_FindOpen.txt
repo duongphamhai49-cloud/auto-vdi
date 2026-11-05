@@ -440,7 +440,7 @@
 
             // Nút bấm đã trở lại trạng thái BẤM ĐƯỢC (Enabled) + Bảng không còn loading
             if (!isBtnDisabled && !isTableSpinning) {
-                const hasRow = !!document.querySelector('tr.ant-table-row, i[aria-label="icon: edit"]');
+                const hasRow = !!document.querySelector('tr.ant-table-row, table.tw-table tr:not(:first-child), a[href*="questionId"], svg.lucide-square-pen, i[aria-label="icon: edit"]');
                 if (hasRow) {
                     searchFinished = true;
                     break;
@@ -694,7 +694,7 @@
 
         // Cuộn toàn bộ về đầu trang/modal để hiển thị rõ ràng nút bấm và phục vụ tọa độ cứu hộ
         window.scrollTo(0, 0);
-        const scrollable = document.querySelector('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
+        const scrollable = document.querySelector('.question-panel, [id^="question-wrapper"], .ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
         if (scrollable) {
             try { scrollable.scrollTo(0, 0); } catch(e) {}
         }
@@ -710,231 +710,230 @@
             try { element.click(); } catch(e) {}
         }
 
-        // BƯỚC 1: Click cây bút chì thứ nhất (trên dòng bảng)
-        let editBtn1 = document.querySelector('tr.ant-table-row i[aria-label="icon: edit"]');
-        if (!editBtn1) editBtn1 = document.querySelector('i[aria-label="icon: edit"]');
+        // Hàm click toàn diện cho cả thẻ link <a>, svg và button
+        function clickElementThoroughly(el) {
+            if (!el) return;
+            highlightElement(el, 'red');
 
+            const linkEl = el.matches('a') ? el : (el.querySelector('a') || el.closest('a'));
+            const svgEl = el.querySelector('svg') || (el.matches('svg') ? el : null);
+
+            const mouseEvents = ['mouseenter', 'mouseover', 'mousedown', 'pointerdown', 'mouseup', 'pointerup', 'click'];
+            for (const evt of mouseEvents) {
+                try {
+                    el.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window, buttons: 1 }));
+                } catch(e) {}
+            }
+
+            if (linkEl && linkEl !== el) {
+                for (const evt of mouseEvents) {
+                    try {
+                        linkEl.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window, buttons: 1 }));
+                    } catch(e) {}
+                }
+            }
+
+            if (svgEl && svgEl !== el) {
+                for (const evt of mouseEvents) {
+                    try {
+                        svgEl.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window, buttons: 1 }));
+                    } catch(e) {}
+                }
+            }
+
+            try { if (linkEl) linkEl.click(); } catch(e) {}
+            try { el.click(); } catch(e) {}
+            try { if (el.parentElement) el.parentElement.click(); } catch(e) {}
+        }
+
+        // BƯỚC 1: Click cây bút chì thứ nhất (Pencil 1 - trên dòng kết quả bảng)
+        let editBtn1 = null;
+
+        const selectors1 = [
+            'table.tw-table tbody tr a[href*="questionId"]',
+            'table.tw-table tbody tr a[title*="sửa" i]',
+            'table.tw-table tbody tr a[title*="cập nhật" i]',
+            'table.tw-table tbody tr svg.lucide-square-pen',
+            'table.tw-table tbody tr svg.lucide-pen-box',
+            'table.tw-table tbody tr svg.lucide-edit',
+            'table.tw-table tbody tr svg.lucide-pen-square',
+            'table.tw-table tbody tr a',
+            'table.tw-table tbody tr button',
+            'table.tw-table tbody tr [role="button"]',
+            '.tw-table tbody tr a[href*="questionId"]',
+            '.tw-table tbody tr a',
+            'table tbody tr a[href*="questionId"]',
+            'table.tw-table tr:not(:first-child) a[href*="questionId"]',
+            'table.tw-table tr:not(:first-child) a[title*="sửa" i]',
+            'table.tw-table tr:not(:first-child) svg.lucide-square-pen',
+            'table.tw-table tr:not(:first-child) a',
+            'table.tw-table tr:not(:first-child) button',
+            'tr.ant-table-row i[aria-label="icon: edit"]',
+            'tr.ant-table-row a',
+            'tr.ant-table-row button'
+        ];
+
+        for (const sel of selectors1) {
+            const el = document.querySelector(sel);
+            if (el && (el.offsetWidth > 0 || el.getClientRects().length > 0)) {
+                editBtn1 = el.closest('a, button, [role="button"]') || el;
+                log(`[Pencil 1] ✅ Tìm thấy nút Edit lần 1 theo selector: "${sel}" (Tag: <${editBtn1.tagName.toLowerCase()}>)`);
+                break;
+            }
+        }
+
+        // Fallback quét trong bảng nếu các selector trên chưa bắt được
         if (!editBtn1) {
-            const buttons = document.querySelectorAll('button, a[role="button"]');
-            for (const btn of buttons) {
-                const svg = btn.querySelector('svg[data-icon="edit"], svg[data-icon="pen"]');
-                if (svg || btn.title?.toLowerCase().includes('sửa')) {
-                    editBtn1 = btn;
-                    break;
+            const tableRows = document.querySelectorAll('table.tw-table tbody tr, table.tw-table tr:not(:first-child), tr.ant-table-row');
+            if (tableRows.length > 0) {
+                const firstRow = tableRows[0];
+                const clickables = firstRow.querySelectorAll('a, button, [role="button"], svg, span.cursor-pointer');
+                for (const el of clickables) {
+                    if (el.offsetWidth === 0 && el.offsetHeight === 0 && el.getClientRects().length === 0) continue;
+                    const title = (el.title || el.getAttribute('title') || el.getAttribute('aria-label') || '').toLowerCase();
+                    const href = (el.getAttribute('href') || '').toLowerCase();
+                    const hasPen = !!el.querySelector('svg.lucide-square-pen, svg.lucide-edit, svg[data-icon="edit"]');
+                    if (title.includes('sửa') || title.includes('cập nhật') || href.includes('questionid') || hasPen) {
+                        editBtn1 = el.closest('a, button, [role="button"]') || el;
+                        log(`[Pencil 1] ✅ Tìm thấy nút Edit lần 1 qua quét dòng đầu: Title="${title}", Href="${href}"`);
+                        break;
+                    }
+                }
+                if (!editBtn1 && clickables.length > 0) {
+                    editBtn1 = firstRow.querySelector('a, button') || clickables[0];
+                    log(`[Pencil 1] ⚠️ Chọn nút đầu tiên trên dòng bảng làm fallback`);
                 }
             }
         }
 
-        if (!editBtn1) {
-            throw new Error('Không tìm thấy cây bút chì mở chi tiết câu hỏi (Pencil 1)');
+        if (editBtn1) {
+            highlightElement(editBtn1, 'blue');
+            simulateFullClick(editBtn1);
+            simulateFullClick(editBtn1.querySelector('svg'));
+            if (editBtn1.parentElement) simulateFullClick(editBtn1.parentElement);
+        } else {
+            log('[Pencil 1] ⚠️ Không tìm thấy Pencil 1 trên bảng, có thể chi tiết câu hỏi đã mở sẵn. Tiếp tục tìm Pencil 2...');
         }
 
-        highlightElement(editBtn1, 'blue');
-        simulateFullClick(editBtn1);
-        simulateFullClick(editBtn1.querySelector('svg'));
-        if (editBtn1.parentElement) simulateFullClick(editBtn1.parentElement);
+        await sleep(300);
 
-        // BƯỚC 2: Chờ và click cây bút chì thứ hai (Pencil 2) để mở modal soạn thảo (Edit)
+        // Kiểm tra xem editor modal đã mở sẵn chưa (nếu Pencil 1 mở thẳng editor)
+        if (document.querySelector('.wrapper-quill, .ql-editor, .ql-container, div.form-button-groups button.btn-primary')) {
+            log("Modal soạn thảo đã được mở ngay sau Pencil 1! Bỏ qua Pencil 2.");
+            await postJSON(`${SERVER}/lms/done`, { event: 'lms_edit_done', session: currentSession });
+            setBadge('✅ Đã mở Edit', '#10b981');
+            return;
+        }
+
+        // BƯỚC 2: Chờ và click cây bút chì thứ hai (Pencil 2) trên thanh công cụ chi tiết câu hỏi
         let editBtn2 = null;
         log("Đang chờ chi tiết câu hỏi hiển thị và tìm Pencil 2...");
 
-        function scoreElement(el, index, totalCount) {
-            if (!el) return -999;
-            let score = 0;
-            const html = el.innerHTML.toLowerCase();
-            const className = (typeof el.className === 'string' ? el.className : (el.className?.baseVal || '')).toLowerCase();
-            
-            // Lấy tất cả thuộc tính có khả năng chứa text tooltip
-            const titleAttr = (el.getAttribute('title') || el.title || '').toLowerCase();
-            const tooltipAttr = (el.getAttribute('data-original-title') || el.getAttribute('data-tooltip') || el.getAttribute('data-tip') || '').toLowerCase();
-            const ariaAttr = (el.getAttribute('aria-label') || '').toLowerCase();
-            const parentText = el.parentElement ? (el.parentElement.title || el.parentElement.getAttribute('aria-label') || el.parentElement.getAttribute('data-original-title') || '').toLowerCase() : '';
-            
-            const allText = `${titleAttr} ${tooltipAttr} ${ariaAttr} ${className} ${parentText}`.toLowerCase();
-            
-            // 1. Dấu hiệu văn bản edit/sửa cụ thể
-            if (allText.includes('chỉnh sửa câu hỏi') || allText.includes('sửa câu hỏi') || allText.includes('edit question')) {
-                score += 1000; // Thắng tuyệt đối nếu khớp tooltip cụ thể!
-            } else if (allText.includes('edit') || allText.includes('sửa')) {
-                score += 100;
-            }
-            
-            // 2. Dấu hiệu hình ảnh bút chì
-            if (html.includes('data-icon="edit"') || html.includes('anticon-edit') || html.includes('pencil') || html.includes('pen-to-square') || html.includes('edit-pencil')) {
-                score += 80;
-            }
-            
-            // 3. Vị trí: thứ 2 từ phải sang (kế cuối)
-            if (totalCount >= 2 && index === totalCount - 2) {
-                score += 500; // Nâng điểm cực mạnh để ưu tiên nút thứ 2 từ phải sang
-            }
-            
-            // Trừ điểm các nút có dấu hiệu Copy
-            if (allText.includes('copy') || allText.includes('duplicate') || html.includes('copy') || html.includes('duplicate') || html.includes('copy-o')) {
-                score -= 60;
-            }
-            
-            // Trừ điểm các nút có dấu hiệu Xóa/Delete
-            if (allText.includes('delete') || allText.includes('xóa') || html.includes('delete') || html.includes('xóa') || html.includes('trash')) {
-                score -= 100;
-            }
-            
-            // Trừ điểm các nút đính kèm/attachment (Nút 4, 5 trong danh sách của user)
-            if (allText.includes('attach') || allText.includes('file') || html.includes('attach') || html.includes('dropzone')) {
-                score -= 80;
-            }
-            
-            return score;
-        }
+        const selectors2 = [
+            // 1. Selector cực kỳ chính xác từ thanh công cụ mới (.question-header-toolbar)
+            '.question-header-toolbar a[title*="Chỉnh sửa"]',
+            '.question-header-toolbar a[title*="Cập nhật"]',
+            '.question-header-toolbar a[title*="sửa" i]',
+            '.question-header-toolbar a[title*="cập nhật" i]',
+            '.question-header-toolbar a[href*="questionId"]',
+            '.question-header-toolbar a', // Duy nhất thẻ <a> trong toolbar là nút Sửa
+            '.question-header-toolbar svg.lucide-square-pen',
+            '.question-header-toolbar svg.lucide-pen-box',
+            '.question-header-toolbar svg.lucide-edit',
+            '.question-header-toolbar svg.lucide-pen-square',
+            'div.rounded.px-3.py-2 a[href*="questionId"]',
+            'div.rounded.px-3.py-2 a[title*="sửa" i]',
+            'div.rounded.px-3.py-2 a[title*="cập nhật" i]',
+            'div.rounded.px-3.py-2 a',
+            'div.rounded.px-3.py-2 svg.lucide-square-pen',
+            '.question-panel a[title*="sửa" i]',
+            '.question-panel a[title*="cập nhật" i]',
+            '.question-panel a[href*="questionId"]',
+            'a[title*="Chỉnh sửa câu hỏi"]',
+            'a[title*="Cập nhật câu hỏi"]',
+            'a[title*="Chỉnh sửa" i]',
+            'a[title*="Cập nhật" i]',
+            '[title*="Chỉnh sửa câu hỏi"]',
+            '[title*="Cập nhật câu hỏi"]',
+            // 2. Fallback giao diện Ant Design cũ (modal)
+            '.ant-modal-body i[aria-label="icon: edit"]',
+            '.ant-modal i[aria-label="icon: edit"]',
+            'i[aria-label="icon: edit"]',
+            'svg[data-icon="edit"]',
+            'svg[data-icon="pen"]'
+        ];
 
-        // Bảng màu debug để khoanh viền từng ứng viên (mỗi nút 1 màu khác nhau)
-        const debugColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF', '#FFAA00', '#00FFFF', '#FF6600', '#9900FF', '#00FF99', '#FF3366'];
-        
-        function highlightCandidate(el, idx, label) {
-            if (!el) return;
-            const color = debugColors[idx % debugColors.length];
-            el.style.outline = `3px solid ${color}`;
-            el.style.outlineOffset = '2px';
-            // Thêm nhãn số thứ tự
-            const badge = document.createElement('span');
-            badge.textContent = `${label}#${idx}`;
-            badge.style.cssText = `position:absolute;top:-18px;left:0;background:${color};color:#fff;font-size:10px;padding:1px 4px;border-radius:3px;z-index:99999;pointer-events:none;font-weight:bold;`;
-            el.style.position = el.style.position || 'relative';
-            el.appendChild(badge);
-            // Tự xóa sau 8 giây
-            setTimeout(() => {
-                el.style.outline = '';
-                el.style.outlineOffset = '';
-                try { badge.remove(); } catch(e) {}
-            }, 8000);
-        }
-        
-        function highlightChosen(el) {
-            if (!el) return;
-            el.style.outline = '4px solid #00FF00';
-            el.style.outlineOffset = '3px';
-            el.style.boxShadow = '0 0 12px #00FF00';
-            setTimeout(() => {
-                el.style.outline = '';
-                el.style.outlineOffset = '';
-                el.style.boxShadow = '';
-            }, 8000);
-        }
+        for (let i = 0; i < 35; i++) { // Chờ tối đa 7 giây (35 * 200ms)
+            // Kiểm tra xem editor đã vô tình mở chưa
+            if (document.querySelector('.wrapper-quill, .ql-editor, .ql-container, div.form-button-groups button.btn-primary')) {
+                log("Phát hiện form soạn thảo đã mở trong lúc chờ Pencil 2!");
+                break;
+            }
 
-        for (let i = 0; i < 25; i++) { // Chờ tối đa 5 giây (25 * 200ms)
-            // Lấy vùng chi tiết đang mở (chọn modal/khung chứa đề bài và các nút chức năng đang hiển thị thực tế)
-            const areas = Array.from(document.querySelectorAll('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question.mb-3, div.question.p-4, .whitebox'));
-            const detailArea = areas.find(el => {
-                if (el.offsetWidth === 0 && el.offsetHeight === 0) return false;
-                return el.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1), .flex.flex-wrap.items-center');
-            });
-            if (detailArea) {
-                // Ưu tiên tìm trong thanh header metadata chứa các tác vụ ở đầu
-                const header = detailArea.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1)');
-                if (header) {
-                    const rawCandidates = Array.from(header.querySelectorAll('span.text-muted-700, span.text-primary, span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], div.attachment-container, div.attachment-container-dropzone, div.flex.flex-wrap.items-center > span'));
-                    
-                    // Loại bỏ các thẻ đồ họa trực tiếp
-                    const filteredCandidates = rawCandidates.filter(el => {
-                        if (el === editBtn1 || el.offsetWidth === 0) return false;
-                        const tag = el.tagName.toLowerCase();
-                        return tag !== 'svg' && tag !== 'path' && tag !== 'i';
-                    });
-                    
-                    // Loại bỏ phần tử con trùng lặp để chỉ giữ lại phần tử cha ngoài cùng đại diện cho mỗi nút
-                    const finalCandidates = filteredCandidates.filter(el => {
-                        return !filteredCandidates.some(other => other !== el && other.contains(el));
-                    });
-                    
-                    let bestEl = null;
-                    let bestScore = -999;
-                    finalCandidates.forEach((el, idx) => {
-                        const score = scoreElement(el, idx, finalCandidates.length);
-                        log(`[Pencil 2 Scan] Candidate [${idx}/${finalCandidates.length}]: Tag = ${el.tagName}, Class = ${el.className}, Score = ${score}`);
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestEl = el;
-                        }
-                    });
-                    
-                    if (bestEl && bestScore >= 0) {
-                        editBtn2 = bestEl;
-                        highlightChosen(editBtn2);
-                        log(`[Pencil 2 Scan] Đã chọn nút có điểm cao nhất: ${bestScore} (Tag = ${editBtn2.tagName}, Class = ${editBtn2.className})`);
-                        break;
-                    }
-                } else {
-                    // Fallback nếu không tìm thấy header riêng biệt
-                    const rawCandidates = Array.from(detailArea.querySelectorAll('span.text-muted-700, span.text-primary, span.cursor-pointer, .cursor-pointer, i[aria-label="icon: edit"], div.attachment-container, div.attachment-container-dropzone, div.flex.flex-wrap.items-center > span'));
-                    const filteredCandidates = rawCandidates.filter(el => {
-                        if (el === editBtn1 || el.offsetWidth === 0) return false;
-                        const tag = el.tagName.toLowerCase();
-                        return tag !== 'svg' && tag !== 'path' && tag !== 'i';
-                    });
-                    
-                    const finalCandidates = filteredCandidates.filter(el => {
-                        return !filteredCandidates.some(other => other !== el && other.contains(el));
-                    });
-                    
-                    let bestEl = null;
-                    let bestScore = -999;
-                    finalCandidates.forEach((el, idx) => {
-                        const score = scoreElement(el, idx, finalCandidates.length);
-                        log(`[Pencil 2 Fallback Scan] Candidate [${idx}/${finalCandidates.length}]: Tag = ${el.tagName}, Class = ${el.className}, Score = ${score}`);
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestEl = el;
-                        }
-                    });
-                    
-                    if (bestEl && bestScore >= 40) {
-                        editBtn2 = bestEl;
-                        highlightChosen(editBtn2);
-                        log(`[Pencil 2 Fallback Scan] Đã chọn nút có điểm cao nhất: ${bestScore} (Tag = ${editBtn2.tagName}, Class = ${editBtn2.className})`);
+            // 1. Quét theo danh sách selector ưu tiên cho Pencil 2
+            for (const sel of selectors2) {
+                const matches = Array.from(document.querySelectorAll(sel));
+                for (const el of matches) {
+                    if (el === editBtn1 || (editBtn1 && editBtn1.contains(el))) continue;
+                    if (el.offsetWidth === 0 && el.offsetHeight === 0 && el.getClientRects().length === 0) continue;
+
+                    const target = el.matches('a, button, [role="button"]') ? el : (el.closest('a, button, [role="button"]') || el);
+                    if (target !== editBtn1) {
+                        editBtn2 = target;
+                        log(`[Pencil 2] ✅ Tìm thấy nút Edit lần 2 theo selector: "${sel}" (Tag: <${editBtn2.tagName.toLowerCase()}>)`);
                         break;
                     }
                 }
+                if (editBtn2) break;
             }
+
             if (editBtn2) break;
-            await sleep(200); // Tăng tốc quét từ 500ms xuống 200ms
+
+            // 2. Quét trong các container chi tiết câu hỏi
+            const containers = Array.from(document.querySelectorAll('.question-header-toolbar, div.rounded.px-3.py-2, .question-panel, [id^="question-wrapper"], .ant-modal-body, .ant-modal, .whitebox'));
+            for (const container of containers) {
+                if (container.offsetWidth === 0 && container.offsetHeight === 0) continue;
+                const candidate = container.querySelector('a[href*="questionId"], a[title*="sửa" i], a[title*="cập nhật" i], a, svg.lucide-square-pen, svg.lucide-edit, i[aria-label="icon: edit"]');
+                if (candidate && candidate !== editBtn1 && !editBtn1?.contains(candidate)) {
+                    editBtn2 = candidate.closest('a, button, [role="button"]') || candidate;
+                    log(`[Pencil 2] ✅ Tìm thấy nút Edit lần 2 trong container <${container.className}> (Tag: <${editBtn2.tagName.toLowerCase()}>)`);
+                    break;
+                }
+            }
+
+            if (editBtn2) break;
+            await sleep(200);
         }
 
         if (editBtn2) {
-            log("Tìm thấy Pencil 2 (chỉnh sửa tổng), tiến hành click...");
-            highlightElement(editBtn2, 'red');
-            simulateFullClick(editBtn2);
-            
-            // Bấm thêm SVG bên trong nếu có
-            const svg = editBtn2.querySelector('svg');
-            if (svg) simulateFullClick(svg);
-            
-            if (editBtn2.parentElement) simulateFullClick(editBtn2.parentElement);
-            await sleep(200); // Giảm độ trễ cứng sau click từ 1.5s xuống 200ms
+            log(`Tìm thấy Pencil 2 (<${editBtn2.tagName.toLowerCase()}>), tiến hành click toàn diện...`);
+            clickElementThoroughly(editBtn2);
+            await sleep(300);
         } else {
             log("Không tìm thấy Pencil 2 tiêu chuẩn, thực hiện click fallback tất cả các bút khác...");
-            let pencils = document.querySelectorAll('i[aria-label="icon: edit"]');
+            let pencils = document.querySelectorAll('svg.lucide-square-pen, svg.lucide-pen-box, svg.lucide-edit, i[aria-label="icon: edit"]');
             for (let p of pencils) {
-                if (p !== editBtn1 && p.offsetWidth > 0) {
-                    simulateFullClick(p);
-                    if (p.parentElement) simulateFullClick(p.parentElement);
+                if (p !== editBtn1 && !editBtn1?.contains(p) && (p.offsetWidth > 0 || p.getClientRects().length > 0)) {
+                    const clickTarget = p.closest('a, button') || p;
+                    clickElementThoroughly(clickTarget);
                 }
             }
-            await sleep(200); // Giảm độ trễ cứng xuống 200ms
+            await sleep(300);
         }
 
         // Đợi modal soạn thảo hiển thị hoàn tất (hỗ trợ .wrapper-quill, .ql-editor, .ql-container)
         let formFound = false;
         log("Đang chờ modal soạn thảo load xong...");
-        for (let i = 0; i < 50; i++) { // Chờ tối đa 5s (50 * 100ms)
+        for (let i = 0; i < 70; i++) { // Chờ tối đa 7s (70 * 100ms)
             if (document.querySelector('.wrapper-quill, .ql-editor, .ql-container, div.form-button-groups button.btn-primary')) {
                 formFound = true;
                 break;
             }
-            await sleep(100); // Tăng tần suất kiểm tra từ 500ms xuống 100ms để phản hồi ngay khi form xuất hiện
+            await sleep(100);
         }
 
         if (!formFound) {
-            throw new Error('Không mở được modal soạn thảo (Không tìm thấy .wrapper-quill, .ql-editor hoặc nút cập nhật sau 5s)');
+            throw new Error('Không mở được modal soạn thảo (Không tìm thấy .wrapper-quill, .ql-editor hoặc nút cập nhật sau 7s)');
         }
 
         // Báo cáo về server
@@ -1026,7 +1025,7 @@
             let score = 50;
             const html = el.innerHTML || '';
             const allText = (el.textContent || '').toLowerCase() + ' ' + (el.title || '').toLowerCase() + ' ' + (el.getAttribute('aria-label') || '').toLowerCase();
-            if (html.includes('edit') || html.includes('pencil') || html.includes('pen') || allText.includes('sửa') || allText.includes('chỉnh sửa') || allText.includes('edit')) score += 80;
+            if (html.includes('edit') || html.includes('pencil') || html.includes('pen') || html.includes('lucide-square-pen') || allText.includes('sửa') || allText.includes('chỉnh sửa') || allText.includes('cập nhật') || allText.includes('edit')) score += 80;
             if (el.querySelector('svg')) score += 15;
             if (el.closest('div.flex.flex-wrap.items-center')) score += 10;
             if (idx === total - 2 && total >= 3) score += 500; // Nâng điểm cực mạnh để ưu tiên nút thứ 2 từ phải sang
@@ -1037,10 +1036,10 @@
             return score;
         }
 
-        const areas = Array.from(document.querySelectorAll('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question.mb-3, div.question.p-4, .whitebox'));
+        const areas = Array.from(document.querySelectorAll('.question-panel, [id^="question-wrapper"], div.rounded.px-3.py-2, .ant-modal-body, .ant-modal, .modal_dialog_ant, div.question.mb-3, div.question.p-4, .whitebox, body'));
         const detailArea = areas.find(el => {
             if (el.offsetWidth === 0 && el.offsetHeight === 0) return false;
-            return el.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1), .flex.flex-wrap.items-center');
+            return el.querySelector('div.rounded.px-3.py-2, div.rounded:nth-of-type(1), .flex.flex-wrap.items-center, .question-header-toolbar');
         });
         if (!detailArea) {
             alert('[Test Scan] Không tìm thấy vùng chi tiết câu hỏi đang hiển thị trên trang!');
@@ -1089,11 +1088,11 @@
     }
 
     async function doCopyDOM() {
-        const areas = Array.from(document.querySelectorAll('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox'));
+        const areas = Array.from(document.querySelectorAll('.question-panel, [id^="question-wrapper"], div.rounded.px-3.py-2, .ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox, body'));
         const detailArea = areas.find(el => {
             if (el.offsetWidth === 0 && el.offsetHeight === 0) return false;
-            return el.querySelector('div.question, div.rounded.px-3.py-2, .flex.flex-wrap.items-center') || el.classList.contains('question');
-        }) || document.querySelector('.ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
+            return el.querySelector('div.question, div.rounded.px-3.py-2, .flex.flex-wrap.items-center, .question-header-toolbar') || el.classList.contains('question');
+        }) || document.querySelector('.question-header-toolbar, div.rounded.px-3.py-2, .question-panel, [id^="question-wrapper"], .ant-modal-body, .ant-modal, .modal_dialog_ant, div.question, .whitebox');
 
         if (!detailArea) {
             alert('Không tìm thấy vùng chi tiết câu hỏi đang hiển thị!');
