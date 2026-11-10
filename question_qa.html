@@ -600,14 +600,81 @@
             color: #1e293b;
             line-height: 1.6;
         }
-            border-top: 1px solid rgba(0, 0, 0, 0.06);
-            font-size: 0.92rem;
-            color: #1e293b;
-            line-height: 1.6;
-        }
 
         .sub-dropdown-content.open {
             display: block;
+        }
+
+        /* Biểu tượng kéo thả card */
+        .drag-handle {
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            color: #94a3b8;
+            font-size: 1.15rem;
+            line-height: 1;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .drag-handle:hover {
+            color: #1e293b;
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        /* Cho phép bôi đen chọn văn bản mượt mà */
+        .qa-card-body,
+        .sub-dropdown-content,
+        .collapsible-content,
+        .neutral-card-body,
+        .reason-text,
+        .p4-field-item,
+        .sgk-table,
+        .overview-panel {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            cursor: text;
+        }
+
+        /* Định dạng hiển thị trực quan công thức toán KaTeX */
+        .katex-inline {
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0 0.15rem;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            cursor: text;
+        }
+
+        .katex-block {
+            display: block;
+            margin: 0.75rem auto;
+            text-align: center;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 0.45rem 0.75rem;
+            background: rgba(248, 250, 252, 0.85);
+            border-radius: 0.45rem;
+            border: 1px dashed var(--border-light);
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            cursor: text;
+        }
+
+        .katex,
+        .katex-html,
+        .katex * {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            cursor: text;
         }
 
         /* Nút Copy nhỏ gọn */
@@ -1747,42 +1814,97 @@
         }
 
         // ========================================================
-        // 3. RENDER KATEX MATH FORMULA
+        // 3. RENDER KATEX MATH FORMULA & ESCAPING HELPERS
         // ========================================================
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeAttr(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
         function renderMath(text) {
             if (!text) return '';
-            // Escape HTML cơ bản trước
-            let escaped = text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;");
 
-            // Render block math $$...$$
-            escaped = escaped.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-                if (window.katex) {
-                    try {
-                        return `<div class="katex-block">${katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false })}</div>`;
-                    } catch (e) {
-                        return match;
-                    }
-                }
-                return match;
+            const blockFormulas = [];
+            const inlineFormulas = [];
+
+            // 1. Tách block math $$...$$
+            text = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+                const idx = blockFormulas.length;
+                blockFormulas.push(formula.trim());
+                return `%%%KATEX_BLOCK_${idx}%%%`;
             });
 
-            // Render inline math $...$
-            escaped = escaped.replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
-                if (window.katex) {
-                    try {
-                        return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
-                    } catch (e) {
-                        return match;
-                    }
-                }
-                return match;
+            // 2. Tách inline math $...$
+            text = text.replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
+                const idx = inlineFormulas.length;
+                inlineFormulas.push(formula.trim());
+                return `%%%KATEX_INLINE_${idx}%%%`;
             });
 
-            // Thay thế newlines thành <br>
-            return escaped.replace(/\n/g, '<br>');
+            // 3. Nhận diện thêm các công thức LaTeX độc lập chưa bọc trong $ (như \dfrac{...}{...}, \frac{...}{...}, \sqrt{...})
+            const standaloneLatexRegex = /\\(?:dfrac|frac)\s*\{[^{}]*\}\s*\{[^{}]*\}|\\sqrt\s*(?:\[[^\]]*\])?\s*\{[^{}]*\}/g;
+            text = text.replace(standaloneLatexRegex, (match) => {
+                const idx = inlineFormulas.length;
+                inlineFormulas.push(match.trim());
+                return `%%%KATEX_INLINE_${idx}%%%`;
+            });
+
+            // 4. Escape HTML cơ bản cho phần text thường
+            let escaped = escapeHtml(text);
+
+            // 5. Chuyển đổi newlines sang <br>
+            escaped = escaped.replace(/\n/g, '<br>');
+
+            // 6. Điền lại Block Math bằng KaTeX View (kèm data-tex để hỗ trợ bôi đen copy)
+            for (let i = 0; i < blockFormulas.length; i++) {
+                const raw = blockFormulas[i];
+                let renderedHtml = '';
+                if (window.katex) {
+                    try {
+                        renderedHtml = katex.renderToString(raw, { displayMode: true, throwOnError: false });
+                    } catch (e) {
+                        renderedHtml = `$$${escapeHtml(raw)}$$`;
+                    }
+                } else {
+                    renderedHtml = `$$${escapeHtml(raw)}$$`;
+                }
+                const blockEl = `<div class="katex-block" data-tex="${escapeAttr(raw)}">${renderedHtml}</div>`;
+                escaped = escaped.replace(`%%%KATEX_BLOCK_${i}%%%`, blockEl);
+            }
+
+            // 7. Điền lại Inline Math bằng KaTeX View (kèm data-tex để hỗ trợ bôi đen copy)
+            for (let i = 0; i < inlineFormulas.length; i++) {
+                const raw = inlineFormulas[i];
+                let renderedHtml = '';
+                if (window.katex) {
+                    try {
+                        renderedHtml = katex.renderToString(raw, { displayMode: false, throwOnError: false });
+                    } catch (e) {
+                        renderedHtml = `$${escapeHtml(raw)}$`;
+                    }
+                } else {
+                    renderedHtml = `$${escapeHtml(raw)}$`;
+                }
+                const inlineEl = `<span class="katex-inline" data-tex="${escapeAttr(raw)}">${renderedHtml}</span>`;
+                escaped = escaped.replace(`%%%KATEX_INLINE_${i}%%%`, inlineEl);
+            }
+
+            return escaped;
         }
 
         // ========================================================
@@ -1900,7 +2022,12 @@
             let draggedCard = null;
 
             list.querySelectorAll('.qa-card').forEach(card => {
-                card.setAttribute('draggable', 'true');
+                const handle = card.querySelector('.drag-handle');
+                if (handle) {
+                    handle.addEventListener('mousedown', () => {
+                        card.setAttribute('draggable', 'true');
+                    });
+                }
 
                 card.addEventListener('dragstart', (e) => {
                     draggedCard = card;
@@ -1908,6 +2035,7 @@
                 });
 
                 card.addEventListener('dragend', () => {
+                    card.removeAttribute('draggable');
                     card.classList.remove('dragging');
                     list.querySelectorAll('.qa-card').forEach(c => c.classList.remove('drag-over'));
                     draggedCard = null;
@@ -1938,6 +2066,12 @@
                         }
                     }
                 });
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (list) {
+                    list.querySelectorAll('.qa-card[draggable]').forEach(c => c.removeAttribute('draggable'));
+                }
             });
         }
 
@@ -2139,6 +2273,7 @@
                 cardEl.innerHTML = `
                     <div class="qa-card-header" onclick="toggleMainCard(${index})">
                         <span class="qa-card-title">
+                            <span class="drag-handle" title="Kéo giữ để di chuyển đổi thứ tự card" onclick="event.stopPropagation()">⠿</span>
                             <span class="arrow-icon" id="arrow_main_${index}">▼</span>
                             <span>${item.title}</span>
                         </span>
@@ -2307,11 +2442,6 @@
 
             // Kích hoạt tính năng kéo thả đổi vị trí các Card
             initCardsDragAndDrop();
-        }
-
-        function escapeAttr(str) {
-            if (!str) return '';
-            return str.replace(/"/g, '&quot;');
         }
 
         function copyCardRaw(index, btn) {
@@ -2980,9 +3110,110 @@ Mức 1
             savePromptConfigs();
         }
 
+        // ========================================================
+        // 9. HỖ TRỢ BÔI ĐEN VÀ COPY MÃ LATEX DẠNG $...$
+        // ========================================================
+        function closestKatexNode(node) {
+            if (!node) return null;
+            const el = node instanceof Element ? node : node.parentElement;
+            if (!el) return null;
+            return el.closest('.katex-block, .katex-inline, .katex');
+        }
+
+        function fragmentToPlainText(node) {
+            if (!node) return '';
+            if (node.nodeType === 3) {
+                return node.nodeValue || '';
+            }
+            if (node.nodeType === 1 || node.nodeType === 11) {
+                const tag = (node.tagName || '').toLowerCase();
+                if (tag === 'br') return '\n';
+                let text = '';
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    text += fragmentToPlainText(node.childNodes[i]);
+                }
+                if (['p', 'div', 'tr', 'li', 'h1', 'h2', 'h3', 'h4'].includes(tag)) {
+                    return text + '\n';
+                }
+                if (tag === 'td' || tag === 'th') {
+                    return text + '\t';
+                }
+                return text;
+            }
+            return '';
+        }
+
+        function initLatexCopyHandler() {
+            document.addEventListener('copy', function (e) {
+                const selection = window.getSelection();
+                if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+
+                // Không can thiệp nếu đang thao tác trong ô nhập liệu input hoặc textarea
+                const activeEl = document.activeElement;
+                const activeTag = activeEl ? activeEl.tagName.toLowerCase() : '';
+                if (activeTag === 'input' || activeTag === 'textarea') return;
+
+                const range = selection.getRangeAt(0);
+
+                // Mở rộng biên chọn nếu điểm bắt đầu / kết thúc nằm giữa chừng một công thức KaTeX
+                const startFormula = closestKatexNode(range.startContainer);
+                if (startFormula) {
+                    try { range.setStartBefore(startFormula); } catch (_) {}
+                }
+                const endFormula = closestKatexNode(range.endContainer);
+                if (endFormula) {
+                    try { range.setEndAfter(endFormula); } catch (_) {}
+                }
+
+                const fragment = range.cloneContents();
+
+                // Kiểm tra xem đoạn bôi đen có chứa công thức KaTeX không
+                const hasMath = fragment.querySelector('[data-tex], .katex, .katex-mathml') !== null;
+                if (!hasMath) return; // Nếu không có công thức toán, để trình duyệt copy bình thường
+
+                // 1. Chuyển đổi các phần tử có data-tex thành text node có $...$ hoặc $$...$$
+                const texNodes = fragment.querySelectorAll('[data-tex]');
+                texNodes.forEach(node => {
+                    const rawTex = node.getAttribute('data-tex') || '';
+                    const isBlock = node.classList.contains('katex-block') || (node.tagName || '').toLowerCase() === 'div';
+                    const delim = isBlock ? '$$' : '$';
+                    const textNode = document.createTextNode(`${delim}${rawTex}${delim}`);
+                    node.replaceWith(textNode);
+                });
+
+                // 2. Dự phòng: Xử lý các thẻ .katex thuần túy nếu không có data-tex
+                const katexHtmls = fragment.querySelectorAll('.katex-mathml + .katex-html');
+                katexHtmls.forEach(el => el.remove());
+
+                const katexMathmls = fragment.querySelectorAll('.katex-mathml');
+                katexMathmls.forEach(el => {
+                    const annotation = el.querySelector('annotation');
+                    const rawTex = annotation ? (annotation.textContent || '') : '';
+                    const isDisplay = el.closest('.katex-display') !== null;
+                    const delim = isDisplay ? '$$' : '$';
+                    const textNode = document.createTextNode(`${delim}${rawTex}${delim}`);
+                    const katexParent = el.closest('.katex') || el;
+                    katexParent.replaceWith(textNode);
+                });
+
+                // Trích xuất văn bản thuần với đầy đủ ngắt dòng \n
+                let plainText = fragmentToPlainText(fragment);
+                // Chuẩn hóa ngắt dòng liên tiếp
+                plainText = plainText.replace(/\n{3,}/g, '\n\n').trim();
+
+                if (plainText) {
+                    e.clipboardData.setData('text/plain', plainText);
+                    e.clipboardData.setData('text/html', plainText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>'));
+                    e.preventDefault();
+                    showToast("Đã copy đoạn chọn (kèm mã LaTeX $...$)");
+                }
+            });
+        }
+
         // Khởi chạy khi load trang
         window.addEventListener('DOMContentLoaded', () => {
             loadQuickPrompts();
+            initLatexCopyHandler();
         });
     </script>
 </body>
