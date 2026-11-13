@@ -2671,6 +2671,23 @@
                 return res;
             }
 
+            function formatLatexBrackets(text) {
+                if (!text) return '';
+                let res = text;
+
+                // 1. Ngoặc tròn, vuông và nửa khoảng: (), [], (], [)
+                res = res.replace(/([\(\[])\s*(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)\s*([\)\]])/g, (match, openB, content, closeB) => {
+                    return `$${openB}${content.trim()}${closeB}$`;
+                });
+
+                // 2. Ngoặc nhọn: {} -> Tự động thêm escape \{ và \} để hiển thị đúng trong LaTeX
+                res = res.replace(/\{\s*(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)\s*\}/g, (match, content) => {
+                    return `$\\{${content.trim()}\\}$`;
+                });
+
+                return res;
+            }
+
             function cleanLatexTextIt(text) {
                 if (!text) return '';
                 let result = text;
@@ -2775,6 +2792,7 @@
                 content = formatPrimeQuotes(content);
                 content = formatUnitsOfMeasurement(content);
                 content = formatLatexSymbols(content);
+                content = formatLatexBrackets(content);
                 content = cleanLatexTextIt(content);
                 content = removeDocCitations(content);
                 return content;
