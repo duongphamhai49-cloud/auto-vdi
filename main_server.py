@@ -91,10 +91,11 @@ GEMINI_SEND_BTN_X = 1872
 GEMINI_SEND_BTN_Y = 455
 GEMINI_SEND_BTN = (GEMINI_SEND_BTN_X, GEMINI_SEND_BTN_Y)  # Tọa độ nút gửi của Gemini
 
+GEMINI_MICRO_REGION = (1843, 434, 61, 65) # Vùng tìm ảnh micro rảnh rỗi Gemini: từ (1843, 434) đến (1904, 499)
 GEMINI_SEND_PIXEL_X = 1864
 GEMINI_SEND_PIXEL_Y = 474
-GEMINI_SEND_PIXEL = (GEMINI_SEND_PIXEL_X, GEMINI_SEND_PIXEL_Y) # Tọa độ pixel kiểm tra nút Send của Gemini
-GEMINI_IDLE_COLOR = (138, 184, 224) # Màu RGB rảnh rỗi chuẩn của nút Send Gemini (138, 184, 224)
+GEMINI_SEND_PIXEL = (GEMINI_SEND_PIXEL_X, GEMINI_SEND_PIXEL_Y) # (Legacy) Tọa độ pixel kiểm tra nút Send của Gemini
+GEMINI_IDLE_COLOR = (138, 184, 224) # (Legacy) Màu RGB rảnh rỗi chuẩn của nút Send Gemini
 
 GEMINI_COPY_REGION = (1294, 107, 585, 320) # Vùng tìm ảnh copy Gemini
 GEMINI_COPY_FALLBACK = (1482, 335)
@@ -142,6 +143,7 @@ class GUIHelper:
     
     GEMINI_CHATBOX = GEMINI_CHATBOX
     GEMINI_SEND_BTN = GEMINI_SEND_BTN
+    GEMINI_MICRO_REGION = GEMINI_MICRO_REGION
     GEMINI_SEND_PIXEL = GEMINI_SEND_PIXEL
     GEMINI_IDLE_COLOR = GEMINI_IDLE_COLOR
     
@@ -289,15 +291,140 @@ class GUIHelper:
 
     @classmethod
     def invoke_gemini_skill(cls, skill_name="ocr-question"):
-        """Gọi skill trên Gemini: gõ @ -> đợi 0.5s -> dán tên skill -> nhấn Enter."""
+        """Gọi skill trên Gemini: gõ @ -> đợi 0.5s -> dán tên skill -> Enter (tag) -> đợi 0.25s -> Enter (gửi)."""
         log(f"Gọi skill '{skill_name}' trên Gemini...", "ACTION")
         pyautogui.write('@')
         time.sleep(0.5)
         ClipboardHelper.copy_text(skill_name)
         pyautogui.hotkey('ctrl', 'v')
         time.sleep(0.3)
-        pyautogui.press('enter')
-        log(f"Đã chọn skill '{skill_name}' thành công.", "OK")
+        pyautogui.press('enter')  # Tag skill
+        log(f"Đã tag skill '{skill_name}'. Đợi 0.25s rồi nhấn Enter để chính thức gửi đi...", "ACTION")
+        if STOP_FLAG:
+            raise Exception("Đã bị người dùng huỷ thủ công!")
+        original_sleep(0.25)
+        if STOP_FLAG:
+            raise Exception("Đã bị người dùng huỷ thủ công!")
+        pyautogui.press('enter')  # Chính thức gửi đi
+        log(f"Đã gửi ảnh kèm skill '{skill_name}' lên Gemini.", "OK")
+
+    @classmethod
+    def is_gemini_idle(cls, confidence=0.8):
+        """Kiểm tra xem Gemini có đang ở trạng thái rảnh rỗi không dựa vào ảnh icon micro
+        (images/gemini_micro.png) trong vùng GEMINI_MICRO_REGION: từ (1843, 434) đến (1904, 499)."""
+        try:
+            img_path = resolve_image_path('gemini_micro.png')
+            res = original_locateOnScreen(img_path, region=cls.GEMINI_MICRO_REGION, confidence=confidence)
+            if res is not None:
+                return True
+            res2 = original_locateOnScreen(img_path, region=cls.GEMINI_MICRO_REGION, confidence=0.7)
+            return res2 is not None
+        except Exception:
+            return False
+
+    @classmethod
+    def paste_and_send_gemini_skill(cls, skill_name="ocr-question", image_load_wait=2.0):
+        """Dán ảnh từ Clipboard vào ô chat Gemini, chờ ảnh tải rồi tag skill và nhấn gửi."""
+        cls.focus(cls.GEMINI_CHATBOX)
+        pyautogui.hotkey('ctrl', 'v')
+        log(f"Chờ {image_load_wait:.1f}s cho ảnh load hoàn tất lên ô chat...", "STATUS")
+        time.sleep(image_load_wait)
+        cls.invoke_gemini_skill(skill_name)
+        time.sleep(0.5)
+
+    @classmethod
+    def wait_gemini_send_active(cls, max_retries=20, retry_delay=0.5):
+        """Kiểm tra và gửi lệnh Enter đến khi Gemini chuyển sang TRẠNG THÁI HOẠT ĐỘNG (Icon Micro biến mất)."""
+        log(f"Kiểm tra trạng thái nhận lệnh của Gemini (quét icon micro trong vùng {cls.GEMINI_MICRO_REGION})...", "STATUS")
+        for step in range(max_retries):
+            if STOP_FLAG:
+                raise Exception("Đã bị dừng bởi người dùng!")
+            is_idle = cls.is_gemini_idle()
+            log(f"[GEMINI SEND CHECK {step+1}/{max_retries}] Đang Rảnh Rỗi (Hiện Micro): {is_idle}", "STATUS")
+            if not is_idle:
+                log("✅ Phát hiện Gemini đã chuyển sang TRẠNG THÁI HOẠT ĐỘNG (Icon Micro đã biến mất)! Đã nhận lệnh gửi thành công.", "OK")
+                return True
+            
+            log(f"Gemini chưa nhận lệnh (vẫn còn icon micro), thử bấm Enter lượt {step+1}/{max_retries}...", "ACTION")
+            pyautogui.press('enter')
+            time.sleep(retry_delay)
+            
+        log(f"⚠️ Gemini KHÔNG chuyển sang trạng thái hoạt động sau {int(max_retries * retry_delay)}s thử lại! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
+        cls.focus(cls.FCS_ON_GEM)
+        time.sleep(0.2)
+        cls.refresh_gemini_f5()
+        raise Exception(f"Timeout Gemini không chuyển sang trạng thái hoạt động sau {int(max_retries * retry_delay)}s!")
+
+    @classmethod
+    def wait_gemini_done(cls, initial_delay=5.0, max_poll=120, poll_delay=0.5):
+        """Đợi Gemini xử lý xong phản hồi (Icon Micro xuất hiện trở lại trong vùng GEMINI_MICRO_REGION)."""
+        if initial_delay > 0:
+            log(f"Chờ Gemini xử lý phản hồi (dừng {initial_delay:.1f}s ban đầu)...", "STATUS")
+            time.sleep(initial_delay)
+            
+        log(f"Bắt đầu quy trình kiểm tra Gemini đã phản hồi xong chưa (Quét ảnh gemini_micro.png trong vùng {cls.GEMINI_MICRO_REGION})...", "STATUS")
+        for poll_idx in range(max_poll):
+            if STOP_FLAG:
+                raise Exception("Đã bị dừng bởi người dùng!")
+            if cls.is_gemini_idle():
+                log(f"[GEMINI DONE CHECK {poll_idx+1}/{max_poll}] ✅ Phát hiện Gemini đã phản hồi xong thành công! (Icon Micro đã xuất hiện trở lại)", "OK")
+                return True
+            else:
+                if (poll_idx + 1) % 5 == 0:
+                    log(f"[GEMINI DONE CHECK {poll_idx+1}/{max_poll}] Gemini vẫn đang xử lý (chưa thấy icon micro)...", "STATUS")
+            time.sleep(poll_delay)
+            
+        log(f"⚠️ Hết {int(max_poll * poll_delay)}s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
+        cls.focus(cls.FCS_ON_GEM)
+        time.sleep(0.2)
+        cls.refresh_gemini_f5()
+        raise Exception(f"Timeout Gemini phản hồi quá {int(max_poll * poll_delay)}s!")
+
+    @classmethod
+    def copy_gemini_output(cls):
+        """Focus Gemini, cuộn xuống bằng phím End và click nút Copy."""
+        log("Focus vào vùng Gemini (FCS_ON_GEM) để chuẩn bị copy...", "ACTION")
+        cls.focus(cls.FCS_ON_GEM)
+        time.sleep(0.1)
+        
+        log("Nhấn phím End lần 1...", "ACTION")
+        pyautogui.press('end')
+        time.sleep(1.0)
+        
+        log("Tìm nút Copy Gemini (Lần 1)...", "SEARCH")
+        copy_pos = None
+        for _ in range(25):
+            try:
+                copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=cls.GEMINI_COPY_REGION, confidence=0.8)
+                if copy_pos:
+                    break
+            except Exception:
+                pass
+            time.sleep(0.1)
+        
+        if not copy_pos:
+            log("Không tìm thấy nút Copy lần 1. Nhấn phím End lần 2...", "WARN")
+            pyautogui.press('end')
+            time.sleep(1.0)
+            
+            log("Tìm nút Copy Gemini (Lần 2)...", "SEARCH")
+            for _ in range(25):
+                try:
+                    copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=cls.GEMINI_COPY_REGION, confidence=0.8)
+                    if copy_pos:
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.1)
+        
+        if copy_pos:
+            pyautogui.click(copy_pos)
+            log("Đã click nút Copy của Gemini.", "OK")
+            time.sleep(0.5)
+            cls.new_gemini_chat()
+            return True
+        else:
+            raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
 
     @classmethod
     def new_gemini_chat(cls, delay=0.5):
@@ -1008,138 +1135,13 @@ class CaptureHandler(BaseHTTPRequestHandler):
                     log("Gửi lệnh mở Edit (2 bút chì) cho Tampermonkey...", "STATUS")
                     session_id_edit, evt_edit = enqueue_lms_command('edit')
 
-                # Lấy màu rảnh rỗi động của Gemini trước khi dán ảnh
-                gemini_dynamic_idle_color = None
-                try:
-                    gemini_dynamic_idle_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                    log(f"Đã lấy màu của nút send Gemini tại {GUIHelper.GEMINI_SEND_PIXEL}: {gemini_dynamic_idle_color}", "STATUS")
-                except Exception as e:
-                    gemini_dynamic_idle_color = GUIHelper.GEMINI_IDLE_COLOR
-                    log(f"Không thể đọc màu pixel Gemini tại {GUIHelper.GEMINI_SEND_PIXEL}: {e}. Sử dụng mặc định {GUIHelper.GEMINI_IDLE_COLOR}", "WARN")
-
-                # 4. Tranh thủ thời gian đợi LMS load -> Đi qua Gemini (Phải) dán ảnh
+                # 4. Tranh thủ thời gian đợi LMS load -> Đi qua Gemini dán ảnh, gửi và nhận kết quả
                 log("Tranh thủ chuyển sang dán ảnh vào Gemini...", "STATUS")
-                GUIHelper.focus(GUIHelper.GEMINI_CHATBOX)
-                pyautogui.hotkey('ctrl', 'v')
-                
-                # Chờ đúng 3s để Gemini hiển thị ảnh lên ô chat
-                start_gemini_load = time.time()
-                # Trong thời gian đợi ảnh load (3s), gọi skill ocr-question
-                GUIHelper.invoke_gemini_skill("ocr-question")
-                elapsed = time.time() - start_gemini_load
-                remaining_wait = max(0.5, 3.0 - elapsed)
-                log(f"Chờ nốt {remaining_wait:.1f}s cho ảnh load hoàn tất lên ô chat...", "STATUS")
-                time.sleep(remaining_wait)
-
-                
-                # Bấm Enter và kiểm tra nút Send đã chuyển sang MÀU HOẠT ĐỘNG (Stop icon / khác màu rảnh rỗi) chưa.
-                # Spam Enter mỗi 0.5s trong tối đa 10s (20 chu kỳ) cho đến khi nút chuyển màu hoạt động.
-                log(f"Kiểm tra và gửi lệnh Enter đến khi Gemini chuyển sang MÀU HOẠT ĐỘNG (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
-                gemini_active = False
-                for step in range(20): # 20 * 0.5s = 10s max
-                    if STOP_FLAG:
-                        raise Exception("Đã bị dừng bởi người dùng!")
-                    try:
-                        curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        # Kiểm tra xem màu hiện tại ĐÃ KHÁC với màu rảnh rỗi ban đầu chưa
-                        is_idle = pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20)
-                        log(f"[GEMINI SEND CHECK {step+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Đang Rảnh Rỗi: {is_idle}", "STATUS")
-                        if not is_idle:
-                            gemini_active = True
-                            log(f"✅ Phát hiện Gemini đã chuyển sang MÀU HOẠT ĐỘNG (Màu {curr_color})! Đã nhận lệnh gửi thành công.", "OK")
-                            break
-                    except Exception as e:
-                        log(f"Lỗi khi đọc màu pixel Gemini: {e}", "WARN")
-                    
-                    # Nếu vẫn còn ở màu Rảnh Rỗi -> Thử bấm Enter lần nữa
-                    log(f"Gemini chưa nhận lệnh (vẫn màu rảnh rỗi), thử bấm Enter lượt {step+1}/20...", "ACTION")
-                    pyautogui.press('enter')
-                    time.sleep(0.5)
-
-                if not gemini_active:
-                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
-                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
-                    time.sleep(0.2)
-                    # (Đã thay bằng GUIHelper)
-                    GUIHelper.refresh_gemini_f5()
-                    raise Exception("Timeout Gemini không chuyển sang trạng thái hoạt động sau 10s!")
-
-                # 5. Đợi Gemini xử lý xong (Dừng 5s ban đầu rồi mới bắt đầu Done Check 60s)
-                log("Chờ Gemini xử lý phản hồi (dừng 5s ban đầu)...", "STATUS")
-                time.sleep(5.0)
-                
-                log(f"Bắt đầu quy trình kiểm tra Gemini đã phản hồi xong chưa (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
-                gemini_done = False
-                for poll_idx in range(120): # Poll tối đa 60s (120 * 0.5s)
-                    if STOP_FLAG:
-                        raise Exception("Đã bị dừng bởi người dùng!")
-                    try:
-                        curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI DONE CHECK {poll_idx+1}/120] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
-                        if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
-                            gemini_done = True
-                            log(f"✅ Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} đã quay về màu rảnh rỗi {gemini_dynamic_idle_color})", "OK")
-                            break
-                    except Exception as e:
-                        log(f"Lỗi kiểm tra pixel Gemini: {e}", "WARN")
-                    time.sleep(0.5)
-                
-                if not gemini_done:
-                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
-                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
-                    time.sleep(0.2)
-                    # (Đã thay bằng GUIHelper)
-                    GUIHelper.refresh_gemini_f5()
-                    raise Exception("Timeout Gemini phản hồi quá 60s!")
-                
-                # Lấy focus tại FCS_ON_GEM trước khi gửi phím End
-                log("Focus vào vùng Gemini (FCS_ON_GEM) để chuẩn bị copy...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_ON_GEM)
-                time.sleep(0.1)
-                
-                # Bấm phím End lần 1
-                log("Nhấn phím End lần 1...", "ACTION")
-                pyautogui.press('end')
-                time.sleep(1.0) # Đợi đúng 1.0s
-                
-                # Tìm nút Copy Gemini lần 1
-                log("Tìm nút Copy Gemini (Lần 1)...", "SEARCH")
-                copy_pos = None
-                for _ in range(25): # Thử quét trong 2.5s
-                    try:
-                        copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
-                        if copy_pos:
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(0.1)
-                
-                if not copy_pos:
-                    log("Không tìm thấy nút Copy lần 1. Nhấn phím End lần 2...", "WARN")
-                    pyautogui.press('end')
-                    time.sleep(1.0) # Đợi tiếp 1.0s
-                    
-                    log("Tìm nút Copy Gemini (Lần 2)...", "SEARCH")
-                    for _ in range(25): # Thử quét tiếp trong 2.5s
-                        try:
-                            copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
-                            if copy_pos:
-                                break
-                        except Exception:
-                            pass
-                        time.sleep(0.1)
-                
-                if copy_pos:
-                    pyautogui.click(copy_pos)
-                    log("Đã click nút Copy của Gemini.", "OK")
-                    msg_extra = "Đã gửi Gemini | Đã Copy kết quả Gemini."
-                    
-                    # Mở đoạn chat mới trên Gemini (Ctrl+Shift+O)
-                    time.sleep(0.5)
-                    # (Đã thay bằng GUIHelper)
-                    GUIHelper.new_gemini_chat()
-                else:
-                    raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
+                GUIHelper.paste_and_send_gemini_skill("ocr-question")
+                GUIHelper.wait_gemini_send_active()
+                GUIHelper.wait_gemini_done()
+                GUIHelper.copy_gemini_output()
+                msg_extra = "Đã gửi Gemini | Đã Copy kết quả Gemini." 
 
                 # --- ĐÃ CÓ ĐỀ BÀI TỪ GEMINI TRONG CLIPBOARD ---
                 # Focus lại cửa sổ LMS và cuộn lên đầu để đảm bảo giao diện hiển thị đúng vị trí
@@ -1468,127 +1470,11 @@ class CaptureHandler(BaseHTTPRequestHandler):
 
                 # 3. Gửi Gemini
                 active_location = 'GEMINI'
-                # Lấy màu rảnh rỗi động của Gemini trước khi dán ảnh
-                gemini_dynamic_idle_color = None
-                try:
-                    gemini_dynamic_idle_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                    log(f"Đã lấy màu của nút send Gemini tại {GUIHelper.GEMINI_SEND_PIXEL}: {gemini_dynamic_idle_color}", "STATUS")
-                except Exception as e:
-                    gemini_dynamic_idle_color = GUIHelper.GEMINI_IDLE_COLOR
-                    log(f"Không thể đọc màu pixel Gemini tại {GUIHelper.GEMINI_SEND_PIXEL}: {e}. Sử dụng mặc định {GUIHelper.GEMINI_IDLE_COLOR}", "WARN")
-
                 log("Tranh thủ chuyển sang dán ảnh vào Gemini...", "STATUS")
-                GUIHelper.focus(GUIHelper.GEMINI_CHATBOX)
-                pyautogui.hotkey('ctrl', 'v')
-                
-                # Chờ đúng 3s để Gemini hiển thị ảnh lên ô chat
-                start_gemini_load = time.time()
-                # Trong thời gian đợi ảnh load (3s), gọi skill ocr-question
-                GUIHelper.invoke_gemini_skill("ocr-question")
-                elapsed = time.time() - start_gemini_load
-                remaining_wait = max(0.5, 3.0 - elapsed)
-                log(f"Chờ nốt {remaining_wait:.1f}s cho ảnh load hoàn tất lên ô chat...", "STATUS")
-                time.sleep(remaining_wait)
-
-                
-                # Bấm Enter và kiểm tra nút Send đã chuyển sang MÀU HOẠT ĐỘNG (Stop icon / khác màu rảnh rỗi) chưa.
-                # Spam Enter mỗi 0.5s trong tối đa 10s (20 chu kỳ) cho đến khi nút chuyển màu hoạt động.
-                log(f"Kiểm tra và gửi lệnh Enter đến khi Gemini chuyển sang MÀU HOẠT ĐỘNG (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
-                gemini_active = False
-                for step in range(20): # 20 * 0.5s = 10s max
-                    if STOP_FLAG:
-                        raise Exception("Đã bị dừng bởi người dùng!")
-                    try:
-                        curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        # Kiểm tra xem màu hiện tại ĐÃ KHÁC với màu rảnh rỗi ban đầu chưa
-                        is_idle = pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20)
-                        log(f"[GEMINI SEND CHECK {step+1}/20] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Đang Rảnh Rỗi: {is_idle}", "STATUS")
-                        if not is_idle:
-                            gemini_active = True
-                            log(f"✅ Phát hiện Gemini đã chuyển sang MÀU HOẠT ĐỘNG (Màu {curr_color})! Đã nhận lệnh gửi thành công.", "OK")
-                            break
-                    except Exception as e:
-                        log(f"Lỗi khi đọc màu pixel Gemini: {e}", "WARN")
-                    
-                    # Nếu vẫn còn ở màu Rảnh Rỗi -> Thử bấm Enter lần nữa
-                    log(f"Gemini chưa nhận lệnh (vẫn màu rảnh rỗi), thử bấm Enter lượt {step+1}/20...", "ACTION")
-                    pyautogui.press('enter')
-                    time.sleep(0.5)
-
-                if not gemini_active:
-                    log("⚠️ Gemini KHÔNG chuyển sang màu hoạt động sau 10s thử lại! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
-                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
-                    time.sleep(0.2)
-                    # (Đã thay bằng GUIHelper)
-                    GUIHelper.refresh_gemini_f5()
-                    raise Exception("Timeout Gemini không chuyển sang trạng thái hoạt động sau 10s!")
-
-                # 5. Đợi Gemini xử lý xong (Dừng 5s ban đầu rồi mới bắt đầu Done Check 60s)
-                log("Chờ Gemini xử lý phản hồi (dừng 5s ban đầu)...", "STATUS")
-                time.sleep(5.0)
-                
-                log(f"Bắt đầu quy trình kiểm tra Gemini đã phản hồi xong chưa (Tọa độ {GUIHelper.GEMINI_SEND_PIXEL})...", "STATUS")
-                gemini_done = False
-                for poll_idx in range(120): # Poll tối đa 60s (120 * 0.5s)
-                    if STOP_FLAG:
-                        raise Exception("Đã bị dừng bởi người dùng!")
-                    try:
-                        curr_color = pyautogui.pixel(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1])
-                        log(f"[GEMINI DONE CHECK {poll_idx+1}/120] Tọa độ {GUIHelper.GEMINI_SEND_PIXEL} | Màu hiện tại: {curr_color} | Màu mục tiêu: {gemini_dynamic_idle_color}", "STATUS")
-                        if pyautogui.pixelMatchesColor(GUIHelper.GEMINI_SEND_PIXEL[0], GUIHelper.GEMINI_SEND_PIXEL[1], gemini_dynamic_idle_color, tolerance=20):
-                            gemini_done = True
-                            log(f"✅ Phát hiện Gemini đã phản hồi xong thành công! (Màu hiện tại {curr_color} đã quay về màu rảnh rỗi {gemini_dynamic_idle_color})", "OK")
-                            break
-                    except Exception as e:
-                        log(f"Lỗi kiểm tra pixel Gemini: {e}", "WARN")
-                    time.sleep(0.5)
-                
-                if not gemini_done:
-                    log("⚠️ Hết 60s kiểm tra Done Check mà Gemini chưa phản hồi xong! Tiến hành mở đoạn chat mới (Ctrl+Shift+O) và chuyển câu này sang Lượt 2...", "WARN")
-                    GUIHelper.focus(GUIHelper.FCS_ON_GEM)
-                    time.sleep(0.2)
-                    # (Đã thay bằng GUIHelper)
-                    GUIHelper.refresh_gemini_f5()
-                    raise Exception("Timeout Gemini phản hồi quá 60s!")
-                
-                log("Focus vào vùng Gemini để chuẩn bị copy...", "ACTION")
-                GUIHelper.focus(GUIHelper.FCS_ON_GEM)
-                time.sleep(0.1)
-                
-                pyautogui.press('end')
-                time.sleep(1.0)
-                
-                copy_pos = None
-                for _ in range(25):
-                    try:
-                        copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
-                        if copy_pos:
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(0.1)
-                
-                if not copy_pos:
-                    log("Không tìm thấy nút Copy lần 1. Nhấn phím End lần 2...", "WARN")
-                    pyautogui.press('end')
-                    time.sleep(1.0)
-                    for _ in range(25):
-                        try:
-                            copy_pos = pyautogui.locateCenterOnScreen('images/gemini_copy.png', region=GUIHelper.GEMINI_COPY_REGION, confidence=0.8)
-                            if copy_pos:
-                                break
-                        except Exception:
-                            pass
-                        time.sleep(0.1)
-                
-                if copy_pos:
-                    pyautogui.click(copy_pos)
-                    log("Đã click nút Copy của Gemini.", "OK")
-                    time.sleep(0.5)
-                    # (Đã thay bằng GUIHelper)
-                    GUIHelper.new_gemini_chat()
-                else:
-                    raise Exception("Không tìm thấy nút Copy của Gemini sau 2 lần bấm End!")
+                GUIHelper.paste_and_send_gemini_skill("ocr-question")
+                GUIHelper.wait_gemini_send_active()
+                GUIHelper.wait_gemini_done()
+                GUIHelper.copy_gemini_output()
 
                 # 4. Gửi vào NotebookLM tương ứng
                 log("Quay lại cửa sổ LMS & NBLM...", "ACTION")
