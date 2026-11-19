@@ -12,7 +12,7 @@ start chrome --new-window --window-position=0,0 --window-size=500,500 --profile-
  "https://aeglobal.lotuslms.com/admin/content-manager/folder/690173da0de3cd4f2808c80e" ^
  "https://notebooklm.google.com/notebook/6b86d189-b723-44cb-81b8-e9fca8bcfcb3" ^
  "https://gemini.google.com/app/2fcd233553d06463?hl=vi" ^
- "https://gemini.google.com/app/e90b0e72fe989f11?hl=vi" ^
+ "https://gemini.google.com/app?hl=vi" ^
  "https://www.overleaf.com/project/6a3d53e326609fd6528ac42d"
 timeout /t 1 >nul
 

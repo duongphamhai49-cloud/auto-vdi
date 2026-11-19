@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto Edit Tool - NotebookLM Companion</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%232563eb'/><text x='50' y='68' font-size='52' font-family='system-ui, sans-serif' font-weight='900' fill='white' text-anchor='middle'>AE</text></svg>" type="image/svg+xml">
     <style>
         :root {
             --bg-color: #0f172a;
@@ -2040,35 +2041,216 @@
 
             function formatPrimeQuotes(text) {
                 if (!text) return '';
-                let res = text.replace(/''|’’|′′/g, '^\\prime ^\\prime');
-                res = res.replace(/'|’|′/g, '^\\prime');
+                let res = text.replace(/''|’’|′′/g, '^\\prime ^\\prime ');
+                res = res.replace(/'|’|′/g, '^\\prime ');
+                // Đảm bảo sau \prime luôn có dấu cách nếu theo sau là chữ cái tiếng Anh (e.g. A'B -> A^\prime B)
+                res = res.replace(/\\prime(?=[a-zA-Z])/g, '\\prime ');
+                // Chuẩn hóa nhiều khoảng trắng liên tiếp sau \prime thành 1
+                res = res.replace(/\\prime\s+/g, '\\prime ');
+                // Nếu \prime đứng trước dấu kết thúc công thức hoặc dấu đóng ngoặc, dấu phẩy, dấu chấm thì không cần khoảng trắng thừa
+                res = res.replace(/\\prime\s+([,\.;\)\}\]\$])/g, '\\prime$1');
                 return res;
+            }
+
+            function cleanVietnameseInLatex(text) {
+                if (!text) return '';
+
+                const vnAccentRegex = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/;
+                const vnUnitWordsRegex = /\b(?:đồng|nghìn|triệu|tỉ|tỷ|người|học sinh|cây|viên|bút|lít|gam|tạ|tấn|giờ|phút|giây|chiếc|quyển|cuốn|bông|quả|con|mét|nam|nữ)\b/i;
+
+                function hasVietnamese(str) {
+                    if (!str) return false;
+                    return vnAccentRegex.test(str) || vnUnitWordsRegex.test(str);
+                }
+
+                // 1. Chân ký hiệu (subscript) chứa tiếng Việt: S_{trụ} -> S_{tr}, S_{\text{trụ}} -> S_{\text{tr}}, S_{\text{trụ} -> S_{\text{tr}
+                // Chỉ loại bỏ các ký tự tiếng Việt có dấu trong phần subscript
+                text = text.replace(/_(?:\{\\text\{[^{}]*\}?\}?|\\text\{[^{}]*\}?|\{[^{}]*\})/g, (match) => {
+                    return match.replace(new RegExp(vnAccentRegex.source, 'g'), '');
+                });
+
+                // 2. Xử lý đơn vị / từ tiếng Việt trong khối LaTeX math $...$
+                const expUnits = ['m', 'cm', 'dm', 'mm', 'km'];
+                const parts = text.split('$');
+
+                for (let i = 1; i < parts.length; i += 2) {
+                    let inner = parts[i].trim();
+
+                    if (!hasVietnamese(inner)) {
+                        continue;
+                    }
+
+                    // Dạng 1: Tiếng Việt trước / đơn vị mũ sau:
+                    // $ 200\text{ (đồng/m}^2)$. -> $200$ (đồng/$\text{m}^2$).
+                    // hoặc $200 (đồng/m^2)$ hoặc $200\text{ đồng/m}^2$
+                    const m1 = inner.match(/^(.*?)\s*(?:\\text\{\s*)?(\(?)\s*(?:\\text\{\s*)?([^/(){}]+?)\s*\}?\s*\/\s*(?:\\text\{\s*)?([a-zA-Z]+)\s*\}?\s*\^\s*(\{?[23]\}?)(?:\\text\{\s*([.)\]]*)\s*\}|\s*([.)\]]*))?\s*$/);
+                    if (m1 && hasVietnamese(m1[3])) {
+                        const head = m1[1].trim();
+                        const openP = m1[2];
+                        let vnPart = m1[3].trim();
+                        const unit = m1[4].toLowerCase();
+                        const exp = m1[5].replace(/[{}]/g, '');
+                        const closeTrail = m1[6] || m1[7] || '';
+
+                        let trailingPunct = '';
+                        if (/[.,;:!]/.test(closeTrail)) {
+                            trailingPunct = closeTrail.replace(/[^.,;:!]/g, '');
+                        } else if (/[.,;:!]$/.test(vnPart)) {
+                            trailingPunct = vnPart.slice(-1);
+                            vnPart = vnPart.slice(0, -1).trim();
+                        }
+
+                        const hasParen = Boolean(openP || closeTrail.includes(')') || (inner.endsWith(')') && inner.includes('(')));
+                        const op = hasParen ? '(' : '';
+                        const cp = hasParen ? ')' : '';
+
+                        const unitLatex = expUnits.includes(unit) ? `\\text{${unit}}^${exp}` : `${unit}^${exp}`;
+                        const headStr = head ? `$${head}$ ` : '';
+                        parts[i] = `__PROCESSED__${headStr}${op}${vnPart}/$${unitLatex}$${cp}${trailingPunct}`;
+                        continue;
+                    }
+
+                    // Dạng 2: Đơn vị mũ trước / tiếng Việt sau:
+                    // $ 200\text{ (m}^2/\text{đồng)}$. -> $200$ ($\text{m}^2$/đồng).
+                    // hoặc $ 200\text{ (m}^2\text{/đồng)}$ hoặc $200 (m^2/đồng)$
+                    let m2 = inner.match(/^(.*?)\s*(?:\\text\{\s*)?(\(?)\s*(?:\\text\{\s*)?([a-zA-Z]+)\s*\}\s*\^\s*(\{?[23]\}?)\s*(?:\\text\{\s*)?\/\s*(?:\\text\{\s*)?([^/(){}]+?)\s*(?:\}\s*)?([.)\]]*)\s*\}?\s*$/);
+                    if (!m2) {
+                        m2 = inner.match(/^(.*?)\s*(?:\\text\{\s*)?(\(?)\s*(?:\\text\{\s*)?([a-zA-Z]+)\s*\}?\s*\^\s*(\{?[23]\}?)\s*\/\s*(?:\\text\{\s*)?([^/(){}]+?)\s*(?:\}\s*)?([.)\]]*)\s*\}?\s*$/);
+                    }
+                    if (m2 && hasVietnamese(m2[5])) {
+                        const head = m2[1].trim();
+                        const openP = m2[2];
+                        const unit = m2[3].toLowerCase();
+                        const exp = m2[4].replace(/[{}]/g, '');
+                        let vnPart = m2[5].replace(/[})]/g, '').trim();
+                        const closeTrail = m2[6] || '';
+
+                        let trailingPunct = '';
+                        if (/[.,;:!]/.test(closeTrail)) {
+                            trailingPunct = closeTrail.replace(/[^.,;:!]/g, '');
+                        } else if (/[.,;:!]$/.test(vnPart)) {
+                            trailingPunct = vnPart.slice(-1);
+                            vnPart = vnPart.slice(0, -1).trim();
+                        }
+
+                        const hasParen = Boolean(openP || closeTrail.includes(')') || (inner.endsWith(')') && inner.includes('(')));
+                        const op = hasParen ? '(' : '';
+                        const cp = hasParen ? ')' : '';
+
+                        const unitLatex = expUnits.includes(unit) ? `\\text{${unit}}^${exp}` : `${unit}^${exp}`;
+                        const headStr = head ? `$${head}$ ` : '';
+                        parts[i] = `__PROCESSED__${headStr}${op}$${unitLatex}$/${vnPart}${cp}${trailingPunct}`;
+                        continue;
+                    }
+
+                    // Dạng 3: Đơn vị tiếng Việt thuần ở cuối khối math:
+                    // $... 200\text{ (nghìn đồng)$. -> $... 200$ (nghìn đồng)
+                    // hoặc $200\text{ (nghìn đồng)}$ -> $200$ (nghìn đồng)
+                    // hoặc $200\text{ (đồng)}$ -> $200$ (đồng)
+                    // hoặc $200 (đồng)$ -> $200$ (đồng)
+                    let m3 = inner.match(/^(.*?)\s*\\text\{\s*(\(?)\s*([^}]+?)\s*(\)?)\s*\}?\s*(\)?)\s*$/);
+                    if (!m3) {
+                        m3 = inner.match(/^(.*?)\s*(\()\s*([^()\$]+?)\s*(\))\s*$/);
+                    }
+                    if (m3) {
+                        const head = m3[1].trim();
+                        let openP = m3[2];
+                        const vnPart = m3[3].trim();
+                        let closeP = m3[4] || m3[5] || '';
+
+                        if (hasVietnamese(vnPart)) {
+                            let cleanedVn = vnPart.trim();
+                            let trailingPunct = '';
+                            if (/[.,;:!]/.test(cleanedVn)) {
+                                trailingPunct = cleanedVn.slice(-1);
+                                cleanedVn = cleanedVn.slice(0, -1).trim();
+                            }
+                            if (cleanedVn.endsWith(')')) {
+                                closeP = ')';
+                                cleanedVn = cleanedVn.slice(0, -1).trim();
+                            }
+                            if (/[.,;:!]/.test(cleanedVn)) {
+                                trailingPunct = cleanedVn.slice(-1);
+                                cleanedVn = cleanedVn.slice(0, -1).trim();
+                            }
+                            if (cleanedVn.startsWith('(')) {
+                                openP = '(';
+                                cleanedVn = cleanedVn.slice(1).trim();
+                            }
+
+                            const hasParen = Boolean(openP || closeP);
+                            const op = hasParen ? '(' : '';
+                            const cp = hasParen ? ')' : '';
+
+                            const headStr = head ? `$${head}$ ` : '';
+                            parts[i] = `__PROCESSED__${headStr}${op}${cleanedVn}${cp}${trailingPunct}`;
+                            continue;
+                        }
+                    }
+                }
+
+                let result = '';
+                for (let i = 0; i < parts.length; i++) {
+                    if (i % 2 === 1) {
+                        if (parts[i].startsWith('__PROCESSED__')) {
+                            result += parts[i].substring(13);
+                        } else {
+                            result += '$' + parts[i] + '$';
+                        }
+                    } else {
+                        result += parts[i];
+                    }
+                }
+                return result;
             }
 
             function formatUnitsOfMeasurement(text) {
                 if (!text) return '';
 
-                // Bỏ ngoặc đơn \left(... \right) hoặc (...) cho đơn vị diện tích, thể tích có mũ (m^2, cm^2, dm^2, mm^2, km^2, m^3, cm^3, dm^3, mm^3, km^3)
-                text = text.replace(/(?:\\left\(|\()\s*(?:\\text\{\s*([a-z]+)\s*\}|\s*([a-z]+)\s*)\^(2|3)\s*(?:\\right\)|\))/gi, (m, u1, u2, exp) => {
-                    const u = (u1 || u2).toLowerCase();
-                    if (['m', 'cm', 'dm', 'mm', 'km'].includes(u)) {
-                        return `\\text{${u}}^${exp}`;
-                    }
-                    return m;
-                });
+                const expUnits = ['m', 'cm', 'dm', 'mm', 'km'];
 
-                text = text.replace(/(?:\\left\(|\()\s*\\text\{\s*([a-z]+)\^(2|3)\s*\}\s*(?:\\right\)|\))/gi, (m, u, exp) => {
+                // 1. Đơn vị diện tích, thể tích có số mũ (m^2, cm^2, dm^2, mm^2, km^2, m^3, cm^3, dm^3, mm^3, km^3)
+                // Phải dùng \left( \right) đúng khi có ngoặc:
+                // Ví dụ: \text{ (m}^2\text{)} -> \left(\text{m}^2\right), (\text{m}^2) -> \left(\text{m}^2\right)
+                
+                // 1.1: \text{ (m}^2\text{)} hoặc \text{ (m}^2) hoặc \text{(m}^2\text{)}
+                text = text.replace(/\\text\{\s*\(\s*([a-zA-Z]+)\s*\}\s*\^\s*(\{?[23]\}?)\s*(?:\\text\{\s*\)\s*\}|\s*\))/g, (m, u, exp) => {
                     const unit = u.toLowerCase();
-                    if (['m', 'cm', 'dm', 'mm', 'km'].includes(unit)) {
-                        return `\\text{${unit}}^${exp}`;
+                    const e = exp.replace(/[{}]/g, '');
+                    if (expUnits.includes(unit)) {
+                        return `\\left(\\text{${unit}}^${e}\\right)`;
                     }
                     return m;
                 });
 
-                // Bỏ ngoặc đơn \left(... \right) hoặc (...) cho đơn vị không mũ (ha, ml)
-                text = text.replace(/(?:\\left\(|\()\s*(?:\\text\{\s*(ha|ml)\s*\}|\s*(ha|ml)\s*)\s*(?:\\right\)|\))/gi, (m, u1, u2) => {
-                    const u = (u1 || u2).toLowerCase();
-                    return `\\text{${u}}`;
+                // 1.2: \text{(m^2)} hoặc \text{ (m^2) }
+                text = text.replace(/\\text\{\s*\(\s*([a-zA-Z]+)\s*\^\s*(\{?[23]\}?)\s*\)\s*\}/g, (m, u, exp) => {
+                    const unit = u.toLowerCase();
+                    const e = exp.replace(/[{}]/g, '');
+                    if (expUnits.includes(unit)) {
+                        return `\\left(\\text{${unit}}^${e}\\right)`;
+                    }
+                    return m;
+                });
+
+                // 1.3: (\text{m}^2), (m^2), \left(m^2\right), \left(\text{m}^2\right)
+                text = text.replace(/(?:\\left\(|\()\s*(?:\\text\{\s*([a-zA-Z]+)\s*\}|([a-zA-Z]+))\s*\^\s*(\{?[23]\}?)\s*(?:\\right\)|\))/g, (m, u1, u2, exp) => {
+                    const unit = (u1 || u2).toLowerCase();
+                    const e = exp.replace(/[{}]/g, '');
+                    if (expUnits.includes(unit)) {
+                        return `\\left(\\text{${unit}}^${e}\\right)`;
+                    }
+                    return m;
+                });
+
+                // 1.4: (\text{m^2}), \left(\text{m^2}\right)
+                text = text.replace(/(?:\\left\(|\()\s*\\text\{\s*([a-zA-Z]+)\s*\^\s*(\{?[23]\}?)\s*\}\s*(?:\\right\)|\))/g, (m, u, exp) => {
+                    const unit = u.toLowerCase();
+                    const e = exp.replace(/[{}]/g, '');
+                    if (expUnits.includes(unit)) {
+                        return `\\left(\\text{${unit}}^${e}\\right)`;
+                    }
+                    return m;
                 });
 
                 return text;
@@ -2077,6 +2259,7 @@
             function formatLatexSymbols(text) {
                 if (!text) return '';
                 let res = text;
+                res = res.replace(/\\triangle(?![a-zA-Z])/g, '\\Delta');
                 res = res.replace(/\\implies\b/g, '\\Rightarrow');
                 res = res.replace(/\\iff\b/g, '\\Leftrightarrow');
                 res = res.replace(/\\vec(?![a-zA-Z])/g, '\\overrightarrow');
@@ -2203,6 +2386,7 @@
                 content = formatRomanNumerals(content);
                 content = formatSingleUppercaseLetters(content);
                 content = formatPrimeQuotes(content);
+                content = cleanVietnameseInLatex(content);
                 content = formatUnitsOfMeasurement(content);
                 content = formatLatexSymbols(content);
                 content = formatLatexBrackets(content);

@@ -24,6 +24,10 @@ timeout /t 1 >nul
 echo 4. Dang mo Question QA Tool...
 start chrome --app="file:///E:/Download/VDII/Auto_Edit_Tool/question_qa.html" --profile-directory="Profile 5"
 
+
+echo 5. Dang mo KC Identifier Tool...
+start chrome --app="file:///E:\Download\VDII\KC_Identifier\index.html" --profile-directory="Profile 5"
+
 echo ========================================================
 echo Khoi dong hoan tat!
 exit
